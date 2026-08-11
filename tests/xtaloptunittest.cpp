@@ -309,6 +309,9 @@ private slots:
   // Output files must match the saved expected files.
   void inputReadAndVerifyLoadsAssets();
   void structureStateFileIsStable();
+  void supercellPreservesCellOrientationAndAtomPlacement();
+  void optimizedDepartureInvalidatesDerivedEvaluationState();
+  void offspringReplacementUsesValidRunComposition();
   void saveWritesOnlyChangedStructureStates();
   void resultsOutputsAreStable();
 
@@ -824,6 +827,84 @@ void XtalOptUnitTest::structureStateFileIsStable()
 
   const QString expectedDir = Common::localPath(QString(TESTDATADIR), "outputs");
   compareWithExpectedFile(statePath, Common::localPath(expectedDir, "structure.state"), true);
+}
+
+void XtalOptUnitTest::supercellPreservesCellOrientationAndAtomPlacement()
+{
+  XtalOpt opt;
+  opt.setMaxAtoms(10);
+
+  const Common::Vector3 a(1.0, 0.2, 0.1);
+  const Common::Vector3 b(-0.3, 2.0, 0.4);
+  const Common::Vector3 c(0.2, -0.1, 3.0);
+  Xtal parent;
+  parent.setCellInfo(a, b, c);
+  const Common::Vector3 atomPos = 0.25 * a + 0.6 * b + 0.1 * c;
+  parent.addAtom(8, atomPos);
+
+  std::unique_ptr<Xtal> supercell(opt.generateSuperCell(&parent, 2, false));
+  QVERIFY(supercell.get() != nullptr);
+  QCOMPARE(supercell->numAtoms(), 2u);
+  QVERIFY((supercell->unitCell().aVector() - 2.0 * a).norm() < 1e-12);
+  QVERIFY((supercell->unitCell().bVector() - b).norm() < 1e-12);
+  QVERIFY((supercell->unitCell().cVector() - c).norm() < 1e-12);
+  QVERIFY((supercell->atom(0).pos() - atomPos).norm() < 1e-12);
+  QVERIFY((supercell->atom(1).pos() - (atomPos + a)).norm() < 1e-12);
+}
+
+void XtalOptUnitTest::optimizedDepartureInvalidatesDerivedEvaluationState()
+{
+  XtalOpt opt;
+  Xtal xtal;
+  xtal.setGeneration(1);
+  xtal.setIDNumber(1);
+  xtal.setDistAboveHull(0.25);
+  xtal.setParetoFront(3);
+  xtal.setStrucObjValuesVec(QList<double>() << 0.25);
+  xtal.setStatus(Structure::Optimized);
+
+  opt.refreshParentPoolMembership(&xtal);
+  QCOMPARE(opt.getAllParentPoolStructures().size(), 1);
+
+  opt.handleOptimizedDeparture(&xtal);
+
+  QVERIFY(std::isnan(xtal.getDistAboveHull()));
+  QCOMPARE(xtal.getParetoFront(), -1);
+  QVERIFY(std::isnan(xtal.getStrucObjValuesVec().at(0)));
+  QCOMPARE(opt.getAllParentPoolStructures().size(), 0);
+}
+
+void XtalOptUnitTest::offspringReplacementUsesValidRunComposition()
+{
+  XtalOpt opt;
+  QVERIFY(opt.processInputChemicalFormulas("H1O1"));
+  opt.setUsingScaledIAD(false);
+  opt.setAMin(8.0);
+  opt.setAMax(8.0);
+  opt.setBMin(8.0);
+  opt.setBMax(8.0);
+  opt.setCMin(8.0);
+  opt.setCMax(8.0);
+  opt.setAlphaMin(90.0);
+  opt.setAlphaMax(90.0);
+  opt.setBetaMin(90.0);
+  opt.setBetaMax(90.0);
+  opt.setGammaMin(90.0);
+  opt.setGammaMax(90.0);
+  opt.setVolMin(512.0);
+  opt.setVolMax(512.0);
+
+  Xtal seed;
+  seed.setGeneration(1);
+  seed.setIDNumber(1);
+  seed.setCompositionValidity(false);
+  seed.setCellInfo(8.0, 8.0, 8.0, 90.0, 90.0, 90.0);
+  seed.addAtom(1, Common::Vector3(0.0, 0.0, 0.0));
+
+  QCOMPARE(opt.replaceWithOffspring(&seed), static_cast<Structure*>(&seed));
+  QVERIFY(seed.hasValidComposition());
+  QCOMPARE(seed.numAtoms(), static_cast<size_t>(2));
+  QCOMPARE(opt.getXtalComposition(&seed).getFormula(), QString("H1O1"));
 }
 
 void XtalOptUnitTest::saveWritesOnlyChangedStructureStates()

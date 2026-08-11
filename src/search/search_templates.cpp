@@ -173,10 +173,8 @@ void SearchBase::interpretKeyword_base(QString& line, Structure* structure)
       Common::error(QString("%1: could not open %2")
               .arg(__func__)
               .arg(filename));
-    if (!rep.isEmpty()) {
-      chopTrailingNewline(rep);
-      line = rep;
-    }
+    chopTrailingNewline(rep);
+    line = rep;
     return;
   }
   if (line.startsWith("copyfile:", Qt::CaseInsensitive)) {
@@ -199,10 +197,8 @@ void SearchBase::interpretKeyword_base(QString& line, Structure* structure)
   if (it == m_keywordMap.constEnd())
     return;
   QString rep = it->handler(structure);
-  if (!rep.isEmpty()) {
-    chopTrailingNewline(rep);
-    line = rep;
-  }
+  chopTrailingNewline(rep);
+  line = rep;
 }
 
 QString SearchBase::getTemplateKeywordHelp_base()

@@ -125,6 +125,9 @@ protected:
   QString m_pass;
   /// Key
   QString m_hexa;
+
+  /// Whether the libssh library was initialized successfully.
+  bool m_libsshReady;
 };
 
 } // end namespace Search

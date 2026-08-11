@@ -336,7 +336,7 @@ Structure::Structure(QObject* parent)
     m_strucConstraintState(Structure::Cs_NotCalculated),
     m_updatedSinceSimChecked(true),
     m_generation(0), m_id(0), m_rank(0), m_jobID(0),
-    m_paretoFrontIndex(-1),
+    m_paretoFrontIndex(-1), m_restartOptStep(-1),
     m_optStart(QDateTime()), m_optEnd(QDateTime()), m_index(-1),
     m_lock(QReadWriteLock::Recursive),
     m_parentStructure(nullptr), m_copyFiles(), m_reusePreoptBonding(true)
@@ -386,6 +386,7 @@ Structure& Structure::operator=(const Structure& other)
     m_rank = other.m_rank;
     m_jobID = other.m_jobID;
     m_currentOptStep = other.m_currentOptStep;
+    m_restartOptStep = other.m_restartOptStep;
     m_failCount = other.m_failCount;
     m_fixCount = other.m_fixCount;
     m_parents = other.m_parents;
@@ -431,6 +432,7 @@ Structure& Structure::operator=(Structure&& other) noexcept
     m_rank = std::move(other.m_rank);
     m_jobID = std::move(other.m_jobID);
     m_currentOptStep = std::move(other.m_currentOptStep);
+    m_restartOptStep = std::move(other.m_restartOptStep);
     m_failCount = std::move(other.m_failCount);
     m_fixCount = std::move(other.m_fixCount);
     m_parents = std::move(other.m_parents);

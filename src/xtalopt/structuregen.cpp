@@ -657,10 +657,14 @@ Xtal* XtalOpt::generateNewXtal(CellComp incomp)
   Common::ScopedTimer _timer("XtalOpt::generateNewXtal");
   QReadLocker runtimeLocker(runtimeSettingsLock());
 
-  // A sanity check; although this shouldn't happen!
-  if (incomp.getNumAtoms() == 0) {
-    Common::error(QString("%1: empty composition.").arg(__func__));
-    return nullptr;
+  // A replacement for an invalid-composition seed must use one of the run's
+  //   valid compositions rather than preserving the seed composition.
+  if (incomp.getNumTypes() == 0) {
+    if (compList().isEmpty()) {
+      Common::error(QString("%1: empty composition list.").arg(__func__));
+      return nullptr;
+    }
+    incomp = pickRandomCompositionFromPossibleOnes();
   }
 
   // Try to get it from the probability list only if we have large
@@ -1664,9 +1668,10 @@ Xtal* XtalOpt::generateSuperCell(Xtal* inXtal, uint expansion, bool distort)
       }
     }
 
-    // Scale cell
-    xtal->setCellInfo(a * A, b * B, c * C, xtal->getAlpha(), xtal->getBeta(),
-                      xtal->getGamma());
+    // Scale the vectors used to place the added atoms, keeping the cell and
+    //   atom coordinates in the same orientation.
+    xtal->setCellInfo(a * oldA, b * oldB, c * oldC);
+    factor = xtal->numAtoms() / initNumAtoms;
   }
 
 
@@ -1764,7 +1769,12 @@ Structure* XtalOpt::replaceWithRandom(Structure* s, const QString& reason)
     return s;
 
   // Retrieve the composition of the original cell
-  CellComp origComp = getXtalComposition(s);
+  CellComp origComp;
+  {
+    QReadLocker locker(&oldXtal->lock());
+    if (oldXtal->hasValidComposition())
+      origComp = getXtalComposition(s);
+  }
 
   uint generation, id;
   generation = s->getGeneration();
@@ -1774,6 +1784,7 @@ Structure* XtalOpt::replaceWithRandom(Structure* s, const QString& reason)
   Xtal* xtal = nullptr;
   int maxAttempts = 10000;
   int attemptCount = 0;
+  // generateRandomXtal() doesn't perform routine xtal check; so we do it here.
   while (!checkXtal(xtal)) {
     if (xtal) {
       delete xtal;
@@ -1800,6 +1811,8 @@ Structure* XtalOpt::replaceWithRandom(Structure* s, const QString& reason)
     oldXtal->resetEnthalpy();
     oldXtal->resetStrucObj();
     oldXtal->resetStrucConstraint();
+    oldXtal->setCompositionValidity(xtal->hasValidComposition());
+    oldXtal->setDistAboveHull(std::numeric_limits<double>::quiet_NaN());
     oldXtal->setPV(0);
     oldXtal->setCurrentOptStep(0);
     QString parents = xtal->getParents();
@@ -1832,25 +1845,22 @@ Structure* XtalOpt::replaceWithOffspring(Structure* s, const QString& reason)
   if (!oldXtal)
     return s;
 
-  // Retrieve the composition of the original cell
-  CellComp origComp = getXtalComposition(s);
+  // Preserve valid compositions. Invalid seed compositions are replaced with
+  //   one selected from the run's composition list by generateNewXtal().
+  CellComp origComp;
+  {
+    QReadLocker locker(&oldXtal->lock());
+    if (oldXtal->hasValidComposition())
+      origComp = getXtalComposition(s);
+  }
 
-  // Generate/Check new xtal
-  Xtal* xtal = nullptr;
-  int maxAttempts = 10000;
-  int attemptCount = 0;
-  while (!checkXtal(xtal)) {
-    if (xtal) {
-      delete xtal;
-      xtal = nullptr;
-    }
-    if (attemptCount >= maxAttempts) {
-      Common::warning(QString("%1: failed too many times. Giving up.")
-                       .arg(__func__));
-      return nullptr;
-    }
-    ++attemptCount;
-    xtal = generateNewXtal(origComp);
+  // generateNewXtal() owns its retry budget and returns a checked structure.
+  // Re-running an exhausted generator here only multiplies that budget.
+  Xtal* xtal = generateNewXtal(origComp);
+  if (!xtal) {
+    Common::warning(QString("%1: could not generate a valid replacement.")
+                     .arg(__func__));
+    return nullptr;
   }
 
   // In vcSearch the offspring composition may differ from the old structure;
@@ -1866,6 +1876,8 @@ Structure* XtalOpt::replaceWithOffspring(Structure* s, const QString& reason)
     oldXtal->resetEnthalpy();
     oldXtal->resetStrucObj();
     oldXtal->resetStrucConstraint();
+    oldXtal->setCompositionValidity(xtal->hasValidComposition());
+    oldXtal->setDistAboveHull(std::numeric_limits<double>::quiet_NaN());
     oldXtal->resetFailCount();
     oldXtal->setPV(0);
     oldXtal->setCurrentOptStep(0);
@@ -2374,13 +2386,26 @@ bool XtalOpt::checkStepOptimizedStructure(Structure* s, QString* err)
           if (i > 0) {
             s->setFixCount(fixCount + 1);
             s->setCurrentOptStep(0);
-            break;
-          } else {
-            break;
           }
+          return true;
         }
       }
-      return true;
+
+      // The last move may have fixed the final short distance, so check once more before giving up.
+      if (xtal->checkMinIAD(this->interComp(), &atom1, &atom2, &IAD)) {
+        s->setFixCount(fixCount + 1);
+        s->setCurrentOptStep(0);
+        return true;
+      }
+
+      double minIAD = 0.0;
+      customMinDistance(interComp(), xtal->atom(atom1).atomicNumber(),
+                        xtal->atom(atom2).atomicNumber(), &minIAD);
+      Common::debug(QString("Discarding structure %1: bad Custom IAD (%2 < %3) "
+                            "- couldn't fix").arg(xtal->getTag()).arg(IAD).arg(minIAD));
+      if (err != nullptr)
+        *err = tooClose;
+      return false;
     }
 
     if (getUsingScaledIAD()) {
@@ -2587,7 +2612,7 @@ void XtalOpt::getCompositionVolumeLimits(CellComp incomp, double& minvol, double
   //   (2) If scaled volume is given, use that,
   //   (3) If none of the above, use absolute limits.
   bool useEleVol = (eleVolumes().getVolumeAtomicNumbers().size() == 0) ? false : true;
-  bool useScaVol = (getVolScaleMin() > ZERO06 && getVolScaleMax() > getVolScaleMin()) ? true : false;
+  bool useScaVol = (getVolScaleMin() > ZERO06 && getVolScaleMax() >= getVolScaleMin()) ? true : false;
 
   minvol = 0.0;
   maxvol = 0.0;

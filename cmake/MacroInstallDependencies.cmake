@@ -28,6 +28,8 @@ function(gp_resolved_file_type_override filename type)
      filename MATCHES "(.*)libqwt(.*)" OR
      filename MATCHES "(.*)libssh(.*)" OR
      filename MATCHES "(.*)libcrypto(.*)" OR
+     filename MATCHES "(.*)libgcrypt(.*)" OR
+     filename MATCHES "(.*)libgpg-error(.*)" OR
      filename MATCHES "(.*)libpng(.*)" OR
      filename MATCHES "(.*)libicui18n(.*)" OR
      filename MATCHES "(.*)libicuuc(.*)" OR

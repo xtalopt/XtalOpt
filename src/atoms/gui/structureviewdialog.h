@@ -20,15 +20,20 @@
 
 #include <QColor>
 #include <QDialog>
-#include <QLabel>
-#include <QPushButton>
 #include <QString>
 #include <QWidget>
 
 #include <map>
+#include <memory>
 #include <vector>
 
 class QCloseEvent;
+
+// The generated design header is included by the source file only: this header
+//   is also used from other modules, which do not build this design.
+namespace Ui {
+class StructureViewDialog;
+}
 
 namespace Atoms {
 
@@ -78,6 +83,7 @@ public slots:
   void resetView();
   void setAtomLabelsVisible(bool visible);
   void setBondsVisible(bool visible);
+  void setBondLabelsVisible(bool visible);
   void setDepthCueingEnabled(bool enabled);
   void setBondLengthMinimum(double minimum);
   void setBondLengthMaximum(double maximum);
@@ -99,6 +105,7 @@ private:
   double m_zoomFactor;
   bool m_atomLabelsVisible;
   bool m_bondsVisible;
+  bool m_bondLabelsVisible;
   bool m_depthCueingEnabled;
   double m_bondLengthMinimum;
   double m_bondLengthMaximum;
@@ -111,6 +118,8 @@ class StructureViewDialog : public QDialog
 
 public:
   explicit StructureViewDialog(QWidget* parent = nullptr);
+  // Defined in the source file: the design class is only complete there.
+  virtual ~StructureViewDialog() override;
   void displayStructure(const Atoms::Geometry& structure, const QString& label = QString());
 
 public slots:
@@ -118,13 +127,7 @@ public slots:
   void saveData() const;
 
 private:
-  QLabel* m_infoLabel;
-  StructureViewWidget* m_viewWidget;
-  QWidget* m_optionsWidget;
-  QPushButton* m_resetViewButton;
-  QPushButton* m_saveDataButton;
-  QPushButton* m_saveImageButton;
-  QPushButton* m_closeButton;
+  std::unique_ptr<Ui::StructureViewDialog> ui;
   QString m_poscarText;
 };
 

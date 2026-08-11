@@ -143,11 +143,6 @@ protected:
 
 signals:
   /**
-   * Emit to update the structure shown by the active viewer.
-   */
-  void selectedGeometryChanged(Search::Structure*);
-
-  /**
    * Emit this signal before beginning user-requested
    * processing. This will set the busy cursor in the application.
    */

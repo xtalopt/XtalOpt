@@ -102,12 +102,6 @@ void deleteDirectRunProcess(DirectRunProcess* proc)
   QMetaObject::invokeMethod(proc, "deleteLater", Qt::QueuedConnection);
 }
 
-// Resolve a direct-run stdio filename to a full local path (empty stays empty).
-QString directRunFilePath(Structure* s, const QString& name)
-{
-  return name.isEmpty() ? QString() : Common::localPath(s->getLocpath(), name);
-}
-
 }
 
 DirectRunProcess* DirectRunProcessHost::startProcess(
@@ -240,25 +234,42 @@ bool DirectRunInterface::writeFiles(
   if (!writeHashToLocalDir(s, fileHash))
     return false;
 
-  return writeCopyFilesToLocalDir(s);
+  QStringList filenames = fileHash.keys();
+  return writeCopyFilesToLocalDir(s, filenames);
 }
 
 bool DirectRunInterface::startJob(Structure* s)
 {
   Common::ScopedTimer _timer("DirectRunInterface::startJob");
-  if (s->getJobID() != 0) {
+  uint jobId = 0;
+  QString tag;
+  QString locpath;
+  {
+    QReadLocker locker(&s->lock());
+    jobId = s->getJobID();
+    tag = s->getTag();
+    locpath = s->getLocpath();
+  }
+  if (jobId != 0) {
     Common::error(tr("%1: attempting to start job for structure %2, "
                     "but a JobID is already set (%3).")
                      .arg(__func__)
-                     .arg(s->getTag())
-                     .arg(s->getJobID()));
+                     .arg(tag)
+                     .arg(jobId));
     return false;
   }
+  const Optimizer* optimizer = getCurrentOptimizer(s);
+  if (!optimizer || !m_processHost) {
+    Common::error(tr("%1: cannot start a direct run for structure %2 "
+                     "(no optimizer, or the run process host is gone).")
+                    .arg(__func__)
+                    .arg(tag));
+    return false;
+  }
+
   // Use the optimizer command as-is; it may be a PATH name, an absolute
   // path, or a user-provided command line.
-  QString command = getCurrentOptimizer(s)->getDirectRunCommand();
-
-  const Optimizer* optimizer = getCurrentOptimizer(s);
+  QString command = optimizer->getDirectRunCommand();
 
   // Start the process.
   DirectRunProcess* proc = nullptr;
@@ -267,16 +278,19 @@ bool DirectRunInterface::startJob(Structure* s)
       : Qt::BlockingQueuedConnection;
   QMetaObject::invokeMethod(m_processHost, "startProcess", invokeType,
     Q_RETURN_ARG(Search::DirectRunProcess*, proc), Q_ARG(QString, command),
-    Q_ARG(QString, s->getLocpath()),
-    Q_ARG(QString, directRunFilePath(s, optimizer->stdinFilename())),
-    Q_ARG(QString, directRunFilePath(s, optimizer->stdoutFilename())),
-    Q_ARG(QString, directRunFilePath(s, optimizer->stderrFilename())),
+    Q_ARG(QString, locpath),
+    Q_ARG(QString, optimizer->stdinFilename().isEmpty() ? QString() :
+                   Common::localPath(locpath, optimizer->stdinFilename())),
+    Q_ARG(QString, optimizer->stdoutFilename().isEmpty() ? QString() :
+                   Common::localPath(locpath, optimizer->stdoutFilename())),
+    Q_ARG(QString, optimizer->stderrFilename().isEmpty() ? QString() :
+                   Common::localPath(locpath, optimizer->stderrFilename())),
     Q_ARG(int, PROCESS_START_TIMEOUT));
 
   if (!proc) {
     Common::error(tr("%1: direct run for structure %2 did not start.")
                     .arg(__func__)
-                    .arg(s->getTag()));
+                    .arg(tag));
     return false;
   }
 
@@ -377,10 +391,12 @@ QueueInterface::QueueStatus DirectRunInterface::getStatus(Structure* s) const
   // Copy the structure values.
   uint pid = 0;
   Structure::State state = Structure::Empty;
+  QString tag;
   {
     QReadLocker rlocker(&s->lock());
     pid = s->getJobID();
     state = s->getStatus();
+    tag = s->getTag();
   }
 
   if (!pid && state != Structure::Submitted) {
@@ -402,7 +418,8 @@ QueueInterface::QueueStatus DirectRunInterface::getStatus(Structure* s) const
   if (state == Structure::Submitted) {
     if (pid == 0 || !proc) {
       bool exists = false;
-      if (!getCurrentOptimizer(s)->checkIfOutputFileExists(s, &exists))
+      Optimizer* optimizer = getCurrentOptimizer(s);
+      if (!optimizer || !optimizer->checkIfOutputFileExists(s, &exists))
         return QueueInterface::CommunicationError;
       if (!exists) {
         return QueueInterface::Pending;
@@ -445,7 +462,7 @@ QueueInterface::QueueStatus DirectRunInterface::getStatus(Structure* s) const
                           "code: %4. Process exit code: %5 errStr: %6\n"
                           "stdout:\n%7\nstderr:\n%8")
                          .arg(__func__)
-                         .arg(s->getTag())
+                         .arg(tag)
                          .arg(pid)
                          .arg(processError)
                          .arg(exitCode)
@@ -456,7 +473,8 @@ QueueInterface::QueueStatus DirectRunInterface::getStatus(Structure* s) const
       }
       {
         bool success = false;
-        if (!getCurrentOptimizer(s)->checkForSuccessfulOutput(s, &success))
+        Optimizer* optimizer = getCurrentOptimizer(s);
+        if (!optimizer || !optimizer->checkForSuccessfulOutput(s, &success))
           return QueueInterface::CommunicationError;
         return success ? QueueInterface::Success : QueueInterface::Error;
       }
@@ -466,7 +484,7 @@ QueueInterface::QueueStatus DirectRunInterface::getStatus(Structure* s) const
                         "run. QProcess error code: %4. errStr: %5\n"
                         "stdout:\n%6\nstderr:\n%7")
                        .arg(__func__)
-                       .arg(s->getTag())
+                       .arg(tag)
                        .arg(pid)
                        .arg(processError)
                        .arg(processErrorString)

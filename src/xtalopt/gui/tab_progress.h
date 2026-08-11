@@ -95,8 +95,6 @@ public slots:
   void updateProgressTable();
   void refreshHullFrontEntries();
   void setTableEntry(int row, const XO_Prog_TableEntry& e);
-  void selectGeometryFromProgress(int, int, int, int);
-  void highlightXtal(Search::Structure* s);
   void startTimer();
   void stopTimer();
   void releaseStructureReferences();

@@ -27,6 +27,7 @@ Added command-line summaries for template keywords and all xtalopt.in settings/d
 Unified xtalopt settings in one registry table (accessors, defaults, properties, validation)
 Revised command-line options and added stricter input checking
 Improved runtime setting updates and rewriting of cli-runtime-options.txt
+Made the RDF similarity cutoff, bins and sigma adjustable during a run
 Added/revised settings: sshMethod, directRunCommand, forcedSpgs, IAD checks and RDF tolerance
 Added/revised settings for Pareto zero-weight filtering, external script timeouts and debug output
 Renamed localQueue to remoteQueue and the local queue interface to none
@@ -39,21 +40,25 @@ Rebuilt similarity, hull, Pareto-front and space-group information after loading
 Preserved structure order and parent links on resume
 Allowed copied session directories to be resumed from their new location
 Shortened the final save at exit by writing only pending structure files
-Improved template placeholders, including literal percent characters
+Improved template placeholders, including literal percent characters, and empty keyword values
+Improved handling of the extra input files copied into a structure directory
 Consistent legacy state-file conversion on Windows and other platforms
 
 ===== Structure handling, geometry, and formats
 
 Expanded seed structure reading to all supported formats regardless of optimizer
 Added xtalopt structure tools for analysis and molecular unit/crystal generation
-Added CIF; revised CML, XYZ, MTP, POSCAR, PWSCF and SIESTA structure readers
+Added CIF; revised CML, XYZ, MTP, POSCAR, PWSCF, CASTEP, and SIESTA structure readers
 Read the last geometry from multi-entry files (XYZ, CML, MTP, GULP); CIF stays single-block
 Validated optimizer geometry through a shared structure-update path
 Rejected invalid cells and missing VASP energies without partial updates
 Fixed cell rescaling and fractional wrapping
+Accepted equal volume scale factors as a fixed scaled-volume target
 Fixed skewed-cell neighbor/bond handling
+Fixed custom-IAD atom moves being tested against the moved atom's own position
 Kept geometry neighbor data current after coordinate changes
 Fixed small-molecule SIESTA Z-matrices and supercell generation
+Random replacement of an structure with unsupported composition uses one from the input list
 
 ===== Fitness, objectives, and parent selection
 
@@ -64,7 +69,9 @@ Added output-wait time limits and correct resume handling
 Updated Basic/Pareto parent selection after runtime setting changes
 Fixed objective precision, Basic weight normalization and zero-weight handling
 Reduced search overhead for fast local optimizers
+Clearing hull, front and objective values when a structure leaves the optimized set
 Improved similarity checks, incremental parent-pool updates and selection-data caching
+Fixed a bug in xtalcomp similarity: ignored updated spg tolerance
 Set the default RDF tolerance to 0.98
 
 ===== Optimizers, queues, and remote execution
@@ -73,22 +80,28 @@ Removed the generic optimizer; retained only gulp, vasp, pwscf, castep, siesta a
 Revised direct/batch queue interfaces and unified SSH use for remote queues
 Improved queue manager workflow and background save coordination
 Made queue states safe across overlapping submissions, updates, kills and restarts
+Restart a job at a chosen optimization step only after its running job is cancelled
 Improved scheduler job-ID parsing and status handling
 Made command timeouts and failed cancellations safe
 Kept unconfirmed submissions pending for manual resolution instead of resubmission
 Improved remote path handling and CLI/libssh directory listing consistency
+Write generated input and job files with plain newlines on all platforms
 Improved transfer failure reporting and job cleanup
 
 ===== GUI
 
 Added a built-in structure viewer to replace the external Avogadro viewer
+Removed the shared structure highlighting between the Plot and Progress tabs
 Reworked the simulated XRD viewer using xraylib; added image and data export
 Improved Plot-tab axis ranges and margins
 Added Plot-tab image export option
-Added optional Plot-tab legend
-Added optional Plot-tab automatic label placement to avoid overalps
+Added optional Plot-tab legend and automatic label placement
+Added space group number as a Plot-tab axis choice
+Update Plot-tab labels for min/max of objectives, default filters, coloring
 Refined GUI tab layouts and runtime refresh behavior
+Set a minimum of 1 second for refresh period in the Progress tab
 Improved composition, atom-limit, molecule-unit and custom-IAD updates
+Refresh the Spacegroup Options dialog from current settings when reopened
 Initialized custom IAD values from covalent radii after a changed formula
 Fixed tab cleanup during session reset and shutdown
 Improved cross-platform plot text sizing and table row sizing
@@ -98,6 +111,7 @@ Improved cross-platform plot text sizing and table row sizing
 Made text, results, state and hull writes report failures
 Added profiling option: periodic and final timing summaries in the run output
 Preserved significant digits and .old output backups
+Exclude killed, restarting and replaced structures from the hull output
 Expanded and updated the test suite
 Updated schemes, scripts and test/sample data for the new formats
 

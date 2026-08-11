@@ -30,6 +30,7 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QClipboard>
+#include <QColor>
 #include <QComboBox>
 #include <QCursor>
 #include <QDir>
@@ -160,11 +161,20 @@ void placePlotLabels(XtalOptPlot* plot, const QRectF& textLabelRect)
                         yMap.transform(marker->yValue()));
     const QSizeF textSize = marker->label().textSize(plot->canvas()->font());
     const QSize symbolSize = marker->symbol() ? marker->symbol()->size() : QSize();
-    const qreal xGap = symbolSize.width() / 2.0 + marker->spacing();
-    const qreal yGap = symbolSize.height() / 2.0 + marker->spacing();
+    // Gap between a symbol and its label, in pixels.
+    const int labelSpacing = 2;
     marker->setLabelAlignment(Qt::AlignBottom);
+    marker->setSpacing(labelSpacing);
 
     for (size_t j = 0; j < sizeof(positions) / sizeof(positions[0]); ++j) {
+      // The plot moves the label away from the symbol by its half size plus
+      //   the spacing. A corner spot does this in both directions at once; so
+      //   there we drop the spacing to keep the label as close as elsewhere.
+      const bool corner = (positions[j] & (Qt::AlignLeft | Qt::AlignRight)) &&
+                          (positions[j] & (Qt::AlignTop | Qt::AlignBottom));
+      const int spacing = corner ? 0 : labelSpacing;
+      const qreal xGap = symbolSize.width() / 2.0 + spacing;
+      const qreal yGap = symbolSize.height() / 2.0 + spacing;
       qreal left = point.x() - textSize.width() / 2.0;
       qreal top = point.y() - textSize.height() / 2.0;
 
@@ -183,6 +193,7 @@ void placePlotLabels(XtalOptPlot* plot, const QRectF& textLabelRect)
         overlaps = labelRect.intersects(usedRects[k]);
       if (!overlaps) {
         marker->setLabelAlignment(positions[j]);
+        marker->setSpacing(spacing);
         usedRects.append(labelRect);
         break;
       }
@@ -214,7 +225,7 @@ TabPlot::TabPlot(Search::AbstractDialog* parent, XtalOpt* p)
   QString guideText = QStringLiteral(
     "<span style='color:#0000ff'>&#9679;</span> %1&nbsp;&nbsp;&nbsp;"
     "<span style='color:#008000'>&#9632;</span> %2&nbsp;&nbsp;&nbsp;"
-    "<span style='color:#808080'>&#9670;</span> %3&nbsp;&nbsp;&nbsp;"
+    "<span style='color:#5aaad8'>&#9670;</span> %3&nbsp;&nbsp;&nbsp;"
     "<span style='color:#ff8c00'>&#9650;</span> %4&nbsp;&nbsp;&nbsp;"
     "<span style='color:#ff0000'>&#9660;</span> %5");
   guideText = guideText.arg(tr("Complete"))
@@ -232,10 +243,6 @@ TabPlot::TabPlot(Search::AbstractDialog* parent, XtalOpt* p)
   m_guideLabel->setMargin(5);
   m_guideLabel->setZ(100.0);
   m_guideLabel->attach(ui.plot);
-
-  // dialog connections
-  connect(m_dialog, &Search::AbstractDialog::selectedGeometryChanged,
-          this, &TabPlot::highlightXtal);
 
   // Plot connections
   connect(ui.push_refresh, &QPushButton::clicked, this, &TabPlot::refreshPlot);
@@ -255,7 +262,6 @@ TabPlot::TabPlot(Search::AbstractDialog* parent, XtalOpt* p)
   connect(ui.cb_showDismissed,    &QCheckBox::toggled, this, &TabPlot::updatePlot);
   connect(ui.cb_showIncompletes,  &QCheckBox::toggled, this, &TabPlot::updatePlot);
   connect(ui.cb_showFailures,     &QCheckBox::toggled, this, &TabPlot::updatePlot);
-  connect(ui.plot, &XtalOptPlot::selectedMarkerChanged, this, &TabPlot::selectXtal);
   connect(ui.plot, &XtalOptPlot::plotResized, this, &TabPlot::updatePlotLayout);
   ui.plot->canvas()->setContextMenuPolicy(Qt::CustomContextMenu);
   connect(ui.plot->canvas(), &QWidget::customContextMenuRequested, this, &TabPlot::plotContextMenu);
@@ -484,9 +490,13 @@ void TabPlot::updatePlot()
   ui.combo_yAxis->setMaxCount(numaxisitems);
   ui.combo_labelType->setMaxCount(numsymbitems);
   for (int i = 0; i < userObjectivesNum; i++) {
-      ui.combo_xAxis->addItem(tr("Objective%1").arg(i+1));
-      ui.combo_yAxis->addItem(tr("Objective%1").arg(i+1));
-      ui.combo_labelType->addItem(tr("Objective%1").arg(i+1));
+      // The entry shows if the objective is minimized or maximized,
+      //   e.g. "Objective1_Min"
+      QString name = (xtalopt->getObjectivesTyp(xtalopt->getUserObjectiveIndex(i)) ==
+                      SearchBase::Ot_Min) ? tr("Objective%1_Min").arg(i+1) : tr("Objective%1_Max").arg(i+1);
+      ui.combo_xAxis->addItem(name);
+      ui.combo_yAxis->addItem(name);
+      ui.combo_labelType->addItem(name);
   }
   for (int i = 0; i < constraintsNum; i++) {
       ui.combo_xAxis->addItem(tr("Constraint%1").arg(i+1));
@@ -637,6 +647,21 @@ void TabPlot::plotTrends()
               break;
             default:
               y = xtal->getParetoFront();
+              break;
+          }
+          break;
+        case SpaceGroup_T:
+          // Skip xtals that don't have a space group assigned yet
+          if (xtal->getSpaceGroupNumber() == 0) {
+            usePoint = false;
+            continue;
+          }
+          switch (j) {
+            case 0:
+              x = xtal->getSpaceGroupNumber();
+              break;
+            default:
+              y = xtal->getSpaceGroupNumber();
               break;
           }
           break;
@@ -964,6 +989,9 @@ void TabPlot::plotTrends()
       case ParetoFront_T:
         label = tr("Pareto Front");
         break;
+      case SpaceGroup_T:
+        label = tr("Space Group Number");
+        break;
       case AtomCount_T:
         label = tr("Total number of Atoms");
         break;
@@ -1004,15 +1032,10 @@ void TabPlot::plotTrends()
         // Objectives in multi-objective run. Since there is no fixed number of
         //   objectives; and MSVC does not support "case range", we put them
         //   under "default".
-        // Their index in the list of options starts from Objectivei_T,
-        //   but their "shown" index starts from 1; so we have "ind - Objectivei_T + 1"
-        if (ind >= Objectivei_T) {
-          const int dynamicIndex = ind - Objectivei_T;
-          if (dynamicIndex < userObjectivesNum)
-            label = tr("Objective%1").arg(dynamicIndex + 1);
-          else
-            label = tr("Constraint%1").arg(dynamicIndex - userObjectivesNum + 1);
-        }
+        // Their entries are added to the menus while the run is going on; so we
+        //   just use the text of the selected entry as the axis title.
+        if (ind >= Objectivei_T)
+          label = (j == 0) ? ui.combo_xAxis->currentText() : ui.combo_yAxis->currentText();
       }
     if (j == 0)
       ui.plot->setXTitle(label);
@@ -1096,8 +1119,9 @@ QwtPlotMarker* TabPlot::addXtalToPlot(Xtal* xtal, double x, double y)
   } else if (statusCategory == Psc_Failed) {
     pm = ui.plot->addPlotPoint(x, y, QwtSymbol::DTriangle, QBrush(Qt::red), QPen(Qt::red));
   } else if (statusCategory == Psc_Dismissed) {
-    pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Diamond, QBrush(Qt::darkGray),
-                               QPen(Qt::darkGray));
+    const QColor dismissedColor(90, 170, 216);
+    pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Diamond, QBrush(dismissedColor),
+                               QPen(dismissedColor));
   } else if (statusCategory == Psc_Incomplete) {
     QColor orange(255, 140, 0, 255);
     pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Triangle, QBrush(orange), QPen(orange));
@@ -1185,39 +1209,5 @@ void TabPlot::plotXrdPlot()
     dialog->showXrdViewer(m_context_xtal);
 
   m_context_xtal = nullptr;
-}
-
-void TabPlot::selectXtal(QwtPlotMarker* pm)
-{
-  Xtal* xtal = m_marker_xtal_map.value(pm, nullptr);
-  if (!xtal)
-    return;
-
-  emit selectedGeometryChanged(xtal);
-}
-
-void TabPlot::selectGeometryFromIndex(int index)
-{
-  Structure* selected = nullptr;
-  {
-    QReadLocker trackerLocker(m_search->tracker()->rwLock());
-    const int structureCount = m_search->tracker()->size();
-    if (structureCount == 0)
-      return;
-
-    if (index < 0 || index >= structureCount)
-      index = 0;
-
-    selected = m_search->tracker()->at(index);
-  }
-
-  emit selectedGeometryChanged(selected);
-}
-
-void TabPlot::highlightXtal(Structure* s)
-{
-  Xtal* xtal = qobject_cast<Xtal*>(s);
-
-  ui.plot->selectMarker(m_marker_xtal_map.key(xtal));
 }
 }

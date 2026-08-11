@@ -511,19 +511,52 @@ std::unique_ptr<Geometry> Generators::generateMolecularCrystal(int spaceGroup,
 
   auto minIntermolecularClearance = [&]() -> double {
     double best = std::numeric_limits<double>::max();
-    bool havePair = false;
     for (size_t i = 0; i < sites.size(); ++i) {
-      for (size_t j = i + 1; j < sites.size(); ++j) {
-        if (sites[i].symopIndex >= 0 && sites[i].symopIndex == sites[j].symopIndex)
-          continue;
-        const double distance = minImageDistance(sites[i], sites[j], cell);
+      for (size_t j = i; j < sites.size(); ++j) {
         const double requiredDistance = distanceScale *
           (sites[i].covalentRadius + sites[j].covalentRadius);
-        best = std::min(best, distance - requiredDistance);
-        havePair = true;
+        const bool sameCopy = sites[i].symopIndex >= 0 &&
+                              sites[i].symopIndex == sites[j].symopIndex;
+        if (!sameCopy) {
+          // Atoms of two different molecule copies: use the closest image.
+          const double distance = minImageDistance(sites[i], sites[j], cell);
+          best = std::min(best, distance - requiredDistance);
+          continue;
+        }
+        // Atoms of the same molecule copy (or an atom and itself): the
+        // direct contact is intramolecular, but the copy's periodic
+        // images are neighboring molecules and must keep their distance.
+        // Rebuild the direct (unwrapped) vector between the two atoms,
+        // then check every surrounding image of it except itself.
+        const SymOp& op = symops[static_cast<size_t>(sites[i].symopIndex)];
+        const Common::Vector3 sourceDelta =
+          asym[sites[j].sourceAtomIndex].frac - asym[sites[i].sourceAtomIndex].frac;
+        Common::Vector3 direct;
+        for (int r = 0; r < 3; ++r) {
+          double value = 0.0;
+          for (int c = 0; c < 3; ++c)
+            value += static_cast<double>(op.rot[r][c]) *
+                     sourceDelta[static_cast<size_t>(c)];
+          direct[static_cast<size_t>(r)] = value;
+        }
+        const Common::Vector3 wrapped = UnitCell::minimumImageFractional(direct);
+        const Common::Vector3 shift = direct - wrapped;
+        for (int nx = -1; nx <= 1; ++nx) {
+          for (int ny = -1; ny <= 1; ++ny) {
+            for (int nz = -1; nz <= 1; ++nz) {
+              if (std::fabs(nx - shift.x()) < 0.5 &&
+                  std::fabs(ny - shift.y()) < 0.5 &&
+                  std::fabs(nz - shift.z()) < 0.5)
+                continue;
+              const Common::Vector3 image = wrapped + Common::Vector3(nx, ny, nz);
+              const double distance = cell.toCartesian(image).norm();
+              best = std::min(best, distance - requiredDistance);
+            }
+          }
+        }
       }
     }
-    return havePair ? best : 0.0;
+    return best;
   };
 
   auto updateSitesForScale = [&](const Common::Vector3& anchor, double scale) -> double {

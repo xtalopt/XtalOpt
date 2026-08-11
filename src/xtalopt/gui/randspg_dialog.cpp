@@ -46,18 +46,12 @@ RandSpgDialog::RandSpgDialog(XtalOpt* p, QWidget* parent)
   // Set the label
   this->ui_label->setText("Possible space groups for the compositions");
 
-  // Existing forced counts (index = spg-1, value = number of forced xtals).
-  const QList<int>& forcedCounts = p->minXtalsOfSpg();
-
   // Let's investigate every spacegroup!
   for (size_t spg = 1; spg <= 230; spg++) {
 
     uint index = spg - 1;
     const QStringList possibleFormulaList = p->randSpgCompatibleFormulaStrings(spg);
     const bool spgPossible = !possibleFormulaList.isEmpty();
-    const int savedCount = index < static_cast<uint>(forcedCounts.size())
-        ? forcedCounts.at(index)
-        : 0;
 
     // List of compositions' formula for which this spg is possible
     QString possibleComps = possibleFormulaList.join(",");
@@ -71,9 +65,7 @@ RandSpgDialog::RandSpgDialog(XtalOpt* p, QWidget* parent)
     e.possibleFormulas = possibleComps;
     e.HM_spg = Atoms::Geometry::getHMName(spg);
 
-    // Set the number of structures for this space group.
     m_spinBoxList.append(getNewSpinBox());
-    m_spinBoxList.at(index)->setValue(savedCount > 0 ? savedCount : 0);
     m_spinBoxList.at(index)->setEnabled(spgPossible);
 
     e.brush = QBrush(Qt::green);
@@ -83,8 +75,20 @@ RandSpgDialog::RandSpgDialog(XtalOpt* p, QWidget* parent)
     connect(this->m_spinBoxList.at(index), &QAbstractSpinBox::editingFinished,
             this, &RandSpgDialog::updateAll);
   }
-  // Let's go ahead and save all the values to m_xtalopt
+  // Show the forced counts as currently set, and save them back.
+  updateSpinBoxes();
   updateAll();
+}
+
+void RandSpgDialog::updateSpinBoxes()
+{
+  // Set the spin boxes to the forced counts as currently set in the
+  // search settings (index = spg-1, value = number of forced xtals).
+  const QList<int>& forcedCounts = m_xtalopt->minXtalsOfSpg();
+  for (int i = 0; i < static_cast<int>(m_spinBoxList.size()); i++) {
+    const int count = i < forcedCounts.size() ? forcedCounts.at(i) : 0;
+    m_spinBoxList.at(i)->setValue(count > 0 ? count : 0);
+  }
 }
 
 RandSpgDialog::~RandSpgDialog()

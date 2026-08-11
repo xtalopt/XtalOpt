@@ -600,6 +600,7 @@ bool readStructureStateWorkflow(Xtal& xtal, const QString& filename)
     xtal.setJobID(settings->value("jobID", 0).toUInt());
 
     unsigned int currentOptStep = settings->value("currentOptStep", 0).toUInt();
+    const int restartOptStep = settings->value("restartOptStep", -1).toInt();
 
     xtal.setFailCount(settings->value("failCount", 0).toInt());
     xtal.setFixCount(settings->value("fixCount", 0).toInt());
@@ -653,6 +654,8 @@ bool readStructureStateWorkflow(Xtal& xtal, const QString& filename)
     xtal.setStrucConstraintRedoCount(settings->value("constraintRedoCount", 0).toInt());
     xtal.setCurrentOptStep(currentOptStep);
     xtal.setStatus(static_cast<Structure::State>(loadedStatusValue));
+    if (xtal.getStatus() == Structure::Restart)
+      xtal.setRestartOptStep(restartOptStep);
 
     xtal.setReusePreoptBonding(settings->value("reusePreoptBonding", false).toBool());
     size = settings->beginReadArray("preoptBonds");
@@ -1087,6 +1090,7 @@ bool XtalOpt::saveRequestedOutputFiles(bool saveAll, bool showProgress)
 
   bool resultsFailed = false;
   bool hullFailed = false;
+  bool frontsChanged = false;
   QList<QPair<QString, QString>> failedSnapshots;
   {
     // One "write" each time! We pass on failed writings.
@@ -1097,7 +1101,7 @@ bool XtalOpt::saveRequestedOutputFiles(bool saveAll, bool showProgress)
     x_lastOutputWriteEndMs.store(passStart);
 
     // Fill in the display fronts from the latest parent selection data
-    applyParentSelectionFronts();
+    frontsChanged = applyParentSelectionFronts();
 
     if (saveResults && !writeResultsFile(structures, showProgress))
       resultsFailed = true;
@@ -1127,6 +1131,10 @@ bool XtalOpt::saveRequestedOutputFiles(bool saveAll, bool showProgress)
     x_lastOutputWriteMs.store(x_saveClock.elapsed() - passStart);
     x_lastOutputWriteEndMs.store(x_saveClock.elapsed());
   }
+
+  // To update the front properly in GUI progress tab (results and hull files are fine)
+  if (frontsChanged)
+    emit structureViewDataChanged();
 
   if (!resultsFailed && !hullFailed && failedSnapshots.isEmpty())
     return true;
@@ -1318,8 +1326,10 @@ bool XtalOpt::saveSchemeFile(const QString& filename)
     QSETTINGS_FILE(tempFilename);
     settings->setValue("xtalopt/version", CurrentStateSchemaVersion);
   }
-  if (!writeStateScheme(*this, tempFilename))
+  if (!writeStateScheme(*this, tempFilename)) {
+    QFile::remove(tempFilename);
     return false;
+  }
   return sharedReplaceStateFileWithTemp(tempFilename, filename, __func__);
 }
 
@@ -1337,6 +1347,7 @@ void writeStructureStateFile(Xtal& xtal, const QString& filename)
   settings->setValue("index", xtal.getIndex());
   settings->setValue("jobID", xtal.getJobID());
   settings->setValue("currentOptStep", xtal.getCurrentOptStep());
+  settings->setValue("restartOptStep", xtal.getRestartOptStep());
   settings->setValue("parents", xtal.getParents());
   settings->setValue("rempath", xtal.getRempath());
   settings->setValue("locpath", xtal.getLocpath());

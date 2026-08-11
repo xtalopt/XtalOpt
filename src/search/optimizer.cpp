@@ -251,7 +251,7 @@ bool Optimizer::registerBuiltInOptimizer(const QString& name)
 }
 
 Optimizer::Optimizer(SearchBase* parent)
-  : QObject(parent), m_search(parent)
+  : m_search(parent)
 {
 }
 

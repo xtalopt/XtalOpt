@@ -14,6 +14,8 @@
 
 #include <atoms/gui/structureviewdialog.h>
 
+#include "ui_structureviewdialog.h"
+
 #include <common/compatibility/platform_defs.h>
 #include <common/constants.h>
 #include <common/gui/qt_compat_gui.h>
@@ -29,7 +31,6 @@
 #include <QFileDialog>
 #include <QDir>
 #include <QFontMetrics>
-#include <QHBoxLayout>
 #include <QImage>
 #include <QLabel>
 #include <QMessageBox>
@@ -37,7 +38,6 @@
 #include <QPainter>
 #include <QPushButton>
 #include <QTextStream>
-#include <QVBoxLayout>
 
 #include <algorithm>
 #include <array>
@@ -130,7 +130,8 @@ std::array<Common::Vector3, 8> cellCorners(const StructureViewSnapshot& snapshot
 StructureViewWidget::StructureViewWidget(QWidget* parent)
   : QWidget(parent), m_dragButton(Qt::NoButton), m_panOffset(0.0, 0.0),
     m_yawDegrees(-35.0), m_pitchDegrees(25.0), m_zoomFactor(1.0),
-    m_atomLabelsVisible(false), m_bondsVisible(false), m_depthCueingEnabled(false),
+    m_atomLabelsVisible(false), m_bondsVisible(false), m_bondLabelsVisible(false),
+    m_depthCueingEnabled(false),
     m_bondLengthMinimum(0.0), m_bondLengthMaximum(kDefaultBondLengthMaximum)
 {
   setMinimumSize(360, 360);
@@ -189,7 +190,8 @@ void StructureViewWidget::paintEvent(QPaintEvent* event)
       {2, 6}, {3, 5}, {3, 6}, {4, 7}, {5, 7}, {6, 7}
     }};
 
-    painter.setPen(QPen(QColor(140, 140, 140), 1.4));
+    // Draw the cell in black so it is clearly apart from the gray bonds.
+    painter.setPen(QPen(Qt::black, 1.4));
     std::array<QPointF, 8> projectedCorners;
     for (size_t i = 0; i < corners.size(); ++i)
       projectedCorners[i] = project(rotation * (corners[i] - m_snapshot.center));
@@ -228,6 +230,7 @@ void StructureViewWidget::paintEvent(QPaintEvent* event)
     QPointF first;
     QPointF second;
     double alpha;
+    double length;
   };
   std::vector<ProjectedBond> projectedBonds;
   if (m_bondsVisible) {
@@ -257,7 +260,7 @@ void StructureViewWidget::paintEvent(QPaintEvent* event)
         minBondDepth = std::min(minBondDepth, depth);
         maxBondDepth = std::max(maxBondDepth, depth);
       }
-      projectedBonds.push_back({depth, project(p1), project(p2), 1.0});
+      projectedBonds.push_back({depth, project(p1), project(p2), 1.0, bond.length});
     }
     if (m_depthCueingEnabled && maxBondDepth > minBondDepth) {
       const double depthSpan = maxBondDepth - minBondDepth;
@@ -270,7 +273,7 @@ void StructureViewWidget::paintEvent(QPaintEvent* event)
               return a.depth < b.depth;
             });
   for (const auto& bond : projectedBonds) {
-    QColor bondColor(125, 125, 125);
+    QColor bondColor(128, 128, 128);
     bondColor.setAlphaF(bond.alpha);
     painter.setPen(QPen(bondColor, 2.0, Qt::SolidLine, Qt::RoundCap));
     painter.drawLine(bond.first, bond.second);
@@ -333,6 +336,24 @@ void StructureViewWidget::paintEvent(QPaintEvent* event)
     painter.setBrush(gradient);
     painter.setPen(QPen(atomColor.darker(160), 1.0));
     painter.drawEllipse(atom.position, atom.radius, atom.radius);
+  }
+
+  // The bond list is only filled when bonds are shown, so the lengths follow
+  //   the shown bonds without any further check.
+  if (m_bondLabelsVisible) {
+    QFont bondLabelFont = painter.font();
+    bondLabelFont.setBold(false);
+    painter.setFont(bondLabelFont);
+    const QFontMetrics fm(bondLabelFont);
+    for (const auto& bond : projectedBonds) {
+      const QString text = QString::number(bond.length, 'f', 2);
+      const QPointF middle = (bond.first + bond.second) / 2.0;
+      const QPointF at(middle.x() - fm.boundingRect(text).width() / 2.0, middle.y());
+      painter.setPen(QPen(QColor(255, 255, 255, 210), 3.0));
+      painter.drawText(at, text);
+      painter.setPen(QPen(QColor(35, 35, 35)));
+      painter.drawText(at, text);
+    }
   }
 
   if (m_atomLabelsVisible) {
@@ -410,6 +431,12 @@ void StructureViewWidget::setBondsVisible(bool visible)
   update();
 }
 
+void StructureViewWidget::setBondLabelsVisible(bool visible)
+{
+  m_bondLabelsVisible = visible;
+  update();
+}
+
 void StructureViewWidget::setDepthCueingEnabled(bool enabled)
 {
   m_depthCueingEnabled = enabled;
@@ -475,110 +502,54 @@ void StructureViewWidget::wheelEvent(QWheelEvent* event)
   event->accept();
 }
 
+StructureViewDialog::~StructureViewDialog() = default;
+
 StructureViewDialog::StructureViewDialog(QWidget* parent)
-  : QDialog(parent), m_infoLabel(new QLabel(this)),
-    m_viewWidget(new StructureViewWidget(this)),
-    m_optionsWidget(new QWidget(this)),
-    m_resetViewButton(new QPushButton(tr("Reset View"), this)),
-    m_saveDataButton(new QPushButton(tr("Save Data"), this)),
-    m_saveImageButton(new QPushButton(tr("Save Image"), this)),
-    m_closeButton(new QPushButton(tr("Close"), this))
+  : QDialog(parent), ui(new Ui::StructureViewDialog)
 {
-  setWindowTitle(tr("Structure Viewer"));
+  ui->setupUi(this);
   setAttribute(Qt::WA_DeleteOnClose, false);
-  resize(520, 560);
 
-  auto* layout = new QVBoxLayout(this);
-  m_infoLabel->setWordWrap(true);
-  layout->addWidget(m_infoLabel);
-  layout->addWidget(m_viewWidget, 1);
+  // The bond length limits come from the design; the largest one and the
+  //   starting maximum are the shared bond constants above.
+  ui->bondMinSpin->setMaximum(kMaxDisplayableBondLength);
+  ui->bondMaxSpin->setMaximum(kMaxDisplayableBondLength);
+  ui->bondMaxSpin->setValue(kDefaultBondLengthMaximum);
 
-  auto* atomLabelsBox = new QCheckBox(tr("Atom labels"), m_optionsWidget);
-  auto* depthCueBox = new QCheckBox(tr("Depth cueing"), m_optionsWidget);
-  auto* bondsBox = new QCheckBox(tr("Bonds"), m_optionsWidget);
-  auto* bondMinSpin = new QDoubleSpinBox(m_optionsWidget);
-  auto* bondMaxSpin = new QDoubleSpinBox(m_optionsWidget);
-  atomLabelsBox->setChecked(false);
-  depthCueBox->setChecked(false);
-  bondsBox->setChecked(false);
-  bondMinSpin->setRange(0.0, kMaxDisplayableBondLength);
-  bondMinSpin->setDecimals(3);
-  bondMinSpin->setSingleStep(0.005);
-  bondMinSpin->setSuffix(tr(" A"));
-  bondMinSpin->setValue(0.0);
-  bondMaxSpin->setRange(0.0, kMaxDisplayableBondLength);
-  bondMaxSpin->setDecimals(3);
-  bondMaxSpin->setSingleStep(0.005);
-  bondMaxSpin->setSuffix(tr(" A"));
-  bondMaxSpin->setValue(kDefaultBondLengthMaximum);
-  atomLabelsBox->setFocusPolicy(Qt::StrongFocus);
-  depthCueBox->setFocusPolicy(Qt::StrongFocus);
-  bondsBox->setFocusPolicy(Qt::StrongFocus);
-  bondMinSpin->setFocusPolicy(Qt::StrongFocus);
-  bondMaxSpin->setFocusPolicy(Qt::StrongFocus);
-  m_resetViewButton->setAutoDefault(false);
-  m_resetViewButton->setDefault(false);
-  m_saveDataButton->setAutoDefault(false);
-  m_saveDataButton->setDefault(false);
-  m_saveImageButton->setAutoDefault(false);
-  m_saveImageButton->setDefault(false);
-  m_closeButton->setAutoDefault(false);
-  m_closeButton->setDefault(false);
-  m_resetViewButton->setFocusPolicy(Qt::StrongFocus);
-  m_saveDataButton->setFocusPolicy(Qt::StrongFocus);
-  m_saveImageButton->setFocusPolicy(Qt::StrongFocus);
-  m_closeButton->setFocusPolicy(Qt::StrongFocus);
-
-  auto* optionsLayout = new QHBoxLayout(m_optionsWidget);
-  optionsLayout->setContentsMargins(0, 0, 0, 0);
-  optionsLayout->addWidget(atomLabelsBox);
-  optionsLayout->addWidget(depthCueBox);
-  optionsLayout->addWidget(bondsBox);
-  optionsLayout->addWidget(bondMinSpin);
-  optionsLayout->addWidget(new QLabel(tr("to"), m_optionsWidget));
-  optionsLayout->addWidget(bondMaxSpin);
-  optionsLayout->addStretch(1);
-  layout->addWidget(m_optionsWidget);
-
-  auto* buttonLayout = new QHBoxLayout;
-  buttonLayout->addStretch(1);
-  buttonLayout->addWidget(m_resetViewButton);
-  buttonLayout->addWidget(m_saveDataButton);
-  buttonLayout->addWidget(m_saveImageButton);
-  buttonLayout->addWidget(m_closeButton);
-  layout->addLayout(buttonLayout);
-
-  setTabOrder(atomLabelsBox, depthCueBox);
-  setTabOrder(depthCueBox, bondsBox);
-  setTabOrder(bondsBox, bondMinSpin);
-  setTabOrder(bondMinSpin, bondMaxSpin);
-  setTabOrder(bondMaxSpin, m_resetViewButton);
-  setTabOrder(m_resetViewButton, m_saveDataButton);
-  setTabOrder(m_saveDataButton, m_saveImageButton);
-  setTabOrder(m_saveImageButton, m_closeButton);
-
-  connect(m_resetViewButton, &QPushButton::clicked, m_viewWidget, &StructureViewWidget::resetView);
-  connect(atomLabelsBox, &QCheckBox::toggled,
-          m_viewWidget, &StructureViewWidget::setAtomLabelsVisible);
-  connect(depthCueBox, &QCheckBox::toggled,
-          m_viewWidget, &StructureViewWidget::setDepthCueingEnabled);
-  connect(bondsBox, &QCheckBox::toggled, m_viewWidget, &StructureViewWidget::setBondsVisible);
-  connect(bondMinSpin,
+  QDoubleSpinBox* bondMaxSpin = ui->bondMaxSpin;
+  connect(ui->resetViewButton, &QPushButton::clicked,
+          ui->viewWidget, &StructureViewWidget::resetView);
+  connect(ui->atomLabelsBox, &QCheckBox::toggled,
+          ui->viewWidget, &StructureViewWidget::setAtomLabelsVisible);
+  connect(ui->depthCueBox, &QCheckBox::toggled,
+          ui->viewWidget, &StructureViewWidget::setDepthCueingEnabled);
+  connect(ui->bondsBox, &QCheckBox::toggled,
+          ui->viewWidget, &StructureViewWidget::setBondsVisible);
+  // The bond settings are only useful while bonds are shown, and bonds start
+  //   hidden. Their values are kept while they are off, so turning bonds back
+  //   on restores whatever the user had set.
+  connect(ui->bondsBox, &QCheckBox::toggled, ui->bondMinSpin, &QDoubleSpinBox::setEnabled);
+  connect(ui->bondsBox, &QCheckBox::toggled, ui->bondToLabel, &QLabel::setEnabled);
+  connect(ui->bondsBox, &QCheckBox::toggled, ui->bondMaxSpin, &QDoubleSpinBox::setEnabled);
+  connect(ui->bondsBox, &QCheckBox::toggled, ui->bondLengthsBox, &QCheckBox::setEnabled);
+  connect(ui->bondLengthsBox, &QCheckBox::toggled,
+          ui->viewWidget, &StructureViewWidget::setBondLabelsVisible);
+  connect(ui->bondMinSpin,
           static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
-          m_viewWidget, &StructureViewWidget::setBondLengthMinimum);
-  connect(bondMaxSpin,
+          ui->viewWidget, &StructureViewWidget::setBondLengthMinimum);
+  connect(ui->bondMaxSpin,
           static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
-          m_viewWidget, &StructureViewWidget::setBondLengthMaximum);
-  connect(bondMinSpin,
+          ui->viewWidget, &StructureViewWidget::setBondLengthMaximum);
+  connect(ui->bondMinSpin,
           static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
           this, [bondMaxSpin](double minimum) {
             bondMaxSpin->setMinimum(minimum);
             if (bondMaxSpin->value() < minimum)
               bondMaxSpin->setValue(minimum);
           });
-  connect(m_saveDataButton, &QPushButton::clicked, this, &StructureViewDialog::saveData);
-  connect(m_saveImageButton, &QPushButton::clicked, this, &StructureViewDialog::saveImage);
-  connect(m_closeButton, &QPushButton::clicked, this, &StructureViewDialog::close);
+  connect(ui->saveDataButton, &QPushButton::clicked, this, &StructureViewDialog::saveData);
+  connect(ui->saveImageButton, &QPushButton::clicked, this, &StructureViewDialog::saveImage);
+  connect(ui->closeButton, &QPushButton::clicked, this, &StructureViewDialog::close);
 }
 
 void StructureViewDialog::displayStructure(const Geometry& structure, const QString& label)
@@ -634,8 +605,8 @@ void StructureViewDialog::displayStructure(const Geometry& structure, const QStr
   else
     m_poscarText.clear();
 
-  m_viewWidget->setStructureSnapshot(snapshot);
-  m_infoLabel->setText(
+  ui->viewWidget->setStructureSnapshot(snapshot);
+  ui->infoLabel->setText(
     tr("%1%2%3")
       .arg(snapshot.label.isEmpty() ? QString() : snapshot.label)
       .arg(snapshot.label.isEmpty() || snapshot.formula.isEmpty() ? QString() : "  -  ")
@@ -651,9 +622,9 @@ void StructureViewDialog::displayStructure(const Geometry& structure, const QStr
 
 void StructureViewDialog::saveImage() const
 {
-  const QString defaultName = m_viewWidget->structureSnapshot().label.isEmpty()
+  const QString defaultName = ui->viewWidget->structureSnapshot().label.isEmpty()
                                 ? QStringLiteral("structure-view.png")
-                                : m_viewWidget->structureSnapshot().label +
+                                : ui->viewWidget->structureSnapshot().label +
                                     QStringLiteral("-structure-view.png");
   QString filename = QFileDialog::getSaveFileName(
     const_cast<StructureViewDialog*>(this), tr("Save Structure Image"),
@@ -664,11 +635,11 @@ void StructureViewDialog::saveImage() const
     return;
 
   const int exportScale = 2;
-  QImage image(m_viewWidget->size() * exportScale, QImage::Format_ARGB32_Premultiplied);
+  QImage image(ui->viewWidget->size() * exportScale, QImage::Format_ARGB32_Premultiplied);
   image.fill(Qt::transparent);
   QPainter painter(&image);
   painter.scale(exportScale, exportScale);
-  m_viewWidget->render(&painter, QPoint(), QRegion(), QWidget::DrawChildren);
+  ui->viewWidget->render(&painter, QPoint(), QRegion(), QWidget::DrawChildren);
   image.save(filename);
 }
 
@@ -680,9 +651,9 @@ void StructureViewDialog::saveData() const
     return;
   }
 
-  const QString defaultName = m_viewWidget->structureSnapshot().label.isEmpty()
+  const QString defaultName = ui->viewWidget->structureSnapshot().label.isEmpty()
                                 ? QStringLiteral("POSCAR")
-                                : m_viewWidget->structureSnapshot().label + QStringLiteral(".vasp");
+                                : ui->viewWidget->structureSnapshot().label + QStringLiteral(".vasp");
   QString filename = QFileDialog::getSaveFileName(
     const_cast<StructureViewDialog*>(this), tr("Save Structure Data"),
     QDir(defaultSaveDir()).filePath(defaultName), tr("VASP POSCAR (*.vasp);;All files (*.*)"),

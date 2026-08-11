@@ -119,11 +119,17 @@ bool distAboveHull(const std::vector<double>& input_data_ref, int input_num, int
       hll_inpt.push_back(input_data[i* (hll_ndim + 1) + (j + 1)]);
 
   //===== Initialize Qhull and run convex hull algorithm
+  //we report any problem ourselves, so keep the library quiet
+  std::ostringstream quiet;
   Qhull qhull;
+  qhull.setErrorStream(&quiet);
+  qhull.setOutputStream(&quiet);
   try {
     qhull.runQhull("i", hll_ndim, hll_npnt, hll_inpt.data(), "Qt");
   } catch(QhullError &e) {
-    Common::error(QString("Hull calculations had 'Qhull' error output: %1").arg(e.what()));
+    Common::error(QString("Hull calculations had 'Qhull' error output: %1 %2")
+                   .arg(e.what())
+                   .arg(QString::fromStdString(quiet.str())));
     return false;
   }
 

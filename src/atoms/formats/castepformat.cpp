@@ -46,11 +46,22 @@ bool castepIsNumber(const QString& text)
   return ok;
 }
 
+// Returns the factor that converts the given CASTEP length unit to
+// Angstrom, or 0.0 if the unit is not recognized.
 double castepUnitScale(const QString& unit)
 {
-  if (unit.toLower().contains("bohr"))
+  const QString u = unit.toLower();
+  if (u == "bohr" || u == "a0")
     return 1.0 / ANG2BOHR;
-  return 1.0;
+  if (u == "ang")
+    return 1.0;
+  if (u == "nm")
+    return 10.0;
+  if (u == "cm")
+    return 1.0e8;
+  if (u == "m")
+    return 1.0e10;
+  return 0.0;
 }
 
 bool parseCastepVector(const QString& line, Common::Vector3& vector)
@@ -102,6 +113,11 @@ bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
         const QStringList fields = lines.at(firstVectorLine).split(" ", QtCompat::SkipEmptyParts);
         if (fields.size() == 1 && !castepIsNumber(fields.first())) {
           scale = castepUnitScale(fields.first());
+          if (scale <= 0.0) {
+            Common::error(QString("Unrecognized unit \"%1\" in CASTEP input.")
+                         .arg(fields.first()));
+            return false;
+          }
           ++firstVectorLine;
         }
       }
@@ -128,6 +144,11 @@ bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
         const QStringList fields = lines.at(firstParamLine).split(" ", QtCompat::SkipEmptyParts);
         if (fields.size() == 1 && !castepIsNumber(fields.first())) {
           scale = castepUnitScale(fields.first());
+          if (scale <= 0.0) {
+            Common::error(QString("Unrecognized unit \"%1\" in CASTEP input.")
+                         .arg(fields.first()));
+            return false;
+          }
           ++firstParamLine;
         }
       }
@@ -153,6 +174,11 @@ bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
         const QStringList fields = lines.at(firstAtomLine).split(" ", QtCompat::SkipEmptyParts);
         if (fields.size() == 1 && !castepIsNumber(fields.first())) {
           scale = castepUnitScale(fields.first());
+          if (scale <= 0.0) {
+            Common::error(QString("Unrecognized unit \"%1\" in CASTEP input.")
+                         .arg(fields.first()));
+            return false;
+          }
           ++firstAtomLine;
         }
       }

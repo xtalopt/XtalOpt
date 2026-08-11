@@ -644,7 +644,7 @@ protected:
   void setSessionActive(bool v)     { m_sessionActive.store(v); }
 
   // Read-only is set only with the application run mode.
-  void setReadOnly(bool v)          { m_readOnly.store(v); }
+  void setReadOnly(bool v);
 
 public:
   bool isRemoteQueue() const        { return m_remoteQueue; }

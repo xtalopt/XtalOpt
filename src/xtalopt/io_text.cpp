@@ -598,10 +598,22 @@ bool applyInputOptimizerAssets(XtalOpt& xtalopt, size_t optStep,
   if (!optimizer)
     return true;
 
+  const QStringList assetNames = optimizer->getOptimizerInputAssetNames();
+  if (assetNames.isEmpty())
+    return true;
+
+  // The per-species asset files are usually matched to the elements; so composition is needed
+  // This is a defensive guard mostly for GUI (CLI already checks it in order).
+  if (xtalopt.compList().isEmpty()) {
+    Common::error("The composition must be set before reading the optimizer "
+                  "input asset files.");
+    return false;
+  }
+
   const QList<uint> atomicNums = sortedCompositionAtomicNumbers(xtalopt);
   const QStringList symbols = sortedCompositionSymbols(atomicNums);
 
-  for (const auto& assetName : optimizer->getOptimizerInputAssetNames()) {
+  for (const auto& assetName : assetNames) {
     const QString optionKeyword = Settings::optimizerInputAssetToKeyword(assetName);
     if (optionKeyword.isEmpty())
       continue;
@@ -1116,8 +1128,7 @@ void applyRuntimeSettings(const QHash<QString, QString>& options,
         Common::warning("Runtime file: Updated option " + keyword + " = " + now);
         if (keyword == "spglibTolerance")
           spacegroupSettingsChanged = true;
-        if (keyword == "rdfTolerance" || keyword == "xtalcompToleranceLength" ||
-            keyword == "xtalcompToleranceAngle")
+        if (xtalopt.similarityKeywordInUse(keyword))
           similaritySettingsChanged = true;
         // Rebuild parent-selection values when they are next needed.
         if (keyword == "objectivePrecision" || keyword == "optimizationType" ||

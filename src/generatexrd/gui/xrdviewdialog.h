@@ -22,15 +22,17 @@
 #include <QDialog>
 #include <QString>
 
+#include <memory>
+
 class QCloseEvent;
-class QDoubleSpinBox;
-class QLabel;
-class QPushButton;
-class QSpinBox;
+
+// The generated design header is included by the source file only: this header
+//   is also used from other modules, which do not build this design.
+namespace Ui {
+class XrdViewDialog;
+}
 
 namespace GenerateXrd {
-
-class XrdPlot;
 
 // Window for an XRD pattern.
 class XrdViewDialog : public QDialog
@@ -50,20 +52,10 @@ public slots:
   void saveData() const;
 
 private:
+  std::unique_ptr<Ui::XrdViewDialog> ui;
   bool m_hasStructure;
   Atoms::Geometry m_geometry;
   QString m_structureLabel;
-  QLabel* m_infoLabel;
-  XrdPlot* m_plot;
-  QDoubleSpinBox* m_wavelengthSpin;
-  QDoubleSpinBox* m_peakwidthSpin;
-  QSpinBox* m_numpointsSpin;
-  QDoubleSpinBox* m_max2thetaSpin;
-  QPushButton* m_resetParametersButton;
-  QPushButton* m_resetViewButton;
-  QPushButton* m_saveDataButton;
-  QPushButton* m_saveImageButton;
-  QPushButton* m_closeButton;
   XrdData m_lastData;
   QString m_lastTag;
   double m_lastWavelength;

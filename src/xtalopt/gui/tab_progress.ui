@@ -50,6 +50,9 @@
      <property name="suffix">
       <string> seconds</string>
      </property>
+     <property name="minimum">
+      <number>1</number>
+     </property>
      <property name="maximum">
       <number>3600</number>
      </property>
@@ -113,7 +116,7 @@
       </font>
      </property>
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This button is used for VASP runs. It removes any extraneous files&lt;br/&gt;in each local subdirectory in order to reduce disk usage.&lt;/p&gt;&lt;p&gt;Files kept are structure.state, POTCAR, CONTCAR, and OUTCAR.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This button is used for VASP runs. It removes any extraneous files&lt;br/&gt;in each local subdirectory in order to reduce disk usage.&lt;/p&gt;&lt;p&gt;Files kept are structure.state, CONTCAR, and OUTCAR.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Clear Extra Files</string>

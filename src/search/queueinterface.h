@@ -77,7 +77,7 @@ public:
   /**
    * Constructor
    *
-   * @param parent SearchBase parent
+   * @param parent The search this queue interface belongs to
    * @param settingFile Filename from which to initialize settings.
    */
   explicit QueueInterface(SearchBase* parent, const QString& settingFile = "");
@@ -395,12 +395,12 @@ protected:
 
   /**
    * Copy any "extra" seed files (s->copyFiles()) into the structure's local
-   * working directory and clear the list.  Appends each copied filename to
-   * @p extraFilenames so callers (e.g. remote) can include them in subsequent
-   * SSH transfers.
+   * working directory and clear the list. Existing names in @p extraFilenames
+   * are reserved for generated inputs; each copied filename is appended so
+   * callers can include it in subsequent SSH transfers.
    * @return true on success; false if any file cannot be copied.
    */
-  bool writeCopyFilesToLocalDir(Structure* s, QStringList* extraFilenames = nullptr) const;
+  bool writeCopyFilesToLocalDir(Structure* s, QStringList& extraFilenames) const;
 
   /**
    * Check that the local working directory exists or can be created.

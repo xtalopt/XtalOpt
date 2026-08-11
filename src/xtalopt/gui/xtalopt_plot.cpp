@@ -274,7 +274,6 @@ void XtalOptPlot::deselectCurrent()
 
   dehighlightMarker(m_selectedMarker);
   m_selectedMarker = nullptr;
-  emit selectedMarkerChanged(m_selectedMarker);
   autoRefresh();
 }
 
@@ -292,7 +291,6 @@ void XtalOptPlot::selectMarker(QwtPlotMarker* newMarker)
   deselectCurrent();
   highlightMarker(newMarker);
   m_selectedMarker = newMarker;
-  emit selectedMarkerChanged(m_selectedMarker);
   autoRefresh();
 }
 

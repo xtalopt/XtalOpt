@@ -362,11 +362,6 @@ signals:
   void tabsUpdateGUI();
 
   /**
-   * Emitted to change/update the structure shown by the active viewer.
-   */
-  void selectedGeometryChanged(Search::Structure*);
-
-  /**
    * Emitted when there is a new log message ready.
    * @sa Common::debug
    * @sa Common::warning

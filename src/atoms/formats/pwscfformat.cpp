@@ -85,6 +85,9 @@ bool PwscfFormat::read(Atoms::Geometry* s, const QString& filename)
     return false;
   }
 
+  // The cards of a pw.x input may appear in any order, so parse the file
+  // in two passes: the cell first, then the atomic positions (which may
+  // need the cell for their units).
   for (int i = 0; i < lines.size(); ++i) {
     const QString lower = lines.at(i).toLower();
     if (lower.startsWith("cell_parameters")) {
@@ -127,12 +130,12 @@ bool PwscfFormat::read(Atoms::Geometry* s, const QString& filename)
         }
       }
       cellFound = true;
-    } else if (lower.startsWith("atomic_positions")) {
-      if (!cellFound) {
-        Common::error("PWSCF input reader requires CELL_PARAMETERS before ATOMIC_POSITIONS.");
-        return false;
-      }
+    }
+  }
 
+  for (int i = 0; i < lines.size(); ++i) {
+    const QString lower = lines.at(i).toLower();
+    if (lower.startsWith("atomic_positions")) {
       const bool fractional = lower.contains("crystal") || lower.contains("crystal_sg");
       double scale = fractional ? 1.0 : alat;
       if (lower.contains("bohr"))
@@ -239,6 +242,8 @@ bool PwscfFormat::readOutput(Atoms::Geometry* s, const QString& filename)
   std::string line;
   std::vector<std::string> lineSplit;
   double outputAlat = 1.0;
+  bool headerCellFound = false;
+  Common::Matrix3 headerCellMatrix = Common::Matrix3::Zero();
   while (getline(ifs, line)) {
     if (strstr(line.c_str(), "lattice parameter (alat)")) {
       lineSplit = Common::split(line, '=');
@@ -249,6 +254,42 @@ bool PwscfFormat::readOutput(Atoms::Geometry* s, const QString& filename)
         if (!fields.empty() && Common::parseDoubleString(fields[0], parsedAlat) && parsedAlat > 0.0) {
           outputAlat = parsedAlat;
         }
+      }
+    }
+    // The header prints the cell of the run as "crystal axes" in units
+    // of alat. Keep it: for a fixed-cell run the final coordinates have
+    // no CELL_PARAMETERS block, and this is the cell to use then.
+    if (strstr(line.c_str(), "crystal axes:")) {
+      bool axesOk = true;
+      Common::Matrix3 axes = Common::Matrix3::Zero();
+      for (unsigned short i = 0; i < 3 && axesOk; ++i) {
+        if (!getline(ifs, line)) {
+          axesOk = false;
+          break;
+        }
+        lineSplit = Common::split(line, '=');
+        if (lineSplit.size() < 2) {
+          axesOk = false;
+          break;
+        }
+        std::string axisLine = Common::trim(lineSplit[1]);
+        Common::replaceAll(axisLine, "(", "");
+        Common::replaceAll(axisLine, ")", "");
+        const std::vector<std::string> fields = Common::split(Common::reduce(axisLine), ' ');
+        double v0, v1, v2;
+        if (fields.size() < 3 || !Common::parseDoubleString(fields[0], v0) ||
+            !Common::parseDoubleString(fields[1], v1) ||
+            !Common::parseDoubleString(fields[2], v2)) {
+          axesOk = false;
+          break;
+        }
+        axes(i, 0) = v0;
+        axes(i, 1) = v1;
+        axes(i, 2) = v2;
+      }
+      if (axesOk) {
+        headerCellMatrix = axes;
+        headerCellFound = true;
       }
     }
     // Cell parameters
@@ -358,11 +399,11 @@ bool PwscfFormat::readOutput(Atoms::Geometry* s, const QString& filename)
 
           blockCoordsFound = true;
 
-          // If we haven't found CELL_PARAMETERS, assumes that we were
-          // not relaxing the unit cell, and that our old unit cell is
-          // the same.
-          if (!blockCellFound) {
-            blockCellMatrix = s->unitCell().cellMatrix();
+          // If there is no CELL_PARAMETERS block, the cell was not
+          // relaxed; use the cell the output header reported.
+          if (!blockCellFound && headerCellFound) {
+            blockCellMatrix = headerCellMatrix;
+            blockCellMatrix *= outputAlat / ANG2BOHR;
             blockCellFound = true;
           }
 

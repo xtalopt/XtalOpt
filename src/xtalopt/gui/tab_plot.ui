@@ -206,6 +206,11 @@
            </item>
            <item>
             <property name="text">
+             <string>SG Number</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
              <string>Total Number of Atoms</string>
             </property>
            </item>
@@ -317,6 +322,11 @@
            <item>
             <property name="text">
              <string>Pareto Front</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>SG Number</string>
             </property>
            </item>
            <item>
@@ -528,6 +538,9 @@
            <property name="text">
             <string>Show similar structures</string>
            </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="2" column="0">
@@ -561,6 +574,9 @@
            <property name="text">
             <string>Show incomplete structures</string>
            </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item row="4" column="0">
@@ -575,6 +591,9 @@
            </property>
            <property name="text">
             <string>Show failed structures</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
@@ -639,7 +658,7 @@
    <sender>pushButton</sender>
    <signal>toggled(bool)</signal>
    <receiver>groupBox</receiver>
-   <slot>setVisible(bool)</slot>
+   <slot>setHidden(bool)</slot>
    <hints>
     <hint type="sourcelabel">
      <x>782</x>

@@ -76,8 +76,6 @@ public:
   void selectMarker(QwtPlotMarker* newMarker);
 
 signals:
-  // This signal is emitted when the selected marker changes
-  void selectedMarkerChanged(QwtPlotMarker* newMarker);
   void plotResized();
 
 protected:

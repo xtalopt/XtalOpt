@@ -35,8 +35,8 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QClipboard>
+#include <QColor>
 #include <QDir>
-#include <QFile>
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QMenu>
@@ -71,8 +71,6 @@ TabProgress::TabProgress(Search::AbstractDialog* parent, XtalOpt* p)
   rowTracking = true;
 
   // dialog connections
-  connect(m_dialog, &Search::AbstractDialog::selectedGeometryChanged,
-          this, &TabProgress::highlightXtal);
   connect(m_search, &SearchBase::sessionStarted, this, &TabProgress::startTimer);
 
   // Progress table connections
@@ -82,8 +80,6 @@ TabProgress::TabProgress(Search::AbstractDialog* parent, XtalOpt* p)
   connect(ui.spin_period, &QAbstractSpinBox::editingFinished, this, &TabProgress::startTimer);
   connect(ui.spin_period, &QAbstractSpinBox::editingFinished,
           this, &TabProgress::updateProgressTable);
-  connect(ui.table_list, &QTableWidget::currentCellChanged,
-          this, &TabProgress::selectGeometryFromProgress);
   connect(m_search->tracker(), &Tracker::newStructureAdded,
           this, [this](Structure*) { addNewEntry(); }, Qt::QueuedConnection);
   connect(m_search->queue(), &QueueManager::structureUpdated, this, &TabProgress::newInfoUpdate);
@@ -271,8 +267,10 @@ void TabProgress::updateInfo()
   {
     QtCompat::MutexLocker contextLocker(m_context_mutex.get());
     if (m_context_xtal != 0) {
+      /*
       Common::debug(QString("%1: Waiting for context operation to complete. "
                            "Trying again very soon.").arg(__func__));
+      */
       QTimer::singleShot(PROGRESS_REFRESH_DELAY, this, &TabProgress::updateInfo);
       return;
     }
@@ -342,6 +340,11 @@ void TabProgress::updateInfo_()
     const Xtal::State lifecycleState = xtal->getStatus();
     switch (lifecycleState) {
       case Xtal::InProcess: {
+        // A read-only session does not talk to the queue.
+        if (m_search->isReadOnly()) {
+          e.status = xtal->statusText(true);
+          break;
+        }
         // Wait for the session to start.
         if (m_search->isSessionStarting()) {
           e.status = tr("In process (loading session)...");
@@ -451,7 +454,7 @@ void TabProgress::updateInfo_()
       // Terminal dismissal of structure by constraints.
       case Xtal::Dismissed:
         e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::darkGray);
+        e.brush.setColor(QColor(173, 216, 230));
         break;
 
       // Finished structures.
@@ -588,50 +591,6 @@ void TabProgress::setTableEntry(int row, const XO_Prog_TableEntry& e)
     ui.table_list->item(row, Front)->setText("N/A");
 }
 
-void TabProgress::selectGeometryFromProgress(int row, int, int oldrow, int)
-{
-  Q_UNUSED(oldrow);
-  if (m_search->isSessionStarting()) {
-    return;
-  }
-  if (row == -1)
-    return;
-
-  Xtal* xtal = nullptr;
-  {
-    QReadLocker trackerLocker(m_search->tracker()->rwLock());
-    if (row < m_search->tracker()->size())
-      xtal = qobject_cast<Xtal*>(m_search->tracker()->at(row));
-  }
-  if (!xtal)
-    return;
-
-  emit selectedGeometryChanged(xtal);
-}
-
-void TabProgress::highlightXtal(Structure* s)
-{
-  Xtal* xtal = qobject_cast<Xtal*>(s);
-  // A null (or non-Xtal) structure just clears the selection below.
-  QString tag;
-  if (xtal) {
-    QReadLocker xtalLocker(&xtal->lock());
-    tag = xtal->getTag();
-  }
-  for (int row = 0; row < ui.table_list->rowCount(); row++) {
-    if (ui.table_list->item(row, Tag)->text() == tag) {
-      ui.table_list->blockSignals(true);
-      ui.table_list->setCurrentCell(row, 0);
-      ui.table_list->blockSignals(false);
-      return;
-    }
-  }
-  // If not found, clear selection
-  ui.table_list->blockSignals(true);
-  ui.table_list->setCurrentCell(-1, -1);
-  ui.table_list->blockSignals(false);
-}
-
 void TabProgress::startTimer()
 {
   if (m_timer->isActive())
@@ -700,15 +659,16 @@ void TabProgress::progressContextMenu(QPoint p)
   bool canGenerateOffspring = (this->m_search->getParentPoolSize() >= 3);
   const bool readOnly = m_search->isReadOnly();
 
-  Common::debug(QString("%1: Context menu at row %2")
-               .arg(__func__).arg(index));
-
   bool isStopped = false;
   bool canUnkill = false;
   if (xtal != nullptr) {
     QReadLocker xtalLocker(&xtal->lock());
     isStopped = xtal->isStoppedFinalState();
     canUnkill = xtal->isKilledOrRemovedState();
+    /*
+    Common::debug(QString("%1: Context menu at row %2 for structure %3")
+                  .arg(__func__).arg(index).arg(xtal->getTag()));
+    */
   }
 
   QMenu menu;
@@ -858,7 +818,7 @@ void TabProgress::restartJobProgress_(int optStep)
   {
     QWriteLocker locker(&xtal->lock());
     wasOptimized = xtal->getStatus() == Xtal::Optimized;
-    xtal->setCurrentOptStep(optStep);
+    xtal->setRestartOptStep(optStep);
     xtal->setStatus(Xtal::Restart);
   }
   m_search->reportStructureStateChanged(xtal);
@@ -1277,8 +1237,6 @@ void TabProgress::clearFiles()
 
 void TabProgress::clearFiles_()
 {
-  const QString runPath = m_search->getLocWorkDir();
-
   QStringList optimizedStructurePaths;
   {
     QReadLocker trackerLocker(m_search->tracker()->rwLock());
@@ -1301,20 +1259,8 @@ void TabProgress::clearFiles_()
       QDir::NoDotAndDotDot | QDir::System | QDir::Hidden | QDir::AllDirs | QDir::Files,
       QDir::DirsFirst);
     for (const QFileInfo& info : entries) {
-      if (info.fileName() == "POTCAR") {
-        // Keep a single POTCAR copy at the run level and leave a link in
-        //   the structure directory. The original must be removed first,
-        //   or the link cannot be created under the same name.
-        const QString runPotcarPath = Common::localPath(runPath, "POTCAR");
-        if (!QFile::exists(runPotcarPath))
-          QFile::copy(info.filePath(), runPotcarPath);
-        dir.remove(info.fileName());
-        QFile::link(runPotcarPath, dir.absoluteFilePath("POTCAR"));
-        continue;
-      }
-
       if (info.fileName() != "CONTCAR" && info.fileName() != "structure.state" &&
-          info.fileName() != "OUTCAR") {
+          info.fileName() != "OUTCAR"  && info.fileName() != "structure.state.old") {
         dir.remove(info.fileName());
       }
     }

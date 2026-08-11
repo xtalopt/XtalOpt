@@ -69,7 +69,11 @@ public:
   }
   bool writeInputFiles(Structure*) const override { return true; }
   bool startJob(Structure*) override { return true; }
-  bool stopJob(Structure*) override { return true; }
+  bool stopJob(Structure*) override
+  {
+    ++stopCalls;
+    return true;
+  }
   QueueStatus getStatus(Structure*) const override
   {
     if (statuses.isEmpty())
@@ -86,6 +90,7 @@ public:
   }
 
   mutable QList<QueueStatus> statuses;
+  int stopCalls = 0;
 };
 
 class LocalDirCreatingQueueInterface : public DummyQueueInterface
@@ -161,6 +166,7 @@ public:
   }
 
   using QueueManager::addStructureToSubmissionQueue;
+  using QueueManager::handleRestartStructure;
 
   // Slots for this test.
   static const int kKilledSlot = QueueManager::KilledHandler;
@@ -440,6 +446,7 @@ private slots:
   void unknownOptimizerQueueNamesDoNotChangeExistingOptStep();
   void queueManagerRunsSubmissionToOptimizedLifecycle();
   void queueManagerDoesNotSubmitWhenInputStagingFails();
+  void restartChangesStepOnlyAfterStoppingOldQueue();
 };
 
 void SearchBaseTest::initTestCase()
@@ -1052,6 +1059,41 @@ void SearchBaseTest::queueManagerDoesNotSubmitWhenInputStagingFails()
   QCOMPARE(queueManager.getAllRunningStructures().size(), 0);
 
   QVERIFY(m_opt->setQueueInterface(0, "dummyqueue"));
+}
+
+void SearchBaseTest::restartChangesStepOnlyAfterStoppingOldQueue()
+{
+  DummySearchBase opt;
+  if (opt.getNumOptSteps() == 0)
+    opt.appendOptStep();
+  opt.appendOptStep();
+  QVERIFY(opt.setQueueInterface(0, "dummyqueue"));
+  QVERIFY(opt.setOptimizer(0, "dummy"));
+  QVERIFY(opt.setQueueInterface(1, "dummyqueue"));
+  QVERIFY(opt.setOptimizer(1, "dummy"));
+
+  DummyQueueInterface* oldQueue =
+    qobject_cast<DummyQueueInterface*>(opt.queueInterface(0));
+  DummyQueueInterface* newQueue =
+    qobject_cast<DummyQueueInterface*>(opt.queueInterface(1));
+  QVERIFY(oldQueue != nullptr);
+  QVERIFY(newQueue != nullptr);
+
+  Structure structure;
+  TestQueueManager queueManager(&opt);
+  structure.setGeneration(1);
+  structure.setIDNumber(1);
+  structure.setCurrentOptStep(0);
+  structure.setRestartOptStep(1);
+  structure.setStatus(Structure::Restart);
+
+  queueManager.handleRestartStructure(&structure);
+
+  QCOMPARE(oldQueue->stopCalls, 1);
+  QCOMPARE(newQueue->stopCalls, 0);
+  QCOMPARE(structure.getCurrentOptStep(), 1u);
+  QCOMPARE(structure.getRestartOptStep(), -1);
+  QTRY_COMPARE(structure.getStatus(), Structure::WaitingForOptimization);
 }
 
 void SearchBaseTest::dispatchDedupesPerStructureAndSlot()

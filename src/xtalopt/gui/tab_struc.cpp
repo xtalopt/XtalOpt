@@ -1120,7 +1120,9 @@ void TabStruc::openSpgOptions()
     msgBox.close();
   }
 
-  // Display m_spgOptions
+  // Display m_spgOptions. Re-read the forced counts first: they may have
+  // changed since the dialog was created (e.g. by importing settings).
+  m_spgOptions->updateSpinBoxes();
   m_spgOptions->exec();
 }
 }

@@ -91,7 +91,7 @@ QueueInterface::QueueStatus LoadLevelerQueueInterface::parseQueueStatus(
 
 QString LoadLevelerQueueInterface::queueListCommand() const
 {
-  QString command = statusCommand() + " -f \"%id %st\"";
+  QString command = statusCommand() + " -f %id %st";
   const QString username = m_search->getUsername().trimmed();
   if (!username.isEmpty())
     command += " -u " + username;

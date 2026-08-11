@@ -252,10 +252,11 @@ bool convertLegacyInputText(const QString& inputText, QString& outputText,
   bool usingLegacyMolUnits = false;
   bool hasRemoteQueue = false;
   bool hasActiveLocalQueue = false;
+  bool hasHost = false;
+  bool hasUser = false;
+  bool hasRemoteDir = false;
   QString effectiveQueueInterface;
   QSet<QString> currentConstraints;
-  const bool mentionsLegacyLocalQueue =
-             inputText.contains(QRegularExpression("(^|\\n)\\s*#?\\s*localQueue\\s*=", QRegularExpression::CaseInsensitiveOption));
 
   for (int i = 0; i < lines.size(); ++i) {
     const ParsedLine& line = lines.at(i);
@@ -276,6 +277,12 @@ bool convertLegacyInputText(const QString& inputText, QString& outputText,
       hasRemoteQueue = true;
     } else if (line.lowerKey == "localqueue") {
       hasActiveLocalQueue = true;
+    } else if (line.lowerKey == "host") {
+      hasHost = true;
+    } else if (line.lowerKey == "user") {
+      hasUser = true;
+    } else if (line.lowerKey == "remoteworkingdirectory") {
+      hasRemoteDir = true;
     } else if (line.lowerKey == "constraint") {
       const QStringList fields = line.value.split(" ", QtCompat::SkipEmptyParts);
       if (fields.size() >= 2)
@@ -416,9 +423,19 @@ bool convertLegacyInputText(const QString& inputText, QString& outputText,
     }
   }
 
-  if (!hasRemoteQueue && !hasActiveLocalQueue &&
-      mentionsLegacyLocalQueue && !effectiveQueueInterface.isEmpty() &&
-      effectiveQueueInterface != "none") {
+  // A legacy input never needed to state "localQueue = false" for a remote
+  // run: for a batch queue that was the default, and the remote host
+  // settings were required to be present. A current input can look the
+  // same, so treat the file as a legacy remote run only when it also
+  // shows a legacy origin: some other setting was converted above, or a
+  // (commented-out) legacy localQueue line is present.
+  const bool mentionsLegacyLocalQueue =
+    inputText.contains(QRegularExpression("(^|\\n)\\s*#?\\s*localQueue\\s*=", QRegularExpression::CaseInsensitiveOption));
+  const bool legacyQueueSyntax = !notes.isEmpty() || mentionsLegacyLocalQueue;
+
+  if (!hasRemoteQueue && !hasActiveLocalQueue && legacyQueueSyntax &&
+      !effectiveQueueInterface.isEmpty() && effectiveQueueInterface != "none" &&
+      hasHost && hasUser && hasRemoteDir) {
     outputLines.append("remoteQueue = true");
     appendNote(notes, "preserved legacy remote submission for the batch queue");
   }

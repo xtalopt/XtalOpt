@@ -79,7 +79,7 @@ const BuiltInQueueInterfaceDefinition* builtInQueueInterfaceDefinition(const QSt
 } // anonymous namespace
 
 QueueInterface::QueueInterface(SearchBase* parent, const QString& settingFile)
-  : QObject(parent), m_search(parent)
+  : m_search(parent)
 {
   Q_UNUSED(settingFile);
 }
@@ -198,8 +198,11 @@ bool QueueInterface::writeHashToLocalDir(Structure* s,
       Common::error(tr("Refusing unsafe input filename %1").arg(it.key()));
       return false;
     }
+    // Write with plain newlines on every platform: these files go to the
+    // optimizer and, for remote runs, to the cluster, where schedulers
+    // reject scripts with Windows line endings.
     QFile file(Common::localPath(s->getLocpath(), it.key()));
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    if (!file.open(QIODevice::WriteOnly)) {
       Common::error(tr("Cannot write input file %1 (file writing failure)",
                         "1 is a file path")
                      .arg(file.fileName()));
@@ -303,7 +306,7 @@ bool QueueInterface::grepFile(Structure* s, const QString& matchText,
   return true;
 }
 
-bool QueueInterface::writeCopyFilesToLocalDir(Structure* s, QStringList* extraFilenames) const
+bool QueueInterface::writeCopyFilesToLocalDir(Structure* s, QStringList& extraFilenames) const
 {
   if (s->copyFiles().empty())
     return true;
@@ -312,14 +315,40 @@ bool QueueInterface::writeCopyFilesToLocalDir(Structure* s, QStringList* extraFi
     QFile infile(copyFile.c_str());
     QString filename = QFileInfo(infile).fileName();
     QFile outfile(Common::localPath(s->getLocpath(), filename));
+    const QFileInfo inputInfo(infile);
+    const QFileInfo outputInfo(outfile);
+
+    if (!inputInfo.exists()) {
+      Common::error(tr("Cannot copy file %1: it was not found").arg(infile.fileName()));
+      return false;
+    }
+
+    if (extraFilenames.contains(filename, Qt::CaseInsensitive)) {
+      Common::error(tr("Cannot copy file %1: the name %2 is already used by another input file.")
+                      .arg(infile.fileName()).arg(filename));
+      return false;
+    }
+
+    // A %copyFile% entry can already point into the structure's own directory;
+    //   there is nothing to copy then, and copying would remove the file.
+    if (inputInfo.canonicalFilePath() == outputInfo.canonicalFilePath()) {
+      extraFilenames.append(filename);
+      continue;
+    }
+
+    // The same file is copied again whenever the structure is written a second
+    //   time (a restart, a later optimization step, or a resumed run). Copying
+    //   does not overwrite, so remove an earlier copy first.
+    if (outfile.exists())
+      outfile.remove();
+
     if (!infile.copy(outfile.fileName())) {
       Common::error(tr("Failed to copy file %1 to %2")
                      .arg(infile.fileName())
                      .arg(outfile.fileName()));
       return false;
     }
-    if (extraFilenames)
-      extraFilenames->append(filename);
+    extraFilenames.append(filename);
   }
   s->clearCopyFiles();
   return true;
@@ -338,7 +367,7 @@ bool QueueInterface::writeInputFiles(Structure* s) const
   const QHash<QString, QString> files = optimizer->getInputFiles(s);
   if (files.isEmpty()) {
     Common::error(tr("No input files to write for structure %1 in opt step %2;"
-                     " check the optimizer templates and input assets.")
+                    " check the optimizer templates and input assets.")
                     .arg(s->getTag())
                     .arg(s->getCurrentOptStep() + 1));
     return false;

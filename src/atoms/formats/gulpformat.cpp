@@ -90,6 +90,12 @@ bool GulpFormat::readOutput(Atoms::Geometry* s, const QString& filename)
                        .arg(line.c_str()));
           return false;
         }
+        // Only cores are actual atoms; shell-model runs list other
+        //   entities here too (shells etc.), which must be skipped.
+        if (lineSplit[2] != "c" && lineSplit[2] != "bc") {
+          getline(ifs, line);
+          continue;
+        }
         const unsigned int atomicNum = Atoms::ElementInfo::getAtomicNum(lineSplit[1]);
         if (atomicNum == 0) {
           Common::error(QString("Unrecognized element symbol in GULP output: %1")
@@ -108,9 +114,10 @@ bool GulpFormat::readOutput(Atoms::Geometry* s, const QString& filename)
         coords.append(Common::Vector3(x, y, z));
         getline(ifs, line);
       }
-      coordsFound = true;
     }
   }
+
+  coordsFound = !atomicNums.isEmpty();
 
   if (!cellFound)
     Common::error("Cell info was not found in GULP output!");

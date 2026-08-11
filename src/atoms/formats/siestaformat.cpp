@@ -367,21 +367,30 @@ bool SiestaFormat::read(Atoms::Geometry* s, const QString& filename)
   QList<unsigned int> atomicNums;
   QList<Common::Vector3> coords;
 
+  // FDF entries may appear in any order, so find the lattice constant
+  // first: the lattice vectors and scaled coordinates depend on it. Per
+  // the FDF rules, the first occurrence of a label is the one that counts.
+  for (int i = 0; i < lines.size(); ++i) {
+    const QString line = lines.at(i);
+    if (!line.toLower().startsWith("latticeconstant"))
+      continue;
+    const QStringList fields = line.split(" ", QtCompat::SkipEmptyParts);
+    if (fields.size() >= 2) {
+      bool ok = false;
+      const double value = fields.at(1).toDouble(&ok);
+      if (ok) {
+        const QString unit = fields.size() >= 3 ? fields.at(2) : QString();
+        latticeScale = value * siestaUnitScale(unit);
+      }
+    }
+    break;
+  }
+
   for (int i = 0; i < lines.size(); ++i) {
     const QString line = lines.at(i);
     const QString lower = line.toLower();
 
-    if (lower.startsWith("latticeconstant")) {
-      const QStringList fields = line.split(" ", QtCompat::SkipEmptyParts);
-      if (fields.size() >= 2) {
-        bool ok = false;
-        const double value = fields.at(1).toDouble(&ok);
-        if (ok) {
-          const QString unit = fields.size() >= 3 ? fields.at(2) : QString();
-          latticeScale = value * siestaUnitScale(unit);
-        }
-      }
-    } else if (lower.startsWith("%block chemicalspecieslabel")) {
+    if (lower.startsWith("%block chemicalspecieslabel")) {
       for (++i; i < lines.size(); ++i) {
         const QString l = lines.at(i);
         if (l.toLower().startsWith("%endblock"))
@@ -421,7 +430,9 @@ bool SiestaFormat::read(Atoms::Geometry* s, const QString& filename)
       }
       cellFound = true;
     } else if (lower.startsWith("atomiccoordinatesformat")) {
-      fractionalCoords = lower.contains("fractional");
+      // "ScaledByLatticeVectors" is a synonym of "Fractional" in FDF.
+      fractionalCoords = lower.contains("fractional") ||
+                         lower.contains("scaledbylatticevectors");
     } else if (lower.startsWith("%block atomiccoordinatesandatomicspecies")) {
       double coordScale = 1.0;
       bool scaledCartesian = false;
@@ -429,7 +440,9 @@ bool SiestaFormat::read(Atoms::Geometry* s, const QString& filename)
         const QString fmt = lines.at(j).toLower();
         if (!fmt.startsWith("atomiccoordinatesformat"))
           continue;
-        fractionalCoords = fmt.contains("fractional");
+        // "ScaledByLatticeVectors" is a synonym of "Fractional" in FDF.
+        fractionalCoords = fmt.contains("fractional") ||
+                           fmt.contains("scaledbylatticevectors");
         scaledCartesian = fmt.contains("scaledcartesian");
         if (fmt.contains("bohr"))
           coordScale = 1.0 / ANG2BOHR;

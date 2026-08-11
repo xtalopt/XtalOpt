@@ -749,6 +749,20 @@ void QueueManager::handleInProcessStructure(Structure* s)
   }
 
   QueueInterface* qi = m_search->queueInterface(optStep);
+  if (!qi) {
+    bool changed = false;
+    {
+      QWriteLocker locker(&s->lock());
+      if (s->getStatus() == Structure::InProcess) {
+        s->setStatus(Structure::Error);
+        changed = true;
+      }
+    }
+    if (changed)
+      emit structureUpdated(s);
+    return;
+  }
+
   switch (qi->getStatus(s)) {
     case QueueInterface::Running:
     case QueueInterface::Queued:
@@ -1104,6 +1118,21 @@ void QueueManager::handleErrorStructure(Structure* s)
 
   Common::warning(tr("Structure %1 failed").arg(s->getTag()));
 
+  int optStep = 0;
+  {
+    QReadLocker locker(&s->lock());
+    if (s->getStatus() != Structure::Error)
+      return;
+    optStep = s->getCurrentOptStep();
+  }
+  if (!m_search->queueInterface(optStep)) {
+    Common::error(tr("Structure %1 cannot continue because optimization "
+                     "step %2 has no queue interface.")
+                    .arg(s->getTag()).arg(optStep + 1));
+    killStructure(s);
+    return;
+  }
+
   uint failLimit = 0;
   SearchBase::FailActions failAction = SearchBase::FA_DoNothing;
   {
@@ -1271,16 +1300,57 @@ void QueueManager::handleKilledStructure(Structure* s)
 /// @cond
 void QueueManager::handleRestartStructure(Structure* s)
 {
-  if (s->getStatus() != Structure::Restart) {
-    return;
+  uint oldOptStep = 0;
+  QString tag;
+  {
+    QWriteLocker structLocker(&s->lock());
+    if (s->getStatus() != Structure::Restart)
+      return;
+    if (m_runningHandlers.hasHandler(s, SubmissionHandler) ||
+        m_runningHandlers.hasHandler(s, JobStartHandler))
+      return;
+    oldOptStep = s->getCurrentOptStep();
+    tag = s->getTag();
   }
 
-  if (!stopJob(s)) {
+  QueueInterface* oldQueue = m_search->queueInterface(oldOptStep);
+  if (!oldQueue) {
+    Common::error(tr("Structure %1 cannot restart because optimization "
+                     "step %2 has no queue interface.")
+                    .arg(tag).arg(oldOptStep + 1));
+    killStructure(s);
+    return;
+  }
+  if (!oldQueue->stopJob(s)) {
     Common::warning(tr("Structure %1 cannot restart until its scheduler job "
-                       "has been cancelled.").arg(s->getTag()));
+                       "has been cancelled.").arg(tag));
     return;
   }
 
+  bool invalidRequestedStep = false;
+  {
+    QWriteLocker structLocker(&s->lock());
+    if (s->getStatus() != Structure::Restart ||
+        s->getCurrentOptStep() != oldOptStep)
+      return;
+    if (m_runningHandlers.hasHandler(s, SubmissionHandler) ||
+        m_runningHandlers.hasHandler(s, JobStartHandler))
+      return;
+
+    int restartOptStep = s->getRestartOptStep();
+    if (restartOptStep < 0)
+      restartOptStep = static_cast<int>(oldOptStep);
+    else if (static_cast<size_t>(restartOptStep) >= m_search->getNumOptSteps()) {
+      restartOptStep = static_cast<int>(oldOptStep);
+      invalidRequestedStep = true;
+    }
+    s->setCurrentOptStep(static_cast<uint>(restartOptStep));
+    s->setRestartOptStep(-1);
+  }
+  if (invalidRequestedStep) {
+    Common::warning(tr("Structure %1 requested an invalid restart step; "
+                       "restarting its current step instead.").arg(tag));
+  }
   addStructureToSubmissionQueue(s);
 }
 
@@ -1386,6 +1456,7 @@ void QueueManager::handleSubmissionStructure(Structure* s, int optStep)
 {
   bool emitError = false;
   bool cleanStoppedStructure = false;
+  int currentOptStep = 0;
 
   // Update structure.
   {
@@ -1404,10 +1475,11 @@ void QueueManager::handleSubmissionStructure(Structure* s, int optStep)
     s->setStatus(Structure::WaitingForOptimization);
     if (optStep != -1)
       s->setCurrentOptStep(optStep);
+    currentOptStep = s->getCurrentOptStep();
   }
 
   // Perform writing.
-  QueueInterface* queue = m_search->queueInterface(s->getCurrentOptStep());
+  QueueInterface* queue = m_search->queueInterface(currentOptStep);
   if (!queue || !queue->writeInputFiles(s)) {
     QWriteLocker structLocker(&s->lock());
     if (s->getStatus() == Structure::WaitingForOptimization) {
@@ -1461,13 +1533,33 @@ void QueueManager::startJob(Structure* s)
   Common::ScopedTimer _timer("QueueManager::startJob");
 
   QueueInterface* queue = nullptr;
+  int optStep = 0;
   {
     QWriteLocker structLocker(&s->lock());
     if (s->getStatus() != Structure::WaitingForOptimization)
       return;
     if (!m_runningHandlers.tryStart(s, JobStartHandler))
       return;
-    queue = m_search->queueInterface(s->getCurrentOptStep());
+    optStep = s->getCurrentOptStep();
+    queue = m_search->queueInterface(optStep);
+  }
+
+  if (!queue) {
+    bool emitError = false;
+    {
+      QWriteLocker structLocker(&s->lock());
+      Common::error(tr("%1: structure %2 has invalid optimization step %3.")
+                      .arg(__func__).arg(s->getTag()).arg(optStep + 1));
+      if (s->getStatus() == Structure::WaitingForOptimization &&
+          s->getCurrentOptStep() == static_cast<uint>(optStep)) {
+        s->setStatus(Structure::Error);
+        emitError = true;
+      }
+      m_runningHandlers.finish(s, JobStartHandler);
+    }
+    if (emitError)
+      emit structureUpdated(s);
+    return;
   }
 
   const bool started = queue->startJob(s);
@@ -1529,6 +1621,7 @@ void QueueManager::startJob(Structure* s)
     {
       QWriteLocker structLocker(&s->lock());
       if (s->getStatus() == Structure::WaitingForOptimization ||
+          s->getStatus() == Structure::Restart ||
           s->isKilledOrRemovedState()) {
         s->setStatus(Structure::Submitted);
         submitted = true;
@@ -1572,7 +1665,9 @@ bool QueueManager::stopJob(Structure* s)
   if (!queue) {
     Common::error(tr("%1: structure %2 has invalid optimization step %3.")
                     .arg(__func__).arg(s->getTag()).arg(optStep + 1));
-    return false;
+    // No interface is available to cancel the job. Allow XtalOpt to finish
+    //   its internal cleanup.
+    return true;
   }
   return queue->stopJob(s);
 }
@@ -1677,7 +1772,7 @@ void QueueManager::addNewStructure(Structure* s, uint generation, const QString&
     m_newStructureTracker.unlock();
     m_tracker->unlock();
     m_namingMutex.unlock();
-    delete s;
+    Tracker::deleteStructure(s);
     return;
   }
 

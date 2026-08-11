@@ -487,6 +487,13 @@ SearchBase::~SearchBase()
   // m_queueThread and m_tracker are destroyed automatically.
 }
 
+void SearchBase::setReadOnly(bool v)
+{
+  m_readOnly.store(v);
+  // A read-only session is only for viewing; so no timing information.
+  Common::timingSuspended() = v;
+}
+
 void SearchBase::requestStructureEvaluationUpdate()
 {
   if (m_shuttingDown.load() || isSessionStarting() || isReadOnly())
@@ -1571,6 +1578,8 @@ bool SearchBase::checkScriptPath(const QString& path, const QString& label, int 
 bool SearchBase::anyBatchQueueInterfaces() const
 {
   for (size_t i = 0; i < getNumOptSteps(); ++i) {
+    if (!queueInterface(i))
+      continue;
     if (queueInterface(i)->getIDString().toLower() != "none")
       return true;
   }

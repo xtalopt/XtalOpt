@@ -351,6 +351,7 @@ bool SSHConnectionCLI::executeSSH(const QString& command,
                    .arg(fullArgs.join(","))
                    .arg(result.stdoutText)
                    .arg(result.stderrText));
+    assignProcessOutputs(result, stdout_str, stderr_str, ec);
     return false;
   }
 

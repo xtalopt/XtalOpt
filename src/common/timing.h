@@ -91,9 +91,21 @@ inline double timingProcessCpuSeconds()
   return (processCpuNanos() - timing_detail::startProcessCpu()) / 1.0e9;
 }
 
+// The timing can be turned off while the program runs; e.g. a read-only
+//   session does not report any timing.
+inline bool& timingSuspended()
+{
+  static bool suspended = false;
+  return suspended;
+}
+
 // Print the timer values (sorts with largest wall time at the top).
 inline void dumpTimings()
 {
+  // Nothing to report if the timing is turned off.
+  if (timingSuspended())
+    return;
+
   std::vector<std::pair<std::string, timing_detail::Bucket> > rows;
   {
     std::lock_guard<std::mutex> lock(timing_detail::mutex());
@@ -143,7 +155,7 @@ inline bool timingEnabled()
     }
     return on;
   }();
-  return enabled;
+  return enabled && !timingSuspended();
 }
 
 // Add a timer value.

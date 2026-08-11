@@ -87,6 +87,50 @@ else()
 
 endif()
 
+# A static libssh does not record its own dependencies; ask pkg-config
+# for the full static link closure.
+if(SSH_LIBRARY MATCHES "\\.a$")
+  find_package(PkgConfig QUIET)
+  if(PKG_CONFIG_FOUND)
+    pkg_check_modules(PC_LIBSSH QUIET libssh)
+  endif()
+  if(PC_LIBSSH_STATIC_LDFLAGS)
+    set(LIBSSH_LIBRARIES
+      ${LIBSSH_LIBRARIES}
+      ${PC_LIBSSH_STATIC_LDFLAGS}
+    )
+  else()
+    message(WARNING
+            "Found a static libssh (${SSH_LIBRARY}) but could not determine "
+            "its dependencies; the crypto backend (and zlib) may need to be "
+            "added to the link line manually.")
+  endif()
+endif()
+
+# libssh older than 0.8.0 keeps its threading support in a separate
+# libssh_threads library, which must be linked as well.
+if(LIBSSH_FOUND AND LibSSH_VERSION AND LibSSH_VERSION VERSION_LESS "0.8.0")
+  find_library(SSH_THREADS_LIBRARY
+    NAMES
+      ssh_threads
+      libssh_threads
+    PATHS
+      /opt/local/lib
+      /sw/lib
+  )
+  if(SSH_THREADS_LIBRARY)
+    set(LIBSSH_LIBRARIES
+      ${LIBSSH_LIBRARIES}
+      ${SSH_THREADS_LIBRARY}
+    )
+  else()
+    message(FATAL_ERROR
+            "libssh ${LibSSH_VERSION} requires the libssh_threads library, "
+            "which was not found.")
+  endif()
+  mark_as_advanced(SSH_THREADS_LIBRARY)
+endif()
+
 # Prevent an old libssh version from being accepted.
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(LibSSH

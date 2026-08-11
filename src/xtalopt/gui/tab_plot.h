@@ -53,6 +53,7 @@ public:
     Enthalpy_per_Atm_T,
     Volume_per_Atm_T,
     ParetoFront_T,
+    SpaceGroup_T,
     AtomCount_T,
     PV_T,
     Enthalpy_T,
@@ -111,7 +112,6 @@ public slots:
   void clipPOSCARPlot();
   void viewStructurePlot();
   void plotXrdPlot();
-  void selectXtal(QwtPlotMarker* pm);
   void disconnectGUI() override;
   void enablePlotUpdate() { m_enablePlotUpdate = true; };
   void disablePlotUpdate() { m_enablePlotUpdate = false; };
@@ -122,8 +122,6 @@ public slots:
   void updatePlotLayout();
   void plotTrends();
   void plotDistHist();
-  void selectGeometryFromIndex(int index);
-  void highlightXtal(Search::Structure* s);
 
 private:
   QwtPlotMarker* addXtalToPlot(Xtal* xtal, double x, double y);

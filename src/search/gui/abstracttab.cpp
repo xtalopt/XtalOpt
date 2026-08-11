@@ -37,8 +37,6 @@ void AbstractTab::initialize()
   connect(m_dialog, &AbstractDialog::tabsUpdateGUI,    this, &AbstractTab::updateGUI);
   connect(m_dialog, &AbstractDialog::tabsDisconnectGUI, this, &AbstractTab::disconnectGUI);
   connect(m_dialog, &AbstractDialog::tabsLockGUI,       this, &AbstractTab::lockGUI);
-  connect(this, &AbstractTab::selectedGeometryChanged,
-          m_dialog, &AbstractDialog::selectedGeometryChanged);
   connect(this, &AbstractTab::startingBackgroundProcessing,
           this, &AbstractTab::setBusyCursor, Qt::QueuedConnection);
   connect(this, &AbstractTab::finishedBackgroundProcessing,

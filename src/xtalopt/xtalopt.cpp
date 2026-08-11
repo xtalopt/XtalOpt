@@ -47,6 +47,7 @@
 #include <QTimer>
 
 #include <functional>
+#include <limits>
 #include <vector>
 
 using namespace Search;
@@ -438,9 +439,23 @@ void XtalOpt::handleOptimizedDeparture(Search::Structure* structure)
 
   QString tag;
   {
-    QReadLocker structureLocker(&structure->lock());
+    QWriteLocker structureLocker(&structure->lock());
     tag = structure->getTag();
+    Xtal* xtal = qobject_cast<Xtal*>(structure);
+    if (xtal)
+      xtal->setDistAboveHull(std::numeric_limits<double>::quiet_NaN());
+    structure->setParetoFront(-1);
+    QList<double> objectiveValues = structure->getStrucObjValuesVec();
+    const int builtinObjective = getBuiltinObjectiveIndex();
+    if (builtinObjective >= 0 && builtinObjective < objectiveValues.size()) {
+      objectiveValues[builtinObjective] = std::numeric_limits<double>::quiet_NaN();
+      structure->setStrucObjValuesVec(objectiveValues);
+    }
   }
+
+  // The invalidated objective values make this structure ineligible as a
+  //   parent immediately; do not wait for a later queue update to remove it.
+  refreshParentPoolMembership(structure);
 
   QList<Search::Structure*> structures = trackedStructuresSnapshot();
 
@@ -593,8 +608,8 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
   if (!readOnly) {
     Common::message("\n=== Pre-checks\n");
 
-    const QString stateFile = stateFilePath();
-    bool hasExistingStateFile = QFile::exists(stateFile) || QFile::exists(stateFile + ".old");
+    const QString sessionStateFile = stateFilePath();
+    bool hasExistingStateFile = QFile::exists(sessionStateFile) || QFile::exists(sessionStateFile + ".old");
 
     if (!restoring) {
       const QString locWorkDir = getLocWorkDir();

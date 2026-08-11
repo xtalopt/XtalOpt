@@ -197,7 +197,7 @@ bool BatchQueueInterface::stopJob(Structure* s)
   bool logErrors = false;
   Structure::State state = Structure::Empty;
   {
-    QWriteLocker locker(&s->lock());
+    QReadLocker locker(&s->lock());
     jobId = s->getJobID();
     state = s->getStatus();
     logErrors = m_search->logErrorDirs() && s->isQueueErrorRecoveryState();
@@ -238,10 +238,12 @@ QueueInterface::QueueStatus BatchQueueInterface::getStatus(Structure* s) const
   // Copy the structure values.
   unsigned int jobId = 0;
   Structure::State state = Structure::Empty;
+  QString tag;
   {
     QReadLocker locker(&s->lock());
     jobId = static_cast<unsigned int>(s->getJobID());
     state = s->getStatus();
+    tag = s->getTag();
   }
 
   if (!jobId && state != Structure::Submitted)
@@ -261,7 +263,8 @@ QueueInterface::QueueStatus BatchQueueInterface::getStatus(Structure* s) const
   if (state == Structure::Submitted) {
     if (queueStatus == QueueInterface::Unknown && rawStatus.isEmpty()) {
       bool exists;
-      if (!getCurrentOptimizer(s)->checkIfOutputFileExists(s, &exists))
+      Optimizer* optimizer = getCurrentOptimizer(s);
+      if (!optimizer || !optimizer->checkIfOutputFileExists(s, &exists))
         return QueueInterface::CommunicationError;
       return exists ? QueueInterface::Started : QueueInterface::Pending;
     }
@@ -275,7 +278,7 @@ QueueInterface::QueueStatus BatchQueueInterface::getStatus(Structure* s) const
     return queueStatus;
 
   Common::warning(tr("Structure %1 with jobID %2 has unrecognized status: %3")
-                 .arg(s->getTag())
+                 .arg(tag)
                  .arg(jobId)
                  .arg(rawStatus));
   return QueueInterface::Unknown;
@@ -283,13 +286,17 @@ QueueInterface::QueueStatus BatchQueueInterface::getStatus(Structure* s) const
 
 QueueInterface::QueueStatus BatchQueueInterface::statusFromMissingQueueEntry(Structure* s) const
 {
+  Optimizer* optimizer = getCurrentOptimizer(s);
+  if (!optimizer)
+    return QueueInterface::CommunicationError;
+
   bool outputFileExists;
-  if (!getCurrentOptimizer(s)->checkIfOutputFileExists(s, &outputFileExists))
+  if (!optimizer->checkIfOutputFileExists(s, &outputFileExists))
     return QueueInterface::CommunicationError;
 
   if (outputFileExists) {
     bool success;
-    if (!getCurrentOptimizer(s)->checkForSuccessfulOutput(s, &success))
+    if (!optimizer->checkForSuccessfulOutput(s, &success))
       return QueueInterface::CommunicationError;
     return success ? QueueInterface::Success : QueueInterface::Error;
   }
@@ -300,10 +307,19 @@ QueueInterface::QueueStatus BatchQueueInterface::statusFromMissingQueueEntry(Str
 QueueInterface::QueueStatus
 BatchQueueInterface::missingFromQueueWithoutOutputStatus(Structure* s) const
 {
+  // Copy the structure values.
+  QString tag;
+  unsigned int jobId = 0;
+  {
+    QReadLocker locker(&s->lock());
+    tag = s->getTag();
+    jobId = static_cast<unsigned int>(s->getJobID());
+  }
+
   Common::warning(tr("Structure %1 with jobID %2 is missing from the queue "
                      "and has not written any output.")
-                 .arg(s->getTag())
-                 .arg(s->getJobID()));
+                 .arg(tag)
+                 .arg(jobId));
   return QueueInterface::Error;
 }
 
@@ -352,11 +368,14 @@ QStringList BatchQueueInterface::queueList(bool forced) const
   const CommandResult result = runACommand("", command);
 
   if (!queueListCommandSucceeded(result.launched, result.exitCode, result.stdoutText, result.stderrText)) {
-    Common::warning(tr("Could not execute %1: (%2) %3\n\t"
-                       "Treating as a communication error.")
-                    .arg(command)
-                    .arg(QString::number(result.exitCode))
-                    .arg(result.stderrText));
+    // If the command never ran, the transport already reported the reason.
+    if (result.launched) {
+      Common::warning(tr("Could not execute %1: (%2) %3\n\t"
+                         "Treating as a communication error.")
+                      .arg(command)
+                      .arg(QString::number(result.exitCode))
+                      .arg(result.stderrText));
+    }
     // Report a queue communication error instead of keeping a saved queue data.
     m_queueData = QStringList(QStringLiteral("CommError"));
     m_queueTimeStamp = QDateTime::currentDateTime();
@@ -418,7 +437,7 @@ bool BatchQueueInterface::writeFiles(
 
   // Add the files to copy.
   QStringList filenames = fileHash.keys();
-  if (!writeCopyFilesToLocalDir(s, &filenames))
+  if (!writeCopyFilesToLocalDir(s, filenames))
     return false;
 
   // Local batch jobs already use the local working directory.

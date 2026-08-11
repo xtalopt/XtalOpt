@@ -141,6 +141,7 @@ XtalOptDialog::XtalOptDialog(QWidget* parent, Qt::WindowFlags f, XtalOpt* xtalop
   }
 
   initialize();
+  ui->tabs->setFocus();
   ui_push_save->setEnabled(true);
 }
 

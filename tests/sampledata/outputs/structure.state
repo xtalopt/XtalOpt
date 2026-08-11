@@ -30,6 +30,7 @@ current\enthalpy=-9.75
 current\hasCellInfo=true
 current\hasEnthalpy=true
 currentOptStep=1
+restartOptStep=-1
 endTime=Fri Jan 2 06:07:08 2026
 failCount=1
 fixCount=0

@@ -440,6 +440,9 @@ public:
   bool needsObjectiveOrConstraintCalculations() const;
 
 private:
+  // Whether the similarity check uses RDF; otherwise it uses XtalComp.
+  bool usingRdfSimilarity() const;
+
   // Returns the structure that was marked similar, or nullptr if none was.
   Xtal* checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, const QList<QString>& bSymbols);
 
@@ -615,6 +618,9 @@ private:
 
 
 public:
+  // Whether a runtime setting feeds the similarity check that is in use.
+  bool similarityKeywordInUse(const QString& keyword) const;
+
   // Clear molecule units.
   void clearMoleculeUnits()
   {

@@ -503,6 +503,11 @@ bool Xtal::moveAtomRandomlyIAD(unsigned int atomicNumber,
                  "Size of distance list does not match number of atoms.");
 
       for (int dist_ind = 0; dist_ind < squaredDists.size(); ++dist_ind) {
+        // If a1 and a2 are the same, skip the comparison
+        if (dist_ind == movingAtomIndex) {
+          continue;
+        }
+
         double& curDistSquared = squaredDists[dist_ind];
         double minDist = 0.0;
         if (!customMinIAD(limitsIAD, atomicNumber, this->atom(dist_ind).atomicNumber(), &minDist)) {

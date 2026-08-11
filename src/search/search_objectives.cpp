@@ -95,8 +95,10 @@ bool writeOutputPoscar(Structure* s, const QString& filename)
   if (poscar.empty())
     return false;
 
+  // Write with plain newlines on every platform: this file may be copied
+  // to the cluster for the user scripts to read.
   QFile file(Common::localPath(s->getLocpath(), filename));
-  if (file.open(QIODevice::WriteOnly | QIODevice::Text) &&
+  if (file.open(QIODevice::WriteOnly) &&
       file.write(poscar.c_str(), static_cast<qint64>(poscar.size())) ==
         static_cast<qint64>(poscar.size())) {
     file.close();

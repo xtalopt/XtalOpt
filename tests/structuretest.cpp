@@ -87,6 +87,7 @@ void checkState(StateCheck check, MemberStateCheck memberCheck,
 void checkCopiedState(Structure& structure)
 {
   QCOMPARE(structure.getFixCount(), 3);
+  QCOMPARE(structure.getRestartOptStep(), 2);
   QVERIFY(structure.hasEnthalpy());
   QCOMPARE(structure.getEnergy(), -4.5);
   QCOMPARE(structure.getEnthalpy(), -4.0);
@@ -566,6 +567,8 @@ void StructureTest::copyAndMovePreserveState()
   QCOMPARE(record.getFixCount(), 0);
 
   record.setFixCount(3);
+  record.setRestartOptStep(2);
+  record.setStatus(Structure::Restart);
   record.setEnergy(-4.5);
   record.setEnthalpy(-4.0);
   record.setPV(0.5);

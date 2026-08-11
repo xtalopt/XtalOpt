@@ -330,9 +330,6 @@ void TabSearch::lockGUI()
   ui.push_removeSeed->setDisabled(true);
   if (m_search->isReadOnly())
     ui.combo_optType->setDisabled(true);
-  ui.spin_rdf_bin->setDisabled(true);
-  ui.spin_rdf_cut->setDisabled(true);
-  ui.spin_rdf_sig->setDisabled(true);
 
   if (m_search->isReadOnly()) {
     ui.spin_parentsPoolSize->setDisabled(true);
@@ -354,6 +351,9 @@ void TabSearch::lockGUI()
     ui.spin_tol_xcAngle->setDisabled(true);
     ui.push_sim_reset->setDisabled(true);
     ui.spin_rdf_tol->setDisabled(true);
+    ui.spin_rdf_cut->setDisabled(true);
+    ui.spin_rdf_bin->setDisabled(true);
+    ui.spin_rdf_sig->setDisabled(true);
     ui.push_sim_reset_2->setDisabled(true);
     ui.spin_p_cross->setDisabled(true);
     ui.spin_p_strip->setDisabled(true);
@@ -456,8 +456,7 @@ void TabSearch::updateOptimizationInfo()
         settingsChanged = true;
         if (keyword == "spglibTolerance")
           spacegroupSettingsChanged = true;
-        if (keyword == "rdfTolerance" || keyword == "xtalcompToleranceLength" ||
-            keyword == "xtalcompToleranceAngle")
+        if (xtalopt->similarityKeywordInUse(keyword))
           similaritySettingsChanged = true;
       }
     }

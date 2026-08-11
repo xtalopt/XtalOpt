@@ -23,6 +23,10 @@
 #include <search/search.h>
 #include <search/ssh/sshconnection_libssh.h>
 
+#if LIBSSH_VERSION_INT < SSH_VERSION_INT(0, 8, 0)
+#include <libssh/callbacks.h>
+#endif
+
 #define START
 #define END
 
@@ -30,9 +34,26 @@ using namespace std;
 
 namespace Search {
 
-SSHManagerLibSSH::SSHManagerLibSSH(unsigned int connections, SearchBase* parent)
-  : SSHManager(parent), m_connSemaphore(connections)
+// This must be done once before any other libssh call. Also, libssh
+//   versions before 0.8.0 do not set up their thread safety on their
+//   own; that must be done first.
+static bool initializeLibSSH()
 {
+#if LIBSSH_VERSION_INT < SSH_VERSION_INT(0, 8, 0)
+  ssh_threads_set_callbacks(ssh_threads_get_pthread());
+#endif
+  if (ssh_init() != 0) {
+    Common::warning("Failed to initialize the libssh library.");
+    return false;
+  }
+  return true;
+}
+
+SSHManagerLibSSH::SSHManagerLibSSH(unsigned int connections, SearchBase* parent)
+  : SSHManager(parent), m_connSemaphore(connections), m_libsshReady(false)
+{
+  static const bool libsshReady = initializeLibSSH();
+  m_libsshReady = libsshReady;
   for (unsigned int i = 0; i < connections; i++) {
     m_conns.append(new SSHConnectionLibSSH(this));
   }
@@ -41,6 +62,9 @@ SSHManagerLibSSH::SSHManagerLibSSH(unsigned int connections, SearchBase* parent)
 void SSHManagerLibSSH::makeConnections(const QString& host, const QString& user,
                                        const QString& pass, unsigned int port)
 {
+  if (!m_libsshReady)
+    throw SSHConnection::SSH_UNKNOWN_ERROR;
+
   QtCompat::MutexLocker locker(&m_lock);
   START;
 

@@ -397,10 +397,11 @@ void XtalOpt::resetSpacegroups_()
 
   QList<Structure*> structures = trackedStructuresSnapshot();
   for (auto it = structures.constBegin(), it_end = structures.constEnd(); it != it_end; ++it) {
-    {
-      QWriteLocker locker(&(*it)->lock());
-      qobject_cast<Xtal*>(*it)->findSpaceGroup(getTolSpg());
-    }
+    Xtal* xtal = qobject_cast<Xtal*>(*it);
+    if (!xtal)
+      continue;
+    QWriteLocker locker(&xtal->lock());
+    xtal->findSpaceGroup(getTolSpg());
   }
 
   emit refreshAllStructureInfo();
@@ -484,9 +485,12 @@ void XtalOpt::checkForSimilarities_()
     }
   }
 
-  const bool rdfMode = getTolRdf() > 0.0 && getTolRdf() <= 1.0;
+  const bool rdfMode = usingRdfSimilarity();
 
   // Prepare the saved comparison data before taking pair read locks.
+  // The RDFs are built here with the same settings the comparison below uses,
+  //   so the comparison finds them ready and does not recalculate them while
+  //   it holds only read locks.
   for (auto& candidate : candidates) {
     if (!rdfMode && !candidate.changed)
       continue;
@@ -553,6 +557,23 @@ void XtalOpt::checkForSimilarities_()
   emit refreshAllStructureInfo();
 }
 
+bool XtalOpt::usingRdfSimilarity() const
+{
+  return getTolRdf() > 0.0 && getTolRdf() <= 1.0;
+}
+
+bool XtalOpt::similarityKeywordInUse(const QString& keyword) const
+{
+  // The RDF tolerance selects the comparator, so it always matters.
+  if (keyword == "rdfTolerance")
+    return true;
+  if (usingRdfSimilarity())
+    return keyword == "rdfCutoff" || keyword == "rdfNumBins" || keyword == "rdfSigma";
+  // XtalComp reduces both cells to primitive with the spglib tolerance.
+  return keyword == "xtalcompToleranceLength" ||
+         keyword == "xtalcompToleranceAngle" || keyword == "spglibTolerance";
+}
+
 Xtal* XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, const QList<QString>& bSymbols)
 {
   // Timed per screen-passing pair: the call count tracks how many pairs
@@ -584,7 +605,7 @@ Xtal* XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, 
 
   bool theyAreSimilar = false;
 
-  if (getTolRdf() > 0.0 && getTolRdf() <= 1.0) {
+  if (usingRdfSimilarity()) {
     if (aSymbols != bSymbols) {
       theyAreSimilar = false;
     } else {

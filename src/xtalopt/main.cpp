@@ -196,6 +196,12 @@ bool parseLaunchOptions(int argc, char* argv[], LaunchOptions& options)
     return false;
   }
 
+  // A results directory is only meaningful with a flag that uses it.
+  if (!options.dataDir.isEmpty() && !cliResume && !plotMode && !options.saveLog) {
+    options.error = "The --dir option requires --resume, --plot, or --log.";
+    return false;
+  }
+
 #ifndef BUILD_XTALOPT_GUI
   if (plotMode) {
     options.error = "Plot mode is unavailable in this BUILD_XTALOPT_GUI=OFF build.";

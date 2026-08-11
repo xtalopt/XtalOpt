@@ -169,8 +169,10 @@ bool SSHConnectionLibSSH::reconnectSession(bool throwExceptions)
 bool SSHConnectionLibSSH::sftpIsConnected()
 {
   START;
+  if (!m_sftp)
+    return false;
   int err = sftp_get_error(m_sftp);
-  if (err == SSH_FX_FAILURE || err == SSH_FX_NO_CONNECTION || err == SSH_FX_CONNECTION_LOST)
+  if (err == SSH_FX_NO_CONNECTION || err == SSH_FX_CONNECTION_LOST)
     return false;
   END;
   return true;
@@ -692,7 +694,12 @@ bool SSHConnectionLibSSH::_copyFileToServer(const QString& localpath,
     return false;
   }
   from.close();
-  sftp_close(to);
+  if (sftp_close(to) != SSH_OK) {
+    Common::warning(QString("Could not close remote file %1 after writing: %2")
+                    .arg(remotepath)
+                    .arg(ssh_get_error(m_session)));
+    return false;
+  }
   END;
   return true;
 }
@@ -899,7 +906,14 @@ bool SSHConnectionLibSSH::_copyDirectoryToServer(const QString& local,
   }
 
   // Create remote directory:
-  sftp_mkdir(sftp, sftpPath(remotepath).toStdString().c_str(), 0750);
+  const QByteArray remotePath = sftpPath(remotepath).toUtf8();
+  if (sftp_mkdir(sftp, remotePath.constData(), 0750) != SSH_OK &&
+      sftp_get_error(sftp) != SSH_FX_FILE_ALREADY_EXISTS) {
+    Common::warning(QString("Could not create remote directory %1: %2")
+                      .arg(remotepath)
+                      .arg(ssh_get_error(m_session)));
+    return false;
+  }
 
   // Recurse over directories and files (depth-first)
   for (auto dir = directories.begin(); dir != directories.end(); dir++) {

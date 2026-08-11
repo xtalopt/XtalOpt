@@ -117,7 +117,12 @@ bool LsfQueueInterface::queueListCommandSucceeded(
     return true;
 
   const QString output = stdoutText + "\n" + stderrText;
-  return ok && exitCode == 255 && output.contains("No unfinished job found", Qt::CaseInsensitive);
+
+  // executeSSH in System ssh returns false for every exit-255 by construction; including
+  //   an empty queue that can accompanied by a message.
+  // Correctness of our workflow in this case relies on the exact messaging! Currently, IBM's
+  //   documentation states it as "No unfinished job found".
+  return exitCode == 255 && output.contains("No unfinished job found", Qt::CaseInsensitive);
 }
 }
 

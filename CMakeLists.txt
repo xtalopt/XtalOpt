@@ -3,7 +3,7 @@ project(XtalOpt)
 
 set(XtalOpt_VERSION_MAJOR 15)
 set(XtalOpt_VERSION_MINOR 0)
-set(XtalOpt_VERSION_PATCH 0.rc7)
+set(XtalOpt_VERSION_PATCH 0.rc8)
 
 # Version definitions
 set(XtalOpt_VERSION "${XtalOpt_VERSION_MAJOR}.${XtalOpt_VERSION_MINOR}")
@@ -129,7 +129,13 @@ endif(BUILD_INDEPENDENT_PACKAGE)
 if(ENABLE_LIBSSH)
   message(STATUS "Using libssh + system ssh/scp SSH interfaces")
   list(APPEND XTALOPT_COMPILE_DEFINITIONS ENABLE_LIBSSH)
-  set(LibSSH_MIN_VERSION "0.6.0")
+  # Older libssh needs the pthreads backend for thread safety; Windows
+  #   builds lack it, so they require a libssh that handles this itself.
+  if(WIN32)
+    set(LibSSH_MIN_VERSION "0.8.0")
+  else()
+    set(LibSSH_MIN_VERSION "0.6.0")
+  endif()
   find_package(LibSSH ${LibSSH_MIN_VERSION} REQUIRED)
   # src/search now sets the libssh include directory.
   list(APPEND XTALOPT_COMPILE_DEFINITIONS SSH_VER="${LibSSH_VERSION}+system")

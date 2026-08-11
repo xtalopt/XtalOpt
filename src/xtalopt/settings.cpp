@@ -224,9 +224,9 @@ const QList<Row>& rows()
     t << scalar("xtalcompToleranceAngle", "2.0", false, true, &XtalOpt::getTolXcAngle, &XtalOpt::setTolXcAngle);
     t << scalar("spglibTolerance", nullptr, false, true, &XtalOpt::getTolSpg, &XtalOpt::setTolSpg);
     t << scalar("rdfTolerance", "0.98", false, true, &XtalOpt::getTolRdf, &XtalOpt::setTolRdf);
-    t << scalar("rdfCutoff", "6.0", false, false, &XtalOpt::getTolRdfCutoff, &XtalOpt::setTolRdfCutoff);
-    t << scalar("rdfNumBins", "3000", false, false, &XtalOpt::getTolRdfNbins, &XtalOpt::setTolRdfNbins);
-    t << scalar("rdfSigma", "0.008", false, false, &XtalOpt::getTolRdfSigma, &XtalOpt::setTolRdfSigma);
+    t << scalar("rdfCutoff", "6.0", false, true, &XtalOpt::getTolRdfCutoff, &XtalOpt::setTolRdfCutoff);
+    t << scalar("rdfNumBins", "3000", false, true, &XtalOpt::getTolRdfNbins, &XtalOpt::setTolRdfNbins);
+    t << scalar("rdfSigma", "0.008", false, true, &XtalOpt::getTolRdfSigma, &XtalOpt::setTolRdfSigma);
 
     //  Output
     t << scalar("verboseOutput", "false", false, true, &XtalOpt::isVerbose, &XtalOpt::setVerbose);

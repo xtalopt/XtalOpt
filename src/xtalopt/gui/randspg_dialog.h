@@ -55,6 +55,7 @@ public:
   virtual ~RandSpgDialog() override;
   void setTableEntry(uint row, const Spg_Table_Entry& e);
   bool isCompositionSame(XtalOpt* p);
+  void updateSpinBoxes();
 
 public slots:
   void incrementAll();

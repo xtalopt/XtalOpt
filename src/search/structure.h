@@ -46,6 +46,9 @@ class Structure : public QObject, public Atoms::Geometry
 
 public:
   Structure(QObject* parent = nullptr);
+  // NOTE: These functions copy all search information, including the structure
+  //   identity, job information, paths, and status. A copy must not be added as
+  //   a new search structure without being initialized with new search information.
   // Copies start parentless; see structure.cpp for the double-delete reason.
   Structure(const Structure& other);
   Structure(Structure&& other) noexcept;
@@ -424,6 +427,12 @@ public:
    * @sa setCurrentOptStep
    */
   uint getCurrentOptStep() const { return m_currentOptStep; };
+
+  /** @return The optimization step requested for a pending restart, or -1
+   *  when the current step should be restarted.
+   * @sa setRestartOptStep
+   */
+  int getRestartOptStep() const { return m_restartOptStep; };
 
   /** @return The number of times this Structure has failed the
    * current optimization step.
@@ -823,6 +832,8 @@ public slots:
   {
     if (status != Optimized)
       m_simString.clear();
+    if (status != Restart)
+      m_restartOptStep = -1;
     m_status = status;
   };
 
@@ -830,6 +841,12 @@ public slots:
    * @sa getCurrentOptStep
    */
   void setCurrentOptStep(uint i) { m_currentOptStep = i; };
+
+  /** @param i The optimization step requested for a pending restart, or -1
+   *  to restart the current step.
+   * @sa getRestartOptStep
+   */
+  void setRestartOptStep(int i) { m_restartOptStep = i; };
 
   /** @param count The number of times this Structure has failed the
    * current optimization step.
@@ -958,7 +975,7 @@ protected:
   uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount,
     m_fixCount;
   QString m_parents, m_simString, m_rempath, m_locpath;
-  int m_paretoFrontIndex;
+  int m_paretoFrontIndex, m_restartOptStep;
   std::atomic<State> m_status;
   QDateTime m_optStart, m_optEnd;
   std::atomic<int> m_index;

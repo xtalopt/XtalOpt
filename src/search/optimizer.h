@@ -89,7 +89,7 @@ public:
   /**
    * Constructor
    *
-   * @param parent SearchBase parent
+   * @param parent The search this optimizer belongs to
    */
   explicit Optimizer(SearchBase* parent);
 
