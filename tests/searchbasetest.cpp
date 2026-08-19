@@ -492,11 +492,13 @@ void SearchBaseTest::interpretKeyword()
   m_opt->setUser4(USER4);
 
   Structure* s = new Structure;
+
   for (int i = 0; i < NUMATOMS; ++i) {
     Atoms::Atom& a = s->addAtom();
     a.setAtomicNumber((i % NUMSPECIES) + 1);
     a.setPos(Common::Vector3(i, i, i));
   }
+
   s->setLocpath(FILENAME);
   s->setRempath(REMPATH);
   s->setGeneration(GENERATION);
@@ -973,13 +975,16 @@ void SearchBaseTest::queueManagerRunsSubmissionToOptimizedLifecycle()
 
   DummyQueueInterface* queue = qobject_cast<DummyQueueInterface*>(m_opt->queueInterface(0));
   QVERIFY(queue != nullptr);
+
   queue->statuses.clear();
   queue->statuses << QueueInterface::Running << QueueInterface::Success;
 
   static_cast<DummySearchBase*>(m_opt)->markSessionActiveForTest();
+
   TestQueueManager queueManager(m_opt);
   QList<Structure::State> observedStates;
   QMutex observedStatesMutex;
+
   QObject::connect(&queueManager, &QueueManager::structureUpdated,
                    &queueManager,
                    [&observedStates, &observedStatesMutex](Structure* s) {
@@ -1009,6 +1014,7 @@ void SearchBaseTest::queueManagerRunsSubmissionToOptimizedLifecycle()
   structure.setStatus(Structure::Empty);
 
   queueManager.addStructureToSubmissionQueue(&structure);
+
   QTRY_COMPARE(structure.getStatus(), Structure::Optimized);
   QTRY_COMPARE(queueManager.getAllRunningStructures().size(), 0);
 

@@ -75,9 +75,7 @@ bool isHelpInvocation(int argc, char* argv[])
 {
   for (int i = 1; i < argc; ++i) {
     const QString arg = QString::fromLocal8Bit(argv[i]);
-    if (arg == "--help" || arg.startsWith("--help="))
-      return true;
-    if (arg.startsWith("-") && !arg.startsWith("--") && arg.contains('h'))
+    if (arg == "--help" || arg.startsWith("--help=") || arg == "-h")
       return true;
   }
   return false;
@@ -266,6 +264,7 @@ bool installLogHandler(const LaunchOptions& options, QString& error)
 
 QString headerString()
 {
+  // clang-format off
   return QString("\n================================================\n")
        + QString("                      XtalOpt")
        + QString("\n Evolutionary Algorithm for Ground State Search\n")
@@ -273,6 +272,7 @@ QString headerString()
        + QString("\n Zurek Group, University at Buffalo")
        + QString("\n================================================\n")
        + QString("\n");
+  // clang-format on
 }
 
 QString buildSummary()
@@ -293,6 +293,7 @@ void printHelp(const QString& argv0)
   const QString appName = QFileInfo(argv0).fileName();
   QString text;
   QTextStream out(&text);
+  // clang-format off
   out << "Build:   " << buildSummary() << "\n\n";
   out << "Usage:   " << appName << " [options]\n\n";
   out << "Options:\n";
@@ -308,6 +309,7 @@ void printHelp(const QString& argv0)
   out << "  -d, --dir <directory>               Directory for resuming search, plotting data, or saving log\n";
   out << "  -i, --input <file>                  Input file for XtalOpt search in CLI (Default: xtalopt.in)\n";
   out << "\n";
+  // clang-format on
   StructureTool::printHelp(out);
   Common::message(text);
 }
@@ -315,6 +317,7 @@ void printHelp(const QString& argv0)
 void printVersion()
 {
   Common::message(QString("XtalOpt %1").arg(XTALOPT_VER));
+  Common::message(QString("\nBuild:   %1").arg(buildSummary()));
 }
 
 bool startCliRun(XtalOpt& xtalopt, const QString& inputfile)

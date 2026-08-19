@@ -92,31 +92,16 @@ bool isMolUnitPossibleForComposition(const Atoms::Geometry& molecule, const Cell
   return true;
 }
 
-bool customMinDistance(const QHash<QPair<int, int>, IAD>& customIADs,
-                       unsigned int atomicNum1, unsigned int atomicNum2, double* minDistance)
-{
-  const QPair<int, int> key(static_cast<int>(atomicNum1), static_cast<int>(atomicNum2));
-  auto it = customIADs.constFind(key);
-  if (it == customIADs.constEnd()) {
-    const QPair<int, int> reverseKey(key.second, key.first);
-    it = customIADs.constFind(reverseKey);
-  }
-
-  if (it == customIADs.constEnd() || it.value().minIAD <= 0.0)
-    return false;
-
-  *minDistance = it.value().minIAD;
-  return true;
-}
-
 bool minDistanceForPolicy(unsigned int atomicNum1, unsigned int atomicNum2,
-                          const EleRadii& radii, const QHash<QPair<int, int>, IAD>& customIADs,
+                          const EleScaledRadii& radii, const PairCustomDistances& customIADs,
                           bool useRadiiIADs, bool useCustomIADs, double* minDistance)
 {
   // Custom IAD mode replaces (not augments) the scaled-radii rule; a missing
   //   custom pair means incomplete input.
-  if (useCustomIADs)
-    return customMinDistance(customIADs, atomicNum1, atomicNum2, minDistance);
+  if (useCustomIADs) {
+    *minDistance = customIADs.getPairDistance(atomicNum1, atomicNum2);
+    return *minDistance != PINF;
+  }
 
   if (useRadiiIADs) {
     *minDistance = radii.getMinRadius(atomicNum1) + radii.getMinRadius(atomicNum2);
@@ -126,8 +111,8 @@ bool minDistanceForPolicy(unsigned int atomicNum1, unsigned int atomicNum2,
   return true;
 }
 
-bool moleculeUnitPlacementScale(const Atoms::Geometry& molecule, const EleRadii& radii,
-                                const QHash<QPair<int, int>, IAD>& customIADs,
+bool moleculeUnitPlacementScale(const Atoms::Geometry& molecule, const EleScaledRadii& radii,
+                                const PairCustomDistances& customIADs,
                                 bool useRadiiIADs, bool useCustomIADs, double* moleculeScale)
 {
   Q_ASSERT(molecule.is0D());
@@ -180,7 +165,7 @@ bool moleculeUnitPlacementScale(const Atoms::Geometry& molecule, const EleRadii&
 }
 
 bool positionsRespectIADs(const Xtal& xtal, const std::vector<Atoms::Atom>& atoms,
-                          const EleRadii& radii, const QHash<QPair<int, int>, IAD>& customIADs,
+                          const EleScaledRadii& radii, const PairCustomDistances& customIADs,
                           bool useRadiiIADs, bool useCustomIADs)
 {
   for (size_t i = 0; i < atoms.size(); ++i) {
@@ -289,7 +274,7 @@ bool moleculeUnitsOverlap(const Xtal& xtal, const MoleculeUnitBody& a, const Mol
 }
 
 bool addMoleculeRandomly(Xtal& xtal, const Atoms::Geometry& molecule,
-                         const EleRadii& radii, const QHash<QPair<int, int>, IAD>& customIADs,
+                         const EleScaledRadii& radii, const PairCustomDistances& customIADs,
                          bool useRadiiIADs, bool useCustomIADs,
                          double moleculeScale, int maxAttempts,
                          std::vector<MoleculeUnitBody>& placedUnits)
@@ -407,18 +392,6 @@ QList<uint> sortedResidualAtoms(CellComp composition)
   return atoms;
 }
 
-double maxCustomDistanceForAtom(const QHash<QPair<int, int>, IAD>& customIADs, unsigned int atomicNum)
-{
-  double maxDistance = 0.0;
-  for (auto it = customIADs.constBegin(), itEnd = customIADs.constEnd(); it != itEnd; ++it) {
-    if (it.key().first == static_cast<int>(atomicNum) ||
-        it.key().second == static_cast<int>(atomicNum)) {
-      maxDistance = std::max(maxDistance, it.value().minIAD);
-    }
-  }
-  return maxDistance;
-}
-
 QList<unsigned int> chemicalSystemAtomicNumbers(const QList<CellComp>& compList)
 {
   QList<unsigned int> atomicNums;
@@ -485,8 +458,7 @@ bool XtalOpt::acceptInitialXtal(Xtal* generated)
     Common::message(QString("   generated initial structure: %1")
                     .arg(generated->getParents()));
   }
-  initializeAndAddXtal(generated, 1, generated->getParents());
-  return true;
+  return initializeAndAddXtal(generated, 1, generated->getParents());
 }
 
 void XtalOpt::updateProgressBar(size_t goal, size_t attempted, size_t succeeded)
@@ -596,14 +568,21 @@ bool XtalOpt::generateInitialStructures()
   connect(tracker(), &Tracker::newStructureAdded, x_initWC, &SlottedWaitCondition::wakeAllSlot);
 
   x_initWC->prewaitLock();
-  do {
-    updateProgressValue(tracker()->size(),
+  for (;;) {
+    int initializedStructures = 0;
+    {
+      QReadLocker trackerLocker(tracker()->rwLock());
+      initializedStructures = tracker()->size();
+    }
+    updateProgressValue(initializedStructures,
                         tr("Waiting for structures to initialize (%1 of %2)...")
-                          .arg(tracker()->size())
+                          .arg(initializedStructures)
                           .arg(newXtalCount));
+    if (initializedStructures >= static_cast<int>(newXtalCount))
+      break;
     // Do not wait here forever. A final signal can arrive before the wait.
     x_initWC->wait(INIT_WAIT_TIMEOUT);
-  } while (tracker()->size() < static_cast<int>(newXtalCount));
+  }
   x_initWC->postwaitUnlock();
 
   // We're done with x_initWC.
@@ -794,10 +773,29 @@ Xtal* XtalOpt::randSpgXtal(uint generation, uint id, CellComp incomp,
   options.alphaMax = getAlphaMax();
   options.betaMax = getBetaMax();
   options.gammaMax = getGammaMax();
-  // RandSpg takes scalar radii only; in custom-IAD mode these are just a first
-  //   guess and checkXtal() applies the full custom table.
-  options.minRadius = getMinRadius();
-  options.iadScalingFactor = getScaleFactor();
+  if (getUsingCustomIAD()) {
+    // RandSpg needs one radius per element; the full custom table is checked later.
+    options.minRadius = 0.0;
+    options.iadScalingFactor = 0.0;
+    const QList<uint> atomicNums = incomp.getCompositionAtomicNumbers();
+    for (const auto& atomicNum : atomicNums) {
+      double minDistance = PINF;
+      for (const auto& otherAtomicNum : atomicNums) {
+        const double distance =
+          pairCustomDistances().getPairDistance(atomicNum, otherAtomicNum);
+        if (distance == PINF)
+          return nullptr;
+        minDistance = std::min(minDistance, distance);
+      }
+      options.atomicRadii[atomicNum] = 0.5 * minDistance;
+    }
+  } else if (getUsingScaledIAD()) {
+    options.minRadius = getMinRadius();
+    options.iadScalingFactor = getScaleFactor();
+  } else {
+    options.minRadius = 0.0;
+    options.iadScalingFactor = 0.0;
+  }
   getCompositionVolumeLimits(incomp, options.minVolume, options.maxVolume);
   options.maxAttempts = 10;
   options.verbosity = 'n';
@@ -931,7 +929,7 @@ Xtal* XtalOpt::generateRandomMolUnitXtal(uint generation, uint id, CellComp inco
   for (int i = 0; i < selectedMoleculeLabels.size(); ++i) {
     const Atoms::Geometry* molecule = selectedMolecules.at(i);
     double moleculeScale = 1.0;
-    if (!moleculeUnitPlacementScale(*molecule, eleMinRadii(), interComp(), getUsingScaledIAD(),
+    if (!moleculeUnitPlacementScale(*molecule, eleScaledRadii(), pairCustomDistances(), getUsingScaledIAD(),
                                     getUsingCustomIAD(), &moleculeScale)) {
       locker.unlock();
       delete xtal;
@@ -940,7 +938,7 @@ Xtal* XtalOpt::generateRandomMolUnitXtal(uint generation, uint id, CellComp inco
       return nullptr;
     }
 
-    if (addMoleculeRandomly(*xtal, *molecule, eleMinRadii(), interComp(),
+    if (addMoleculeRandomly(*xtal, *molecule, eleScaledRadii(), pairCustomDistances(),
                             getUsingScaledIAD(), getUsingCustomIAD(), moleculeScale, 1000,
                             placedUnits)) {
       placedMoleculeLabels.append(selectedMoleculeLabels.at(i));
@@ -974,20 +972,24 @@ Xtal* XtalOpt::generateRandomMolUnitXtal(uint generation, uint id, CellComp inco
   if (getUsingCustomIAD()) {
     std::stable_sort(atoms.begin(), atoms.end(),
                      [this](uint lhs, uint rhs) {
-                       return maxCustomDistanceForAtom(interComp(), lhs) >
-                              maxCustomDistanceForAtom(interComp(), rhs);
+                       return pairCustomDistances().getMaxDistanceForAtom(lhs) >
+                              pairCustomDistances().getMaxDistanceForAtom(rhs);
                      });
-  } else {
+  } else if (getUsingScaledIAD()) {
     std::stable_sort(atoms.begin(), atoms.end(),
                      [this](uint lhs, uint rhs) {
-                       return eleMinRadii().getMinRadius(lhs) >
-                              eleMinRadii().getMinRadius(rhs);
+                       return eleScaledRadii().getMinRadius(lhs) >
+                              eleScaledRadii().getMinRadius(rhs);
                      });
   }
   for (const auto& atomicNum : atoms) {
-    const bool ok = getUsingCustomIAD()
-                      ? xtal->addAtomRandomlyIAD(atomicNum, interComp(), 1000)
-                      : xtal->addAtomRandomly(atomicNum, eleMinRadii(), 1000);
+    bool ok = false;
+    if (getUsingCustomIAD())
+      ok = xtal->addAtomRandomlyCustomIAD(atomicNum, pairCustomDistances(), 1000);
+    else if (getUsingScaledIAD())
+      ok = xtal->addAtomRandomlyScaledIAD(atomicNum, eleScaledRadii(), 1000);
+    else
+      ok = xtal->addAtomRandomly(atomicNum, -1.0, 1000);
     if (!ok) {
       locker.unlock();
       delete xtal;
@@ -1017,16 +1019,14 @@ Xtal* XtalOpt::generateRandomMolUnitXtal(uint generation, uint id, CellComp inco
 Xtal* XtalOpt::generateEmptyXtalWithLattice(CellComp incomp)
 {
   Xtal* xtal = nullptr;
-  int attemptCount = 1;
-  do {
-    // This is just to let the user know in case we are stuck here
-    //   without flooding the output!
-    if ((attemptCount % 100000) == 0) {
-      Common::message(QString("%1: attempts %2").arg(__func__).arg(attemptCount));
-    }
+
+  // There might be cases that lattice angles will not produce
+  //   a proper cell; so we limit the number of attempts here
+  //   to avoid infinite loops.
+  const int maxAttempts = 100000;
+  int attemptCount = 0;
+  while (attemptCount < maxAttempts) {
     ++attemptCount;
-    delete xtal;
-    xtal = nullptr;
     double a = Common::getRandDouble() * (getAMax() - getAMin()) + getAMin();
     double b = Common::getRandDouble() * (getBMax() - getBMin()) + getBMin();
     double c = Common::getRandDouble() * (getCMax() - getCMin()) + getCMin();
@@ -1034,9 +1034,20 @@ Xtal* XtalOpt::generateEmptyXtalWithLattice(CellComp incomp)
     double beta = Common::getRandDouble() * (getBetaMax() - getBetaMin()) + getBetaMin();
     double gamma = Common::getRandDouble() * (getGammaMax() - getGammaMin()) + getGammaMin();
     xtal = new Xtal(a, b, c, alpha, beta, gamma);
-  } while (!checkLattice(xtal));
+    if (checkLattice(xtal))
+      break;
+    delete xtal;
+    xtal = nullptr;
+  }
 
-  // Set the volume
+  if (!xtal) {
+    Common::debug(QString("%1: %2 attempts failed to generate empty cell for composition %3")
+                  .arg(__func__).arg(attemptCount).arg(incomp.getFormula()));
+    return nullptr;
+  }
+
+  // checkLattice won't set volume for an empty lattice; so we
+  //   set it here.
   double minvol, maxvol;
   getCompositionVolumeLimits(incomp, minvol, maxvol);
   xtal->setVolume(Common::getRandDouble(minvol, maxvol));
@@ -1072,12 +1083,12 @@ Xtal* XtalOpt::generateRandomAtomicXtal(uint generation, uint id, CellComp incom
 
   // Parameters with nearly equal bounds are fixed; free cells are normalized
   //   before acceptance.
-  const bool aFixed = Common::fuzzyCompare(getAMin(), getAMax(), 0.01);
-  const bool bFixed = Common::fuzzyCompare(getBMin(), getBMax(), 0.01);
-  const bool cFixed = Common::fuzzyCompare(getCMin(), getCMax(), 0.01);
-  const bool alphaFixed = Common::fuzzyCompare(getAlphaMin(), getAlphaMax(), 0.01);
-  const bool betaFixed = Common::fuzzyCompare(getBetaMin(), getBetaMax(), 0.01);
-  const bool gammaFixed = Common::fuzzyCompare(getGammaMin(), getGammaMax(), 0.01);
+  const bool aFixed = Common::eq(getAMin(), getAMax(), LATT_LEN_COMP_TOL);
+  const bool bFixed = Common::eq(getBMin(), getBMax(), LATT_LEN_COMP_TOL);
+  const bool cFixed = Common::eq(getCMin(), getCMax(), LATT_LEN_COMP_TOL);
+  const bool alphaFixed = Common::eq(getAlphaMin(), getAlphaMax(), LATT_ANG_COMP_TOL);
+  const bool betaFixed = Common::eq(getBetaMin(), getBetaMax(), LATT_ANG_COMP_TOL);
+  const bool gammaFixed = Common::eq(getGammaMin(), getGammaMax(), LATT_ANG_COMP_TOL);
   if (aFixed)
     options.aMax = options.aMin;
   if (bFixed)
@@ -1096,16 +1107,18 @@ Xtal* XtalOpt::generateRandomAtomicXtal(uint generation, uint id, CellComp incom
     // In custom mode the custom table is the only distance check.
     std::stable_sort(options.atomicNumbers.begin(), options.atomicNumbers.end(),
                      [this](unsigned int lhs, unsigned int rhs) {
-      return maxCustomDistanceForAtom(interComp(), lhs) >
-             maxCustomDistanceForAtom(interComp(), rhs);
+      return pairCustomDistances().getMaxDistanceForAtom(lhs) >
+             pairCustomDistances().getMaxDistanceForAtom(rhs);
     });
-    for (auto it = interComp().constBegin(), itEnd = interComp().constEnd(); it != itEnd; ++it) {
-      options.pairMinDistances[std::make_pair(static_cast<unsigned int>(it.key().first),
-        static_cast<unsigned int>(it.key().second))] = it.value().minIAD;
+    for (const auto& pair : pairCustomDistances().getPairs()) {
+      const double distance = pairCustomDistances().getPairDistance(pair.first, pair.second);
+      options.pairMinDistances[std::make_pair(pair.first, pair.second)] = distance;
+      if (pair.first != pair.second)
+        options.pairMinDistances[std::make_pair(pair.second, pair.first)] = distance;
     }
-  } else {
-    for (const auto& atomicNumber : eleMinRadii().getRadiusAtomicNumbers())
-      options.atomicRadii[atomicNumber] = eleMinRadii().getMinRadius(atomicNumber);
+  } else if (getUsingScaledIAD()) {
+    for (const auto& atomicNumber : eleScaledRadii().getRadiiAtomicNumbers())
+      options.atomicRadii[atomicNumber] = eleScaledRadii().getMinRadius(atomicNumber);
   }
 
   std::unique_ptr<Atoms::Geometry> generated = Atoms::Generators::generateRandom(options);
@@ -1156,6 +1169,9 @@ Xtal* XtalOpt::generateEvolvedXtal(Xtal* preselectedXtal)
   // Perform operation until xtal is valid:
   int maxAttempts = 10000;
   int totalAttempts = 0;
+
+  // Inner loop already does a check on xtal; this one is currently
+  //   a defensive second check!
   while (!checkXtal(xtal)) {
     // First delete any previous failed structure in xtal
     if (xtal) {
@@ -1231,8 +1247,7 @@ Xtal* XtalOpt::generateEvolvedXtal(Xtal* preselectedXtal)
         case OP_Crossover: {
           Xtal *xtal1 = nullptr, *xtal2 = nullptr;
           // Select structures
-          double percent1;
-          double percent2;
+          double percent1 = 0.0, percent2 = 0.0;
 
           xtal1 = selectedXtal;
           xtal2 = selectXtalFromProbabilityList();
@@ -1245,11 +1260,13 @@ Xtal* XtalOpt::generateEvolvedXtal(Xtal* preselectedXtal)
           }
 
           // Perform operation
-          xtal = XtalOptGenetic::crossover(xtal1, xtal2, this->compList(), this->eleMinRadii(),
-                                           getCrossNcuts(), getCrossMinimumContribution(),
+          const uint crossoverCuts = getCrossNcuts();
+          xtal = XtalOptGenetic::crossover(xtal1, xtal2, this->compList(), this->eleScaledRadii(),
+                                           crossoverCuts, getCrossMinimumContribution(),
                                            percent1, percent2,
                                            getMinAtoms(), getMaxAtoms(), getVcSearch(), isVerbose(),
-                                           getUsingCustomIAD(), &this->interComp());
+                                           getUsingScaledIAD(), getUsingCustomIAD(),
+                                           &this->pairCustomDistances());
 
           // Lock parents and get info from them
           uint gen1, gen2, id1, id2;
@@ -1276,13 +1293,14 @@ Xtal* XtalOpt::generateEvolvedXtal(Xtal* preselectedXtal)
           // Determine generation number
           gen = (gen1 >= gen2) ? gen1 + 1 : gen2 + 1;
 
-          parents = QString("Crossover: %1x%2 (%3%) + %4x%5 (%6%)")
+          parents = QString("Crossover: %1x%2 (%3%) + %4x%5 (%6%) cuts=%7")
                       .arg(gen1)
                       .arg(id1)
                       .arg(percent1, 0, 'f', 0)
                       .arg(gen2)
                       .arg(id2)
-                      .arg(percent2, 0, 'f', 0);
+                      .arg(percent2, 0, 'f', 0)
+                      .arg(crossoverCuts);
           continue;
         }
         case OP_Stripple: {
@@ -1342,9 +1360,10 @@ Xtal* XtalOpt::generateEvolvedXtal(Xtal* preselectedXtal)
           continue;
         }
         case OP_Permutomic: {
-          xtal = XtalOptGenetic::permutomic(selectedXtal, this->compList()[0], this->eleMinRadii(),
+          xtal = XtalOptGenetic::permutomic(selectedXtal, this->compList()[0], this->eleScaledRadii(),
                                             getMinAtoms(), getMaxAtoms(), isVerbose(),
-                                            getUsingCustomIAD(), &this->interComp());
+                                            getUsingScaledIAD(), getUsingCustomIAD(),
+                                            &this->pairCustomDistances());
           if (!xtal)
             continue;
 
@@ -1370,9 +1389,10 @@ Xtal* XtalOpt::generateEvolvedXtal(Xtal* preselectedXtal)
           continue;
         }
         case OP_Permucomp: {
-          xtal = XtalOptGenetic::permucomp(selectedXtal, this->compList()[0], this->eleMinRadii(),
+          xtal = XtalOptGenetic::permucomp(selectedXtal, this->compList()[0], this->eleScaledRadii(),
                                            getMinAtoms(), getMaxAtoms(), isVerbose(),
-                                           getUsingCustomIAD(), &this->interComp());
+                                           getUsingScaledIAD(), getUsingCustomIAD(),
+                                           &this->pairCustomDistances());
           if (!xtal)
             continue;
 
@@ -1683,9 +1703,14 @@ Xtal* XtalOpt::generateSuperCell(Xtal* inXtal, uint expansion, bool distort)
     int atomicNumber = atom.atomicNumber();
     // try to distort it's position
     if (getUsingCustomIAD()) {
-      xtal->moveAtomRandomlyIAD(atomicNumber, this->interComp(), 1000, &atom);
+      xtal->moveAtomRandomlyCustomIAD(atomicNumber, this->pairCustomDistances(), 1000, &atom);
+    } else if (getUsingScaledIAD()) {
+      xtal->moveAtomRandomlyScaledIAD(atomicNumber, this->eleScaledRadii(), 1000, &atom);
     } else {
-      xtal->moveAtomRandomly(atomicNumber, this->eleMinRadii(), 1000, &atom);
+      atom.setPos(xtal->fracToCart(Common::Vector3(Common::getRandDouble(),
+                                                   Common::getRandDouble(),
+                                                   Common::getRandDouble())));
+      xtal->notifyGeometryChanged();
     }
   }
 
@@ -1699,10 +1724,10 @@ Xtal* XtalOpt::generateSuperCell(Xtal* inXtal, uint expansion, bool distort)
   return xtal;
 }
 
-void XtalOpt::initializeAndAddXtal(Xtal* xtal, uint generation, const QString& parents)
+bool XtalOpt::initializeAndAddXtal(Xtal* xtal, uint generation, const QString& parents)
 {
   if (!xtal)
-    return;
+    return false;
 
   {
     QtCompat::MutexLocker initLock(x_xtalInitMutex.get());
@@ -1710,15 +1735,19 @@ void XtalOpt::initializeAndAddXtal(Xtal* xtal, uint generation, const QString& p
 
     // If none of the cell parameters are fixed, perform a normalization
     //   on the lattice (currently a Niggli reduction)
-    if (Common::neq(getAMin(), getAMax(), 0.01) && Common::neq(getBMin(), getBMax(), 0.01) &&
-        Common::neq(getCMin(), getCMax(), 0.01) && Common::neq(getAlphaMin(), getAlphaMax(), 0.01) &&
-        Common::neq(getBetaMin(), getBetaMax(), 0.01) && Common::neq(getGammaMin(), getGammaMax(), 0.01)) {
+    if (Common::neq(getAMin(), getAMax(), LATT_LEN_COMP_TOL) &&
+        Common::neq(getBMin(), getBMax(), LATT_LEN_COMP_TOL) &&
+        Common::neq(getCMin(), getCMax(), LATT_LEN_COMP_TOL) &&
+        Common::neq(getAlphaMin(), getAlphaMax(), LATT_ANG_COMP_TOL) &&
+        Common::neq(getBetaMin(), getBetaMax(), LATT_ANG_COMP_TOL) &&
+        Common::neq(getGammaMin(), getGammaMax(), LATT_ANG_COMP_TOL)) {
+      // A cell that can't be reduced is kept as it is; fixAngles reports it.
       xtal->fixAngles();
     }
     xtal->findSpaceGroup(getTolSpg());
   }
 
-  queue()->addNewStructure(xtal, generation, parents);
+  return queue()->addNewStructure(xtal, generation, parents);
 }
 
 bool XtalOpt::addSeed(const QString& filename)
@@ -1738,7 +1767,7 @@ bool XtalOpt::addSeed(const QString& filename)
 
   // For seed structures, we call check composition with "isSeed = true"
   //   where we perform a basic check and increase max atoms if needed.
-  const bool seedLoaded = Atoms::Formats::read(xtal, filename) ||
+  const bool seedLoaded = Atoms::Formats::read(*xtal, filename) ||
     optimizer(0)->read(xtal, filename);
   if (!seedLoaded || !this->checkComposition(xtal, true)) {
     Common::error(tr("Could not load seed %1\n\n").arg(filename));
@@ -1756,7 +1785,8 @@ bool XtalOpt::addSeed(const QString& filename)
   }
 
   QString parents = QString("Seeded: %1").arg(filename);
-  initializeAndAddXtal(xtal, 1, parents);
+  if (!initializeAndAddXtal(xtal, 1, parents))
+    return false;
   Common::message(QString("   generated initial structure: seed from: %1")
                   .arg(filename));
   return true;
@@ -1881,11 +1911,14 @@ Structure* XtalOpt::replaceWithOffspring(Structure* s, const QString& reason)
     oldXtal->resetFailCount();
     oldXtal->setPV(0);
     oldXtal->setCurrentOptStep(0);
-    if (!reason.isEmpty()) {
-      QString parents = xtal->getParents();
-      parents += " (" + reason + ")";
-      oldXtal->setParents(parents);
+    QString parents = xtal->getParents();
+    if (parents.isEmpty()) {
+      parents = QString("Offspring generated replacement (comp=%1)")
+                  .arg(origComp.getFormula());
     }
+    if (!reason.isEmpty())
+      parents += " (" + reason + ")";
+    oldXtal->setParents(parents);
 
     oldXtal->setParentStructure(xtal->getParentStructure());
 
@@ -1923,12 +1956,15 @@ bool XtalOpt::checkXtal(Xtal* xtal)
   if (!checkComposition(xtal))
     return false;
 
-  // Sometimes, all the atom positions are set to 'nan' for an unknown reason
-  // Make sure that the position of the first atom is not nan
-  if (GS_IS_NAN_OR_INF(xtal->atoms().at(0).pos().x())) {
-    Common::debug(QString("Discarding structure %1: contains 'nan' atom positions")
-            .arg(xtal->getTag()));
-    return false;
+  // Sometimes atom positions come back non-finite for an unknown reason
+  for (size_t i = 0; i < xtal->numAtoms(); ++i) {
+    const Common::Vector3& pos = xtal->atom(i).pos();
+    if (GS_IS_NAN_OR_INF(pos.x()) || GS_IS_NAN_OR_INF(pos.y()) ||
+        GS_IS_NAN_OR_INF(pos.z())) {
+      Common::debug(QString("Discarding structure %1: contains non-finite atom positions")
+                      .arg(xtal->getTag()));
+      return false;
+    }
   }
 
   // Never accept the structure if two atoms are basically on top of one
@@ -1948,11 +1984,11 @@ bool XtalOpt::checkXtal(Xtal* xtal)
   if (getUsingScaledIAD()) {
     int atom1, atom2;
     double IAD;
-    if (!xtal->checkInteratomicDistances(this->eleMinRadii(), &atom1, &atom2, &IAD)) {
+    if (!xtal->checkInterAtomicDistancesScaled(this->eleScaledRadii(), &atom1, &atom2, &IAD)) {
       Atoms::Atom& a1 = xtal->atom(atom1);
       Atoms::Atom& a2 = xtal->atom(atom2);
-      const double minIAD = this->eleMinRadii().getMinRadius(a1.atomicNumber()) +
-                            this->eleMinRadii().getMinRadius(a2.atomicNumber());
+      const double minIAD = this->eleScaledRadii().getMinRadius(a1.atomicNumber()) +
+                            this->eleScaledRadii().getMinRadius(a2.atomicNumber());
 
       Common::debug(QString("Discarding structure %1: bad IAD (%2 < %3)")
               .arg(xtal->getTag())
@@ -1963,11 +1999,11 @@ bool XtalOpt::checkXtal(Xtal* xtal)
   } else if (getUsingCustomIAD()) {
     int atom1, atom2;
     double IAD;
-    if (!xtal->checkMinIAD(this->interComp(), &atom1, &atom2, &IAD)) {
+    if (!xtal->checkInterAtomicDistancesCustom(this->pairCustomDistances(), &atom1, &atom2, &IAD)) {
       Atoms::Atom& a1 = xtal->atom(atom1);
       Atoms::Atom& a2 = xtal->atom(atom2);
-      double minIAD = 0.0;
-      customMinDistance(interComp(), a1.atomicNumber(), a2.atomicNumber(), &minIAD);
+      const double minIAD =
+        pairCustomDistances().getPairDistance(a1.atomicNumber(), a2.atomicNumber());
       Common::debug(QString("Discarding structure %1: bad custom IAD (%2 < %3)")
               .arg(xtal->getTag())
               .arg(IAD)
@@ -1982,6 +2018,8 @@ bool XtalOpt::checkXtal(Xtal* xtal)
 
 bool XtalOpt::checkLattice(Xtal* xtal)
 {
+  double minvol = -1.0;
+  double maxvol = -1.0;
   if (xtal->numAtoms() > 0) {
     // Start with volume check, which is done only for non-empty xtals.
     //   Empty lattices have their volume adjusted separately.
@@ -1990,22 +2028,20 @@ bool XtalOpt::checkLattice(Xtal* xtal)
     double org_vol = xtal->getVolume();
 
     // First, find volume limits for the structure
-    double minvol, maxvol;
     getCompositionVolumeLimits(xtalComp, minvol, maxvol);
 
     // Check volume
-    if (xtal->getVolume() < minvol || // PSA
-        xtal->getVolume() > maxvol) { // PSA
-      double newvol = Common::getRandDouble(minvol, maxvol);
+    if (org_vol < minvol || org_vol > maxvol) { // PSA
+      double adjvol = Common::getRandDouble(minvol, maxvol);
       // If the user has set vol_min to 0, we can end up with a null
       // volume. Fix this here. This is just to keep things stable
       // numerically during the rescaling -- it's unlikely that other
       // cells with small, nonzero volumes will pass the other checks
       // so long as other limits are reasonable.
-      if (fabs(newvol) < 1.0) {
-        newvol = (maxvol - minvol) * 0.5 + minvol; // PSA;
+      if (fabs(adjvol) < 1.0) {
+        adjvol = (maxvol - minvol) * 0.5 + minvol; // PSA;
       }
-      xtal->setVolume(newvol);
+      xtal->setVolume(adjvol);
     }
 
     if (isVerbose()) {
@@ -2021,43 +2057,22 @@ bool XtalOpt::checkLattice(Xtal* xtal)
   // Scale to any fixed parameters
   double a, b, c, alpha, beta, gamma;
   a = b = c = alpha = beta = gamma = 0;
-  if (Common::fuzzyCompare(getAMin(), getAMax(), 0.01))
+  if (Common::eq(getAMin(), getAMax(), LATT_LEN_COMP_TOL))
     a = getAMin();
-  if (Common::fuzzyCompare(getBMin(), getBMax(), 0.01))
+  if (Common::eq(getBMin(), getBMax(), LATT_LEN_COMP_TOL))
     b = getBMin();
-  if (Common::fuzzyCompare(getCMin(), getCMax(), 0.01))
+  if (Common::eq(getCMin(), getCMax(), LATT_LEN_COMP_TOL))
     c = getCMin();
-  if (Common::fuzzyCompare(getAlphaMin(), getAlphaMax(), 0.01))
+  if (Common::eq(getAlphaMin(), getAlphaMax(), LATT_ANG_COMP_TOL))
     alpha = getAlphaMin();
-  if (Common::fuzzyCompare(getBetaMin(), getBetaMax(), 0.01))
+  if (Common::eq(getBetaMin(), getBetaMax(), LATT_ANG_COMP_TOL))
     beta = getBetaMin();
-  if (Common::fuzzyCompare(getGammaMin(), getGammaMax(), 0.01))
+  if (Common::eq(getGammaMin(), getGammaMax(), LATT_ANG_COMP_TOL))
     gamma = getGammaMin();
   xtal->rescaleCell(a, b, c, alpha, beta, gamma);
 
-  // Reject the structure if using VASP and the determinant of the
-  // cell matrix is negative (otherwise VASP complains about a
-  // "negative triple product")
-  if (xtal->unitCell().cellMatrix().determinant() <= 0.0) {
-    QString out0 =
-       QString("Discarding structure %1: determinant of unit cell negative or zero")
-       .arg(xtal->getTag());
-    if (isVerbose()) {
-      out0 += QString("\n");
-      for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++)
-          out0 += QString("   %1 ")
-                      .arg(xtal->unitCell().cellMatrix()(i,j),12,'f',6);
-        out0 += QString("\n");
-      }
-    }
-    Common::debug(out0);
-
-    return false;
-  }
-
-  // Before fixing angles, make sure that the current cell
-  // parameters are realistic
+  // Make sure that the current cell parameters are realistic. This is
+  // needed here to guard the possible call to fixAngles (hence niggliReduce).
   if (GS_IS_NAN_OR_INF(xtal->getA()) || fabs(xtal->getA()) < ZERO08 ||
       GS_IS_NAN_OR_INF(xtal->getB()) || fabs(xtal->getB()) < ZERO08 ||
       GS_IS_NAN_OR_INF(xtal->getC()) || fabs(xtal->getC()) < ZERO08 ||
@@ -2071,7 +2086,8 @@ bool XtalOpt::checkLattice(Xtal* xtal)
   }
 
   // If no cell parameters are fixed, normalize lattice
-  if (fabs(a + b + c + alpha + beta + gamma) < ZERO08) {
+  if (a == 0.0 && b == 0.0 && c == 0.0 &&
+      alpha == 0.0 && beta == 0.0 && gamma == 0.0) {
     // If one length is 25x shorter than another, it can sometimes
     // cause the spglib to crash in this function
     // If one is 25x shorter than another, discard it
@@ -2108,16 +2124,26 @@ bool XtalOpt::checkLattice(Xtal* xtal)
       return false;
     }
 
-    xtal->fixAngles();
+    // Fix the angles
+    if (!xtal->fixAngles())
+      return false;
   }
 
-  // Check lattice
-  if ((!a && (xtal->getA() < getAMin() || xtal->getA() > getAMax())) ||
-      (!b && (xtal->getB() < getBMin() || xtal->getB() > getBMax())) ||
-      (!c && (xtal->getC() < getCMin() || xtal->getC() > getCMax())) ||
-      (!alpha && (xtal->getAlpha() < getAlphaMin() || xtal->getAlpha() > getAlphaMax())) ||
-      (!beta  && (xtal->getBeta() < getBetaMin() || xtal->getBeta() > getBetaMax())) ||
-      (!gamma && (xtal->getGamma() < getGammaMin() || xtal->getGamma() > getGammaMax()))) {
+  // Final lattice "sanity" checks
+
+  // Check lattice limits
+  if ((a == 0.0 && (Common::lt(xtal->getA(), getAMin(), LATT_LEN_COMP_TOL) ||
+              Common::gt(xtal->getA(), getAMax(), LATT_LEN_COMP_TOL))) ||
+      (b == 0.0 && (Common::lt(xtal->getB(), getBMin(), LATT_LEN_COMP_TOL) ||
+              Common::gt(xtal->getB(), getBMax(), LATT_LEN_COMP_TOL))) ||
+      (c == 0.0 && (Common::lt(xtal->getC(), getCMin(), LATT_LEN_COMP_TOL) ||
+              Common::gt(xtal->getC(), getCMax(), LATT_LEN_COMP_TOL))) ||
+      (alpha == 0.0 && (Common::lt(xtal->getAlpha(), getAlphaMin(), LATT_ANG_COMP_TOL) ||
+                  Common::gt(xtal->getAlpha(), getAlphaMax(), LATT_ANG_COMP_TOL))) ||
+      (beta == 0.0 && (Common::lt(xtal->getBeta(), getBetaMin(), LATT_ANG_COMP_TOL) ||
+                 Common::gt(xtal->getBeta(), getBetaMax(), LATT_ANG_COMP_TOL))) ||
+      (gamma == 0.0 && (Common::lt(xtal->getGamma(), getGammaMin(), LATT_ANG_COMP_TOL) ||
+                  Common::gt(xtal->getGamma(), getGammaMax(), LATT_ANG_COMP_TOL)))) {
     QString out0 = QString("Discarding structure %1: bad lattice").arg(xtal->getTag());
     if (isVerbose()) {
       out0 += QString("\n       A:    %1  %2  %3\n       B:    %4  %5  %6"
@@ -2131,8 +2157,39 @@ bool XtalOpt::checkLattice(Xtal* xtal)
               .arg(getGammaMin(),12,'f').arg(xtal->getGamma(),12,'f').arg(getGammaMax(),12,'f');
     }
     Common::debug(out0);
-
     return false;
+  }
+
+  // Reject the structure if the determinant of the cell matrix
+  //   is zero, negative or non-finite.
+  const double determinant = xtal->unitCell().cellMatrix().determinant();
+  if (!GS_ISFINITE(determinant) || determinant <= ZERO08) {
+    QString out0 =
+       QString("Discarding structure %1: determinant of unit cell zero, negative, or non-finite")
+       .arg(xtal->getTag());
+    if (isVerbose()) {
+      out0 += QString("\n");
+      for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++)
+          out0 += QString("   %1 ")
+                      .arg(xtal->unitCell().cellMatrix()(i,j),12,'f',6);
+        out0 += QString("\n");
+      }
+    }
+    Common::debug(out0);
+    return false;
+  }
+
+  // For non-empty cells; lastly, double check that volume is in
+  //   the acceptable range.
+  if (xtal->numAtoms() > 0) {
+    double cur_vol = xtal->getVolume();
+    if (Common::lt(cur_vol, minvol, ZERO08) ||
+        Common::gt(cur_vol, maxvol, ZERO08)) {
+      Common::debug(QString("Discarding structure %1: bad final volume (%2, min %3, max %4)")
+            .arg(xtal->getTag()).arg(cur_vol).arg(minvol).arg(maxvol));
+      return false;
+    }
   }
 
   // We made it!
@@ -2278,18 +2335,7 @@ void XtalOpt::adjustAtomCountLimits(int numAtoms)
   }
 }
 
-bool XtalOpt::checkLimits()
-{
-  // Scalar limits, and the rule that scaled and custom IAD can't both be on,
-  //   are already checked in validateSettings(); only the custom IAD table is
-  //   left for us to check here.
-  if (getUsingCustomIAD())
-    return checkCustomIADs();
-
-  return true;
-}
-
-bool XtalOpt::checkCustomIADs(bool reportError) const
+bool XtalOpt::verifyCustomIADValues(bool reportError) const
 {
   const QList<unsigned int> atomicNums = chemicalSystemAtomicNumbers(compList());
   if (atomicNums.isEmpty()) {
@@ -2300,8 +2346,9 @@ bool XtalOpt::checkCustomIADs(bool reportError) const
 
   for (int i = 0; i < atomicNums.size(); ++i) {
     for (int j = i; j < atomicNums.size(); ++j) {
-      double minDistance = 0.0;
-      if (!customMinDistance(interComp(), atomicNums.at(i), atomicNums.at(j), &minDistance)) {
+      const double minDistance =
+        pairCustomDistances().getPairDistance(atomicNums.at(i), atomicNums.at(j));
+      if (minDistance == PINF) {
         if (reportError) {
           const QString label1 = QString::fromStdString(
             Atoms::ElementInfo::getAtomicSymbol(atomicNums.at(i)));
@@ -2327,9 +2374,12 @@ bool XtalOpt::checkStepOptimizedStructure(Structure* s, QString* err)
 
   // Normalize structures read from optimizer output unless a lattice
   //   parameter is fixed.
-  if (Common::neq(getAMin(), getAMax(), 0.01) && Common::neq(getBMin(), getBMax(), 0.01) &&
-      Common::neq(getCMin(), getCMax(), 0.01) && Common::neq(getAlphaMin(), getAlphaMax(), 0.01) &&
-      Common::neq(getBetaMin(), getBetaMax(), 0.01) && Common::neq(getGammaMin(), getGammaMax(), 0.01)) {
+  if (Common::neq(getAMin(), getAMax(), LATT_LEN_COMP_TOL) &&
+      Common::neq(getBMin(), getBMax(), LATT_LEN_COMP_TOL) &&
+      Common::neq(getCMin(), getCMax(), LATT_LEN_COMP_TOL) &&
+      Common::neq(getAlphaMin(), getAlphaMax(), LATT_ANG_COMP_TOL) &&
+      Common::neq(getBetaMin(), getBetaMax(), LATT_ANG_COMP_TOL) &&
+      Common::neq(getGammaMin(), getGammaMax(), LATT_ANG_COMP_TOL)) {
     xtal->fixAngles();
   }
   xtal->findSpaceGroup(getTolSpg());
@@ -2337,129 +2387,52 @@ bool XtalOpt::checkStepOptimizedStructure(Structure* s, QString* err)
   uint fixCount = xtal->getFixCount();
 
   // Check post-opt
-  if (getUsingCheckStepOpt()) {
+  if (getUsingCheckStepOpt() && (getUsingCustomIAD() || getUsingScaledIAD())) {
+    const bool customMode = getUsingCustomIAD();
+    const int maxMoves = 100;
+    int atom1 = -1;
+    int atom2 = -1;
+    double iad = 0.0;
 
-    const QString tooClose = "Two atoms are too close together.";
-
-    if (getUsingCustomIAD()) {
-      int atom1, atom2;
-      double IAD;
-      for (int i = 0; i < 100; ++i) {
-        if (!xtal->checkMinIAD(this->interComp(), &atom1, &atom2, &IAD)) {
-          Atoms::Atom& a1 = xtal->atom(atom1);
-          Atoms::Atom& a2 = xtal->atom(atom2);
-
-          if (fixCount < 10) {
-            int atomicNumber = a2.atomicNumber();
-            Atoms::Atom* atom = &a2;
-            if (xtal->moveAtomRandomlyIAD(atomicNumber, this->interComp(), 1000, atom)) {
-              continue;
-            } else {
-              double minIAD = 0.0;
-              customMinDistance(interComp(), a1.atomicNumber(), atomicNumber, &minIAD);
-
-              Common::debug(QString("Discarding structure %1: bad Custom IAD (%2 < %3) "
-                            "- couldn't fix")
-                      .arg(xtal->getTag())
-                      .arg(IAD)
-                      .arg(minIAD));
-              if (err != nullptr) {
-                *err = tooClose;
-              }
-              return false;
-            }
-          } else {
-            double minIAD = 0.0;
-            customMinDistance(interComp(), a1.atomicNumber(), a2.atomicNumber(), &minIAD);
-
-            Common::debug(QString("Discarding structure %1: bad Custom IAD (%2 < %3) "
-                          "- exceeded the number of fixes")
-                    .arg(xtal->getTag())
-                    .arg(IAD)
-                    .arg(minIAD));
-            if (err != nullptr) {
-              *err = tooClose;
-            }
-            return false;
-          }
-        } else {
-          if (i > 0) {
-            s->setFixCount(fixCount + 1);
-            s->setCurrentOptStep(0);
-          }
-          return true;
+    // One check more than the number of moves, so the last move is validated.
+    for (int moves = 0; ; ++moves) {
+      const bool ok = customMode
+        ? xtal->checkInterAtomicDistancesCustom(pairCustomDistances(), &atom1, &atom2, &iad)
+        : xtal->checkInterAtomicDistancesScaled(eleScaledRadii(), &atom1, &atom2, &iad);
+      if (ok) {
+        // Atoms were moved: redo the optimization with the repaired geometry.
+        if (moves > 0) {
+          s->setFixCount(fixCount + 1);
+          s->setRestartOptStep(0);
         }
-      }
-
-      // The last move may have fixed the final short distance, so check once more before giving up.
-      if (xtal->checkMinIAD(this->interComp(), &atom1, &atom2, &IAD)) {
-        s->setFixCount(fixCount + 1);
-        s->setCurrentOptStep(0);
         return true;
       }
+      if (moves >= maxMoves || fixCount >= 10)
+        break;
 
-      double minIAD = 0.0;
-      customMinDistance(interComp(), xtal->atom(atom1).atomicNumber(),
-                        xtal->atom(atom2).atomicNumber(), &minIAD);
-      Common::debug(QString("Discarding structure %1: bad Custom IAD (%2 < %3) "
-                            "- couldn't fix").arg(xtal->getTag()).arg(IAD).arg(minIAD));
-      if (err != nullptr)
-        *err = tooClose;
-      return false;
+      Atoms::Atom& atom = xtal->atom(atom2);
+      const bool moved = customMode
+        ? xtal->moveAtomRandomlyCustomIAD(atom.atomicNumber(), pairCustomDistances(), 1000, &atom)
+        : xtal->moveAtomRandomlyScaledIAD(atom.atomicNumber(), eleScaledRadii(), 1000, &atom);
+      if (!moved)
+        break;
     }
 
-    if (getUsingScaledIAD()) {
-      int atom1, atom2;
-      double IAD;
-      if (!xtal->checkInteratomicDistances(this->eleMinRadii(), &atom1, &atom2, &IAD)) {
-        Atoms::Atom& a1 = xtal->atom(atom1);
-        Atoms::Atom& a2 = xtal->atom(atom2);
-        const double minIAD = this->eleMinRadii().getMinRadius(a1.atomicNumber()) +
-                              this->eleMinRadii().getMinRadius(a2.atomicNumber());
+    const double minIAD = customMode
+      ? pairCustomDistances().getPairDistance(xtal->atom(atom1).atomicNumber(),
+                                              xtal->atom(atom2).atomicNumber())
+      : eleScaledRadii().getMinRadius(xtal->atom(atom1).atomicNumber()) +
+        eleScaledRadii().getMinRadius(xtal->atom(atom2).atomicNumber());
 
-        Common::debug(QString("Discarding structure %1: bad IAD (%2 < %3)")
-                .arg(xtal->getTag())
-                .arg(IAD)
-                .arg(minIAD));
-        if (err != nullptr) {
-          *err = tooClose;
-        }
-        return false;
-      }
-      return true;
-    }
+    Common::debug(QString("Discarding structure %1: bad IAD (%2 < %3) - couldn't fix")
+                    .arg(xtal->getTag()).arg(iad).arg(minIAD));
+
+    if (err != nullptr)
+      *err = "Two atoms are too close together.";
+    return false;
   }
 
   // If early, don't check structure
-  return true;
-}
-
-bool XtalOpt::checkInternalIADs(const Atoms::Geometry& geometry, const minIADs& iads, bool ignoreBondedAtoms)
-{
-  for (size_t i = 0; i < geometry.numAtoms(); ++i) {
-    for (size_t j = i + 1; j < geometry.numAtoms(); ++j) {
-      if (ignoreBondedAtoms && geometry.areBonded(i, j))
-        continue;
-
-      double iad = iads(geometry.atom(i).atomicNumber(), geometry.atom(j).atomicNumber());
-      if (Common::lt(geometry.distance(geometry.atom(i).pos(), geometry.atom(j).pos()),
-                     iad, ZERO08))
-        return false;
-    }
-  }
-  return true;
-}
-
-bool XtalOpt::checkBetweenGeometriesIADs(const Atoms::Geometry& geometry1,
-                                         const Atoms::Geometry& geometry2, const minIADs& iads)
-{
-  for (const auto& atom1 : geometry1.atoms()) {
-    for (const auto& atom2 : geometry2.atoms()) {
-      double iad = iads(atom1.atomicNumber(), atom2.atomicNumber());
-      if (Common::lt(geometry1.distance(atom1.pos(), atom2.pos()), iad, ZERO08))
-        return false;
-    }
-  }
   return true;
 }
 
@@ -2496,16 +2469,16 @@ std::vector<double> XtalOpt::getReferenceEnergiesVector()
 void XtalOpt::refreshElementMinRadii()
 {
   if (compList().isEmpty()) {
-    eleMinRadii().clearElementRadii();
+    eleScaledRadii().clearMinRadii();
     return;
   }
 
-  eleMinRadii().clearElementRadii();
+  eleScaledRadii().clearMinRadii();
   for (const auto& atomcn : compList()[0].getCompositionAtomicNumbers()) {
     double r = Atoms::ElementInfo::getCovalentRadius(atomcn) * getScaleFactor();
     if (r < getMinRadius())
       r = getMinRadius();
-    eleMinRadii().setElementRadius(atomcn, r);
+    eleScaledRadii().setMinRadius(atomcn, r);
   }
 }
 
@@ -2635,6 +2608,112 @@ void XtalOpt::getCompositionVolumeLimits(CellComp incomp, double& minvol, double
   }
 }
 
+void XtalOpt::warnVolumeLimitConflicts()
+{
+  if (compList().isEmpty())
+    return;
+
+  // If all three cell lengths are fixed, the cell volume can never be larger
+  //   than a*b*c (a value which needs all three angles to be 90 degrees). So,
+  //   a minimum volume above that can't be reached at all. A value of zero
+  //   here means that the lengths are not all fixed and there is nothing to say.
+  double maxCellVolume = 0.0;
+  if (Common::eq(getAMin(), getAMax(), LATT_LEN_COMP_TOL) &&
+      Common::eq(getBMin(), getBMax(), LATT_LEN_COMP_TOL) &&
+      Common::eq(getCMin(), getCMax(), LATT_LEN_COMP_TOL))
+    maxCellVolume = getAMin() * getBMin() * getCMin();
+
+  // The element radii implied by the interatomic distance limits. These are
+  //   used only if a distance limit is in use and, for the custom distances,
+  //   the table has an entry for every pair.
+  const double densePackingFraction = 0.74;
+  const QList<uint> atomicNums = compList().first().getCompositionAtomicNumbers();
+  QHash<uint, double> radii;
+  bool haveRadii = getUsingScaledIAD() || getUsingCustomIAD();
+
+  for (int i = 0; haveRadii && i < atomicNums.size(); ++i) {
+    const uint atomicNum = atomicNums.at(i);
+    if (getUsingScaledIAD()) {
+      radii.insert(atomicNum, eleScaledRadii().getMinRadius(atomicNum));
+      continue;
+    }
+
+    double minDistance = PINF;
+    for (int j = 0; j < atomicNums.size(); ++j) {
+      const double distance =
+        pairCustomDistances().getPairDistance(atomicNum, atomicNums.at(j));
+      if (distance == PINF) {
+        haveRadii = false;
+        break;
+      }
+      minDistance = std::min(minDistance, distance);
+    }
+
+    if (haveRadii)
+      radii.insert(atomicNum, 0.5 * minDistance);
+  }
+
+  if (maxCellVolume <= 0.0 && !haveRadii)
+    return;
+
+  for (const auto& comp : compList()) {
+    double minVolume = 0.0;
+    double maxVolume = 0.0;
+    getCompositionVolumeLimits(comp, minVolume, maxVolume);
+    const QString formula = comp.getFormula();
+
+    if (maxCellVolume > 0.0 && minVolume > maxCellVolume) {
+      Common::warning(QString("The fixed cell lengths allow at most %2 A^3 for %1, "
+                              "below the configured minimum volume of %3 A^3.")
+                        .arg(formula)
+                        .arg(maxCellVolume, 0, 'f', 3)
+                        .arg(minVolume, 0, 'f', 3));
+    }
+
+    if (!haveRadii)
+      continue;
+
+    double sphereVolume = 0.0;
+    for (int i = 0; i < atomicNums.size(); ++i) {
+      const uint atomicNum = atomicNums.at(i);
+      const double radius = radii.value(atomicNum);
+      sphereVolume += comp.getCount(atomicNum) * (4.0 / 3.0) * PI * radius * radius * radius;
+    }
+
+    const double suggestedVolume = sphereVolume / densePackingFraction;
+    const double suggestedVolumePerAtom =
+      std::ceil((suggestedVolume / comp.getNumAtoms()) * 1000.0) / 1000.0;
+
+    if (minVolume < sphereVolume) {
+      Common::warning(
+        QString("The configured minimum volume is too small to satisfy the IAD limits for %1 "
+                "(suggested lower bound: %2 A^3/atom).")
+          .arg(formula)
+          .arg(suggestedVolumePerAtom, 0, 'f', 3));
+    } else if (minVolume < suggestedVolume) {
+      Common::warning(QString("The minimum volume may be too small for the IAD limits for %1 "
+                              "(suggested lower bound: %2 A^3/atom).")
+                        .arg(formula)
+                        .arg(suggestedVolumePerAtom, 0, 'f', 3));
+    }
+
+    if (maxVolume < sphereVolume) {
+      Common::warning(
+        QString("The maximum volume cannot satisfy the IAD limits for %1 "
+                "(suggested lower bound: %2 A^3/atom).")
+          .arg(formula)
+          .arg(suggestedVolumePerAtom, 0, 'f', 3));
+    } else if (maxVolume < suggestedVolume) {
+      Common::warning(QString("The maximum volume may be too small for the IAD limits for %1 "
+                              "(suggested lower bound: %2 A^3/atom).")
+                        .arg(formula)
+                        .arg(suggestedVolumePerAtom, 0, 'f', 3));
+    }
+  }
+  // Just a separator!
+  Common::message("\n");
+}
+
 CellComp XtalOpt::getMinimalComposition()
 {
   // Return the "minimum quantity composition": the one which
@@ -2689,9 +2768,8 @@ QList<QString> XtalOpt::getChemicalSystem() const
 QList<uint> XtalOpt::getListOfAtomsComp(CellComp incomp)
 {
   if (incomp.getNumTypes() == 0) {
-    Common::warning(QString("%1: empty composition. Using the first composition.")
-                     .arg(__func__));
-    incomp = compList()[0];
+    Common::error(QString("%1: empty composition.").arg(__func__));
+    return QList<uint>();
   }
 
   // Populate crystal
@@ -2700,7 +2778,7 @@ QList<uint> XtalOpt::getListOfAtomsComp(CellComp incomp)
   //   atoms first encourages a more even (and ordered) distribution
   for (int i = 0; i < atomicNums.size() - 1; ++i) {
     for (int j = i + 1; j < atomicNums.size(); ++j) {
-      if (eleMinRadii().getMinRadius(atomicNums[i]) < eleMinRadii().getMinRadius(atomicNums[j])) {
+      if (eleScaledRadii().getMinRadius(atomicNums[i]) < eleScaledRadii().getMinRadius(atomicNums[j])) {
         QtCompat::listSwapItemsAt(atomicNums, i, j);
       }
     }

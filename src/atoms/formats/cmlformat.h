@@ -18,6 +18,8 @@
 #include <istream>
 #include <ostream>
 
+class QString;
+
 namespace Atoms {
 
 class Geometry;
@@ -31,6 +33,7 @@ class Geometry;
 class CmlFormat
 {
 public:
+  static bool read(Atoms::Geometry& s, const QString& filename);
   static bool read(Atoms::Geometry& s, std::istream& in);
   static bool write(const Atoms::Geometry& s, std::ostream& out);
 };

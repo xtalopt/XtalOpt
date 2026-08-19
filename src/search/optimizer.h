@@ -181,21 +181,6 @@ public:
    */
   QHash<QString, QString> getInputFiles(Structure* s);
 
-  // Functions for optimizer input asset files. SearchBase stores them, and they are
-  // written without interpreting their contents.
-
-  // Read one "id file" optimizer input asset file line.
-  static bool parseAssetIdFileLine(const QString& line, QString& id, QString& fileEntry);
-
-  // Prepare an optimizer input asset file value (keep an existing keyword).
-  static QString inputAssetValueForSave(const QString& fileEntry);
-
-  // Parse an "id value" map into the stored "id=value; ..." string (sorted).
-  static QString inputAssetFilesToText(const QHash<QString, QString>& assetFiles);
-
-  // Convert stored input asset files to editable text. Keep plain text unchanged.
-  static QString inputAssetTextToFiles(const QString& parsedStr);
-
 public slots:
 
   /**
@@ -263,14 +248,8 @@ protected:
    */
   virtual bool readOutput(Structure* s, const QString& filename) const;
 
-  // Parse a stored "id=value; ..." asset map; empty/invalid input yields an
-  //   empty hash. Used by inputAssetTextToFiles() and the optimizer input files.
-  static QHash<QString, QString> inputAssetTextToMap(const QString& text);
-
-  // Resolve one stored asset value to its file contents: a "%fileContents:f%"
-  //   entry is read from disk, anything else is taken literally. Returns false
-  //   if the file cannot be read.
-  static bool readSavedInputAssetValue(const QString& assetValue, QString& contents);
+  // Read one optimizer input asset file. Returns false if the file cannot be read.
+  static bool readInputAssetFile(const QString& filename, QString& contents);
 
   /// Per-optimizer defaults (id, templates, assets, completion, outputs,
   ///   command); each built-in subclass sets this from its own defaults() in its

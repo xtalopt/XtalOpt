@@ -33,7 +33,7 @@
 
 namespace Atoms {
 
-bool PwscfFormat::read(Atoms::Geometry* s, const QString& filename)
+bool PwscfFormat::read(Atoms::Geometry& s, const QString& filename)
 {
   QFile file(filename);
   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -193,9 +193,9 @@ bool PwscfFormat::read(Atoms::Geometry* s, const QString& filename)
   for (int i = 0; i < coords.size(); ++i)
     atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
 
-  s->clear();
-  s->setUnitCell(Atoms::UnitCell(cellMatrix));
-  s->setAtoms(atoms);
+  s.clear();
+  s.setUnitCell(Atoms::UnitCell(cellMatrix));
+  s.setAtoms(atoms);
   return true;
 }
 
@@ -222,7 +222,7 @@ bool PwscfFormat::read(Atoms::Geometry* s, const QString& filename)
  * !    total energy              =     -95.01479203 Ry
  */
 
-bool PwscfFormat::readOutput(Atoms::Geometry* s, const QString& filename)
+bool PwscfFormat::readOutput(Atoms::Geometry& s, const QString& filename)
 {
   std::string text;
   if (!Common::readFileToString(filename, &text)) {
@@ -244,6 +244,7 @@ bool PwscfFormat::readOutput(Atoms::Geometry* s, const QString& filename)
   double outputAlat = 1.0;
   bool headerCellFound = false;
   Common::Matrix3 headerCellMatrix = Common::Matrix3::Zero();
+
   while (getline(ifs, line)) {
     if (strstr(line.c_str(), "lattice parameter (alat)")) {
       lineSplit = Common::split(line, '=');
@@ -256,6 +257,7 @@ bool PwscfFormat::readOutput(Atoms::Geometry* s, const QString& filename)
         }
       }
     }
+
     // The header prints the cell of the run as "crystal axes" in units
     // of alat. Keep it: for a fixed-cell run the final coordinates have
     // no CELL_PARAMETERS block, and this is the cell to use then.
@@ -292,6 +294,7 @@ bool PwscfFormat::readOutput(Atoms::Geometry* s, const QString& filename)
         headerCellFound = true;
       }
     }
+
     // Cell parameters
     // This section should contain the final cell and final coordinates
     if (strstr(line.c_str(), "Begin final coordinates")) {
@@ -447,9 +450,9 @@ bool PwscfFormat::readOutput(Atoms::Geometry* s, const QString& filename)
     atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
   }
 
-  s->clear();
-  s->setUnitCell(uc);
-  s->setAtoms(atoms);
+  s.clear();
+  s.setUnitCell(uc);
+  s.setAtoms(atoms);
   return true;
 }
 

@@ -25,6 +25,7 @@
 #include <search/queueinterface.h>
 #include <search/queueinterfaces/batch.h>
 #include <search/structure.h>
+#include <climits>
 
 #include <QDateTime>
 #include <QDir>
@@ -208,6 +209,7 @@ void QueueManager::runHandler(Structure* s, StructureHandlerType handler)
   // One worker per handler type, indexed by the enum value.
   typedef void (QueueManager::*HandlerWorker)(Structure*);
   static const HandlerWorker kWorkers[] = {
+    // clang-format off
     &QueueManager::handleOptimizedStructure,
     &QueueManager::handleStepOptimizedStructure,
     &QueueManager::handleInProcessStructure,
@@ -218,6 +220,7 @@ void QueueManager::runHandler(Structure* s, StructureHandlerType handler)
     &QueueManager::handlePostprocessingStructure,
     &QueueManager::handleFailObjectiveStructure,
     &QueueManager::handleDismissObjectiveStructure,
+    // clang-format on
   };
   static_assert(sizeof(kWorkers) / sizeof(kWorkers[0]) == SubmissionHandler,
                 "kWorkers needs one entry per state function.");
@@ -364,7 +367,10 @@ void QueueManager::checkPopulation()
   int total = m_tracker->size() + m_newStructureTracker.size() + requestedStructures;
   // incomplete is getAllRunningStructures.size() + m_requestedStructures.
   int incomplete = runningCount + m_newStructureTracker.size() + requestedStructures;
-  int needed = m_search->getContStructs() - incomplete;
+  // getContStructs() is unsigned; adjust it before a "signed" math
+  const int contStructs = static_cast<int>(qMin(m_search->getContStructs(), static_cast<uint>(INT_MAX)));
+  int needed = contStructs - incomplete;
+
   needed = qMin(needed, m_search->getMaxNumStructures() - total);
 
   if (
@@ -376,6 +382,7 @@ void QueueManager::checkPopulation()
     Common::debug(QString("Need %1 structures. %2 already incomplete.")
                       .arg(needed)
                       .arg(incomplete));
+
     for (int i = 0; i < needed; ++i) {
       int totalRequested = 0;
       {
@@ -384,6 +391,7 @@ void QueueManager::checkPopulation()
           break;
         totalRequested = ++m_requestedStructures;
       }
+
       emit needNewStructure();
       Common::debug(QString("Requested new structure. Total requested: %1")
                         .arg(totalRequested));
@@ -632,6 +640,7 @@ void QueueManager::watchScriptCalculation(Structure* s, bool constraints)
       m_scriptWaits.erase(it);
     } else if (now >= it->nextCheck) {
       checkDue = true;
+
       // Check the output files: use delay only for remote runs
       const int delaySec = m_search->isRemoteQueue() ? qMax(1, m_search->queueRefreshInterval()) : 0;
       it->nextCheck = now.addSecs(delaySec);
@@ -868,6 +877,20 @@ void QueueManager::handleStepOptimizedStructure(Structure* s)
     return;
   }
 
+  // The application can ask for the optimization to be redone from a given
+  //   step (for example, after moving atoms to fix a short contact).
+  if (s->getRestartOptStep() >= 0) {
+
+    Common::message(tr("Structure %1 restarted opt step %2")
+                      .arg(s->getTag())
+                      .arg(s->getRestartOptStep() + 1));
+
+    s->setStatus(Structure::Restart);
+    locker.unlock();
+    emit structureUpdated(s);
+    return;
+  }
+
   // update optstep and relaunch if necessary
   if (s->getCurrentOptStep() + 1 <
       static_cast<unsigned int>(m_search->getNumOptSteps())) {
@@ -998,12 +1021,6 @@ void QueueManager::handlePostprocessingStructure(Structure* s)
       return;
     }
 
-    if (s->getStrucObjState() == Structure::Os_Dismiss) {
-      s->setStatus(Structure::Dismissed);
-      locker.unlock();
-      runHandler(s, ObjectiveDismissHandler);
-      return;
-    }
   }
 
   Common::message(tr("Structure %1 is optimized!").arg(s->getTag()));
@@ -1112,23 +1129,20 @@ void QueueManager::handleDismissObjectiveStructure(Structure* s)
 /// @cond
 void QueueManager::handleErrorStructure(Structure* s)
 {
-  if (s->getStatus() != Structure::Error) {
-    return;
-  }
-
-  Common::warning(tr("Structure %1 failed").arg(s->getTag()));
-
+  QString tag;
   int optStep = 0;
   {
     QReadLocker locker(&s->lock());
     if (s->getStatus() != Structure::Error)
       return;
+    tag = s->getTag();
     optStep = s->getCurrentOptStep();
   }
+  Common::warning(tr("Structure %1 failed").arg(tag));
   if (!m_search->queueInterface(optStep)) {
     Common::error(tr("Structure %1 cannot continue because optimization "
                      "step %2 has no queue interface.")
-                    .arg(s->getTag()).arg(optStep + 1));
+                    .arg(tag).arg(optStep + 1));
     killStructure(s);
     return;
   }
@@ -1143,7 +1157,7 @@ void QueueManager::handleErrorStructure(Structure* s)
 
   if (!stopJob(s)) {
     Common::warning(tr("Structure %1 remains in the error state because its "
-                       "scheduler job could not be cancelled.").arg(s->getTag()));
+                       "scheduler job could not be cancelled.").arg(tag));
     return;
   }
 
@@ -1741,11 +1755,11 @@ QList<Structure*> QueueManager::lockForNaming()
   return list;
 }
 
-void QueueManager::addNewStructure(Structure* s, uint generation, const QString& parents)
+bool QueueManager::addNewStructure(Structure* s, uint generation, const QString& parents)
 {
   if (!s) {
     structureGenerationFailed();
-    return;
+    return false;
   }
 
   QList<Structure*> allStructures = lockForNaming();
@@ -1773,7 +1787,7 @@ void QueueManager::addNewStructure(Structure* s, uint generation, const QString&
     m_tracker->unlock();
     m_namingMutex.unlock();
     Tracker::deleteStructure(s);
-    return;
+    return false;
   }
 
   s->moveToThread(m_thread);
@@ -1784,6 +1798,7 @@ void QueueManager::addNewStructure(Structure* s, uint generation, const QString&
   locker.unlock();
 
   unlockForNaming(s);
+  return true;
 }
 
 uint QueueManager::nextIdForGeneration(uint generation, const QList<Structure*>& allStructures)

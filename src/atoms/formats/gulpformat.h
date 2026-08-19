@@ -32,7 +32,7 @@ public:
   /**
    * Read GULP optimizer output.
    */
-  static bool readOutput(Atoms::Geometry* s, const QString& filename);
+  static bool readOutput(Atoms::Geometry& s, const QString& filename);
 };
 } // namespace Atoms
 

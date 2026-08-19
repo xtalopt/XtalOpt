@@ -28,8 +28,6 @@
 #include <QReadLocker>
 #include <QString>
 
-#include <algorithm>
-
 namespace Search {
 
 
@@ -86,109 +84,8 @@ QStringList defaultStringList(const char* const* values)
 
 } // anonymous namespace
 
-// Input-asset string helpers, shared by the CLI reader, the GUI asset box,
-//   and the runtime getInputFiles(). The stored format is described in
-//   optimizer.h.
-
-bool Optimizer::parseAssetIdFileLine(const QString& line, QString& id, QString& fileEntry)
+bool Optimizer::readInputAssetFile(const QString& filename, QString& contents)
 {
-  const QString trimmed = line.trimmed();
-  const int space = trimmed.indexOf(' ');
-  if (space <= 0)
-    return false;
-  id = trimmed.left(space).trimmed();
-  fileEntry = trimmed.mid(space + 1).trimmed();
-  return !id.isEmpty() && !fileEntry.isEmpty();
-}
-
-QString Optimizer::inputAssetValueForSave(const QString& fileEntry)
-{
-  const QString trimmed = fileEntry.trimmed();
-  // An existing "%...%" keyword (e.g. %fileContents:..% / %copyFile:..%) is kept
-  //   verbatim; anything else is a bare path to inline.
-  if (trimmed.startsWith('%') && trimmed.endsWith('%') && trimmed.size() > 1)
-    return trimmed;
-  return "%fileContents:" + trimmed + "%";
-}
-
-QString Optimizer::inputAssetFilesToText(const QHash<QString, QString>& assetFiles)
-{
-  QStringList entries;
-  QStringList ids = assetFiles.keys();
-  std::sort(ids.begin(), ids.end());
-  for (const auto& id : ids)
-    entries.append(id + "=" + assetFiles.value(id).trimmed());
-  return entries.join("; ");
-}
-
-QString Optimizer::inputAssetTextToFiles(const QString& parsedStr)
-{
-  const QString trimmed = parsedStr.trimmed();
-  if (trimmed.isEmpty())
-    return QString();
-
-  const QHash<QString, QString> assets = inputAssetTextToMap(trimmed);
-  // Not a valid map (e.g. legacy literal content): show it unchanged so that
-  //   nothing is silently lost.
-  if (assets.isEmpty())
-    return parsedStr;
-
-  QStringList ids = assets.keys();
-  std::sort(ids.begin(), ids.end());
-  QStringList lines;
-  for (const auto& id : ids) {
-    QString value = assets.value(id).trimmed();
-    // Show a "%fileContents:path%" value as the bare path for readability;
-    //   inputAssetValueForSave() re-creates it on save.
-    if (value.startsWith("%fileContents:", Qt::CaseInsensitive) && value.endsWith("%")) {
-      value = value.mid(QString("%fileContents:").size());
-      value.chop(1);
-      value = value.trimmed();
-    }
-    lines.append(id + " " + value);
-  }
-  return lines.join("\n");
-}
-
-QHash<QString, QString> Optimizer::inputAssetTextToMap(const QString& text)
-{
-  QHash<QString, QString> assets;
-  const QString trimmed = text.trimmed();
-  if (trimmed.isEmpty())
-    return assets;
-
-  QStringList entries = trimmed.split(';');
-  if (entries.isEmpty())
-    return assets;
-
-  for (const auto& entry : entries) {
-    const QString trimmedEntry = entry.trimmed();
-    const int equalsIndex = trimmedEntry.indexOf('=');
-    if (equalsIndex <= 0)
-      return QHash<QString, QString>();
-    QString key = trimmedEntry.left(equalsIndex).trimmed();
-    const QString value = trimmedEntry.mid(equalsIndex + 1).trimmed();
-    if (key.isEmpty() || value.isEmpty())
-      return QHash<QString, QString>();
-    if (key.compare("system", Qt::CaseInsensitive) == 0)
-      key = "system";
-    assets.insert(key, value);
-  }
-  return assets;
-}
-
-bool Optimizer::readSavedInputAssetValue(const QString& assetValue, QString& contents)
-{
-  const QString trimmed = assetValue.trimmed();
-  if (!trimmed.startsWith("%fileContents:", Qt::CaseInsensitive) || !trimmed.endsWith("%")) {
-    contents = assetValue;
-    return true;
-  }
-
-  QString filename = trimmed.mid(QString("%fileContents:").size());
-  filename.chop(1);
-  filename = filename.trimmed();
-
   if (!Common::readFileToQString(filename, &contents)) {
     Common::error(QString("%1: could not open %2")
                     .arg(__func__)
@@ -261,18 +158,12 @@ Optimizer::~Optimizer()
 
 QHash<QString, QString> Optimizer::getInputFiles(Structure* s)
 {
-  int optStep;
-  {
-    QReadLocker locker(&s->lock());
-    optStep = s->getCurrentOptStep();
-  }
+  QWriteLocker structureLocker(&s->lock());
+  const int optStep = s->getCurrentOptStep();
 
   QueueInterface* queue = m_search->queueInterface(optStep);
   if (!queue)
     return QHash<QString, QString>();
-
-  // Stop any running jobs associated with this structure
-  queue->stopJob(s);
 
   // Build hash
   QHash<QString, QString> hash;

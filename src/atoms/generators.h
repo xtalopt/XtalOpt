@@ -46,7 +46,7 @@ public:
     double aMax, bMax, cMax, alphaMax, betaMax, gammaMax;
     double minVolume, maxVolume;
 
-    // Distance settings. RandSpg currently uses the scalar radius settings;
+    // Distance settings. RandSpg uses the the pair distances through a conversion;
     //   random generation uses the explicit radii or pair-distance maps.
     double minRadius;
     double iadScalingFactor;

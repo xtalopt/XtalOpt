@@ -136,11 +136,12 @@ namespace ElemInfoDatabase {
     "Ds", // 110
     "Rg", // 111
     "Cn", // 112
-    "Uut",// 113
+    "Nh", // 113
     "Fl", // 114
-    "Uup",// 115
+    "Mc", // 115
     "Lv", // 116
-    "Uus",// 117
+    "Ts", // 117
+    "Og", // 118
   };
 
   // The following values were obtained from latest version of OpenBabel on
@@ -266,6 +267,7 @@ namespace ElemInfoDatabase {
     1.6,  // 115
     1.6,  // 116
     1.6,  // 117
+    1.6,  // 118
   };
 
   // The following values were obtained from latest version of OpenBabel on
@@ -391,6 +393,7 @@ namespace ElemInfoDatabase {
     2,    // 115
     2,    // 116
     2,    // 117
+    2,    // 118
   };
 } // namespace ElemInfoDatabase
 

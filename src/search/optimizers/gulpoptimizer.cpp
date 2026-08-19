@@ -66,9 +66,12 @@ const OptimizerDefaults& GULPOptimizer::defaults()
   static const char* const templates[] = { "xtal.gin", nullptr };
   static const char* const assets[] = { nullptr };
   static const char* const outputs[] = { "xtal.got", nullptr };
+  // clang-format off
   static const OptimizerDefaults s{
-    "GULP", templates, assets, "xtal.got", "**** Optimisation achieved ****",
-    outputs, "gulp", "xtal.gin", "xtal.got", "xtal.ger" };
+    "GULP", templates, assets,
+    "xtal.got", "**** Optimisation achieved ****", outputs,
+    "gulp", "xtal.gin", "xtal.got", "xtal.ger" };
+  // clang-format on
   return s;
 }
 
@@ -85,7 +88,7 @@ GULPOptimizer::~GULPOptimizer()
 bool GULPOptimizer::readOutput(Structure* s, const QString& filename) const
 {
   Atoms::Geometry structure;
-  if (!Atoms::GulpFormat::readOutput(&structure, filename))
+  if (!Atoms::GulpFormat::readOutput(structure, filename))
     return false;
 
   double energy = 0.0;

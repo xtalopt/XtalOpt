@@ -379,7 +379,7 @@ inline bool parseDoubleString(const std::string& str, double& value)
   // This is to make sure C locale is handled
   bool ok = false;
   const double parsed = QString::fromStdString(str).toDouble(&ok);
-  if (!ok)
+  if (!ok || !GS_ISFINITE(parsed))
     return false;
 
   value = parsed;

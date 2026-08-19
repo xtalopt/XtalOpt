@@ -31,14 +31,9 @@ class MtpFormat
 {
 public:
   /**
-   * Read an MTP structure file.
+   * Read an MTP structure file. The optimizer output uses the same format.
    */
-  static bool read(Atoms::Geometry* s, const QString& filename);
-
-  /**
-   * Read MTP optimizer output.
-   */
-  static bool readOutput(Atoms::Geometry* s, const QString& filename);
+  static bool read(Atoms::Geometry& s, const QString& filename);
 
   /**
    * Write @p s in MTP structure format.

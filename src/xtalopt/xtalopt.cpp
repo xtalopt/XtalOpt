@@ -60,7 +60,7 @@ namespace {
 void applyBuiltInDefaults(XtalOpt& xtalopt)
 {
   Settings::applyDefaultSettings(xtalopt);
-  xtalopt.interComp().clear();
+  xtalopt.clearCustomIADs();
 
   // Create one default optimization step with the default queue and optimizer.
   xtalopt.clearOptSteps();
@@ -143,6 +143,11 @@ bool isSafeOutputFilename(const QString& filename)
   if (trimmed.contains('/') || trimmed.contains('\\'))
     return false;
   if (trimmed.contains(QChar::fromLatin1('\0')))
+    return false;
+
+  // These are filenames used by the code itself in every structure directory
+  if (trimmed.compare("structure.state", Qt::CaseInsensitive) == 0 ||
+      trimmed.compare("output.POSCAR", Qt::CaseInsensitive) == 0)
     return false;
   return QFileInfo(trimmed).fileName() == trimmed;
 }
@@ -231,6 +236,8 @@ void XtalOpt::registerXtalOptOptimizerAndQueue()
 void XtalOpt::registerXtalOptKeywords()
 {
   // XtalOpt-specific template keywords (generic keywords are registered by SearchBase).
+
+  // clang-format off
   registerKeyword("mtpAtomsInfo", [this](Structure* s) -> QString {
     const std::vector<Atoms::Atom>& atoms = s->atoms();
     QString rep;
@@ -259,6 +266,7 @@ void XtalOpt::registerXtalOptKeywords()
     rep += "\n";
     return rep;
   }, "%chemicalSystem% -- List of element symbols in alphabetical order");
+  // clang-format on
 }
 
 XtalOpt::~XtalOpt()
@@ -271,6 +279,8 @@ XtalOpt::~XtalOpt()
   // Stop the queue drivers before XtalOpt saves.
   stopQueueThread();
 
+  // Script launches use QueueManager's separate worker pool.
+  queue()->waitForScriptCalculations(-1);
   QThreadPool::globalInstance()->waitForDone(-1);
 
   // Save the state file.
@@ -524,17 +534,17 @@ bool XtalOpt::startSearch()
   return runSearch(QString(), nullptr);
 }
 
-bool XtalOpt::resumeSearch(const QString& filename, bool* settingsOnlyLoaded)
+bool XtalOpt::resumeSearch(const QString& filename, bool* onlyMainStateWasLoaded)
 {
   if (filename.isEmpty()) {
     Common::error("Cannot resume an XtalOpt search without a state file.");
     return false;
   }
 
-  return runSearch(filename, settingsOnlyLoaded);
+  return runSearch(filename, onlyMainStateWasLoaded);
 }
 
-bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
+bool XtalOpt::runSearch(const QString& stateFile, bool* onlyMainStateWasLoaded)
 {
   const bool restoring = !stateFile.isEmpty();
   const bool readOnly = isReadOnly();
@@ -542,8 +552,8 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
   QString loadedStateFile = stateFile;
   QStringList xtalDirs;
 
-  if (settingsOnlyLoaded)
-    *settingsOnlyLoaded = false;
+  if (onlyMainStateWasLoaded)
+    *onlyMainStateWasLoaded = false;
 
   if (!beginSession())
     return false;
@@ -597,8 +607,8 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
     if (xtalDirs.isEmpty()) {
       Common::error(QString("No structures were found in %1.")
                       .arg(QFileInfo(loadedStateFile).absoluteDir().absolutePath()));
-      if (settingsOnlyLoaded)
-        *settingsOnlyLoaded = true;
+      if (onlyMainStateWasLoaded)
+        *onlyMainStateWasLoaded = true;
       abortSession();
       return false;
     }
@@ -619,7 +629,8 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
         startupError = tr("The local working directory must be an absolute "
                           "path before starting the search.\n\nCurrent value:\n%1")
                          .arg(locWorkDir);
-      } else if (hasExistingStateFile) {
+      } else if (hasExistingStateFile || !readStructureStateDirectories(sessionStateFile).isEmpty()) {
+        // If any xtalopt or structure state files are present.
         startupError = tr("XtalOpt data is already saved at:\n%1"
                           "\n\nEmpty the directory to proceed or "
                           "select a new 'Local working directory'!")
@@ -635,8 +646,8 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* settingsOnlyLoaded)
       startupError = tr("Settings have invalid values; see the log for details.");
     }
 
-    if (startupError.isEmpty() && !checkLimits())
-      startupError = tr("Cannot create structures. Check log for details.");
+    if (startupError.isEmpty() && getUsingCustomIAD() && !verifyCustomIADValues())
+      startupError = tr("Custom IAD mode requires a complete custom IAD table.");
 
     if (startupError.isEmpty() &&
         !checkLocalInputFiles(!restoring, &startupError) && startupError.isEmpty())
@@ -763,42 +774,36 @@ bool XtalOpt::checkLocalInputFiles(bool includeSeeds, QString* errorMessage) con
 
     const QStringList assetNames = optim->getOptimizerInputAssetNames();
     for (const auto& assetName : assetNames) {
-      const QString text = getOptimizerInputAsset(optStep, assetName.toStdString()).c_str();
       const QString owner = QString("opt step %1 optimizer input asset %2")
                                    .arg(optStep + 1).arg(assetName);
-      QHash<QString, QString> assetFiles;
-      const QStringList assetLines = Optimizer::inputAssetTextToFiles(text).split('\n');
-      for (const auto& line : assetLines) {
-        if (line.trimmed().isEmpty())
-          continue;
+      const OptimizerInputAssetMap assetFiles =
+        getOptimizerInputAssets(optStep, assetName.toStdString());
 
-        QString id, fileEntry;
-        if (!Optimizer::parseAssetIdFileLine(line, id, fileEntry)) {
-          if (errorMessage)
-            *errorMessage = owner + " contains an invalid entry: " + line;
-          return false;
-        }
+      // Currently only VASP optimizer supports "system" asset id
+      const bool systemFile = assetName.compare("POTCAR", Qt::CaseInsensitive) == 0 &&
+                              assetFiles.count("system") != 0;
 
-        assetFiles.insert(id.toLower(), fileEntry);
-      }
-
-      const bool systemFile = assetName.compare("POTCAR", Qt::CaseInsensitive) == 0 && assetFiles.contains("system");
-
-      if (!systemFile) {
+      // Check exactly the entries the optimizer will read: the "system" file
+      //   when it is set, and one file per element otherwise.
+      QStringList usedIds;
+      if (systemFile) {
+        usedIds.append("system");
+      } else {
         for (const auto& symbol : getChemicalSystem()) {
-          if (!assetFiles.contains(symbol.toLower())) {
+          if (assetFiles.count(symbol.toStdString()) == 0) {
             if (errorMessage)
               *errorMessage = owner + " has no entry for element " + symbol + ".";
             return false;
           }
+          usedIds.append(symbol);
         }
       }
 
-      const QStringList parts = text.split('%');
-      for (const auto& part : parts) {
-        if (!checkPercentFileKeyword(part, "fileContents", owner, errorMessage)) {
+      for (const auto& id : usedIds) {
+        const auto assetIt = assetFiles.find(id.toStdString());
+        if (!checkReadableFile(QString::fromStdString(assetIt->second),
+                               owner + " file for " + id, errorMessage))
           return false;
-        }
       }
     }
   }
@@ -845,6 +850,21 @@ bool XtalOpt::checkOptimizerAndQueue(const QString& readinessAction, QString* er
   return true;
 }
 
+// This is bering used to check an script (ie, objectives and constraints)
+//   output collides with other ones (they are written in the same folder!)
+bool XtalOpt::outputFilenameInUse(const QString& out) const
+{
+  for (int i = 0; i < getObjectivesNum(); ++i)
+    if (!getObjectivesOut(i).isEmpty() && getObjectivesOut(i).compare(out, Qt::CaseInsensitive) == 0)
+      return true;
+
+  for (int i = 0; i < getConstraintsNum(); ++i)
+    if (getConstraintOut(i).compare(out, Qt::CaseInsensitive) == 0)
+      return true;
+
+  return false;
+}
+
 bool XtalOpt::validateUserObjectiveDefinition(ObjType objtyp, const QString& objexe,
                                               const QString& objout, double objwgt,
                                               QString* errorMessage) const
@@ -869,7 +889,14 @@ bool XtalOpt::validateUserObjectiveDefinition(ObjType objtyp, const QString& obj
 
   if (!isSafeOutputFilename(objout)) {
     if (errorMessage)
-      *errorMessage = "objective output filename must be a simple relative filename";
+      *errorMessage = "objective output filename must be a simple relative filename "
+                      "that the code does not write itself";
+    return false;
+  }
+
+  if (outputFilenameInUse(objout)) {
+    if (errorMessage)
+      *errorMessage = "objective output filename is already in use";
     return false;
   }
 
@@ -899,7 +926,14 @@ bool XtalOpt::validateConstraintDefinition(const QString& exe, const QString& ou
 
   if (!isSafeOutputFilename(out)) {
     if (errorMessage)
-      *errorMessage = "constraint output filename must be a simple relative filename";
+      *errorMessage = "constraint output filename must be a simple relative filename "
+                      "that the code does not write itself";
+    return false;
+  }
+
+  if (outputFilenameInUse(out)) {
+    if (errorMessage)
+      *errorMessage = "constraint output filename is already in use";
     return false;
   }
 

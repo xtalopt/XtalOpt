@@ -32,12 +32,12 @@ public:
   /**
    * Read a PWSCF input/structure file.
    */
-  static bool read(Atoms::Geometry* s, const QString& filename);
+  static bool read(Atoms::Geometry& s, const QString& filename);
 
   /**
    * Read PWSCF optimizer output.
    */
-  static bool readOutput(Atoms::Geometry* s, const QString& filename);
+  static bool readOutput(Atoms::Geometry& s, const QString& filename);
 };
 } // namespace Atoms
 

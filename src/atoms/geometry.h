@@ -88,6 +88,9 @@ public:
   // Rotate the cell vectors and atomic coordinates so that v1 is parallel
   // to x and v2 is in the xy plane
   bool rotateCellAndCoordsToStandardOrientation();
+  static bool rotateCellAndCoordsToStandardOrientation(Common::Matrix3& cell,
+                                                       QList<Common::Vector3>& fractionalCoordinates,
+                                                       bool positiveHandedness);
 
   // Calculate the matrix used in the above function. Matrix has row vectors.
   // If the current cell cannot be rotated in a numerically stable
@@ -109,7 +112,7 @@ public:
    * @param shortest An empty double to be overwritten with the
    * shortest interatomic distance.
    * @sa getNearestNeighborDistance
-   * @sa getNearestNeighborHistogram
+   * @sa generateIADHistogram
    * @sa getNeighbors
    */
   virtual bool getShortestInteratomicDistance(double& shortest) const;
@@ -134,7 +137,7 @@ public:
    * @param shortest An empty double to be overwritten with the
    * nearest neighbor distance.
    * @sa getShortestInteratomicDistance
-   * @sa getNearestNeighborHistogram
+   * @sa generateIADHistogram
    * @sa getNeighbors
    */
   virtual bool getNearestNeighborDistance(double x, double y, double z, double& shortest) const;

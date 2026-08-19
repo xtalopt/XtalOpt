@@ -281,7 +281,8 @@ bool generatePattern(const Atoms::Geometry& structure, XrdData& results, double 
     return false;
   }
 
-  if (wavelength <= ZERO08 || numpoints == 0 || max2theta <= ZERO08) {
+  if (wavelength <= ZERO08 || numpoints == 0 ||
+      max2theta <= ZERO08 || max2theta > 180.0) {
     Common::error(QString("%1: invalid XRD options").arg(functionName));
     return false;
   }

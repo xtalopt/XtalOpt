@@ -301,8 +301,7 @@ bool TabSearch::updateOptTypeInfo()
     for (const auto& keyword : Settings::runtimeKeywords()) {
       if (Settings::scalarSettingValue(*xtalopt, keyword) != before.value(keyword)) {
         settingsChanged = true;
-        if (keyword == "objectivePrecision" || keyword == "optimizationType" ||
-            keyword == "crowdingDistance" || keyword == "paretoFilterZeroWeights")
+        if (xtalopt->selectionKeywordInUse(keyword))
           selectionSettingsChanged = true;
       }
     }
@@ -454,7 +453,7 @@ void TabSearch::updateOptimizationInfo()
     for (const auto& keyword : Settings::runtimeKeywords()) {
       if (Settings::scalarSettingValue(*xtalopt, keyword) != before.value(keyword)) {
         settingsChanged = true;
-        if (keyword == "spglibTolerance")
+        if (xtalopt->spacegroupKeywordInUse(keyword))
           spacegroupSettingsChanged = true;
         if (xtalopt->similarityKeywordInUse(keyword))
           similaritySettingsChanged = true;

@@ -197,7 +197,7 @@ void FormatsTest::readCifWithAtoms()
 {
   const QString filename = testDataPath("diamond-primitive.cif");
   Atoms::Geometry diamond;
-  QVERIFY(Atoms::CifFormat::read(&diamond, filename));
+  QVERIFY(Atoms::CifFormat::read(diamond, filename));
 
   QVERIFY(diamond.is3D());
   QCOMPARE(diamond.numAtoms(), static_cast<size_t>(2));
@@ -214,7 +214,7 @@ void FormatsTest::writeCifWithAtoms()
 {
   const QString filename = testDataPath("diamond-primitive.cif");
   Atoms::Geometry diamond;
-  QVERIFY(Atoms::CifFormat::read(&diamond, filename));
+  QVERIFY(Atoms::CifFormat::read(diamond, filename));
 
   std::stringstream out;
   QVERIFY(Atoms::CifFormat::write(diamond, out));
@@ -254,7 +254,7 @@ void FormatsTest::readWithAtomsFormats()
   const QString rutileFileName = testDataPath("rutile.POSCAR");
 
   Atoms::Geometry rutile;
-  QVERIFY(Atoms::Formats::read(&rutile, rutileFileName));
+  QVERIFY(Atoms::Formats::read(rutile, rutileFileName));
   QCOMPARE(rutile.numAtoms(), static_cast<size_t>(6));
   QVERIFY(rutile.is3D());
   QVERIFY(std::fabs(62.4233 - rutile.unitCell().volume()) < 1.e-5);
@@ -401,6 +401,7 @@ void FormatsTest::readWriteMtpInputWithAtoms()
 
   std::stringstream out;
   QVERIFY(Atoms::MtpFormat::write(structure, out));
+
   const std::string text = out.str();
   QVERIFY(text.find("BEGIN_CFG") != std::string::npos);
   QVERIFY(text.find("Feature chemical_system C H") != std::string::npos);
@@ -413,7 +414,8 @@ void FormatsTest::readWriteMtpInputWithAtoms()
   }
 
   Atoms::Geometry tstgeom;
-  QVERIFY(Atoms::MtpFormat::read(&tstgeom, filename));
+  QVERIFY(Atoms::MtpFormat::read(tstgeom, filename));
+
   QFile::remove(filename);
 
   QVERIFY(tstgeom.is3D());
@@ -440,9 +442,12 @@ void FormatsTest::readOptimizerInputsWithAtoms()
          << "H 0.0 0.0 0.2\n"
          << "%ENDBLOCK POSITIONS_FRAC\n";
   }
+
   Atoms::Geometry castep;
-  QVERIFY(Atoms::CastepFormat::read(&castep, castepFile));
+  QVERIFY(Atoms::CastepFormat::read(castep, castepFile));
+
   QFile::remove(castepFile);
+
   QVERIFY(castep.is3D());
   QCOMPARE(castep.numAtoms(), static_cast<size_t>(2));
   QVERIFY(std::fabs(60.0 - castep.unitCell().volume()) < 1.e-5);
@@ -462,9 +467,12 @@ void FormatsTest::readOptimizerInputsWithAtoms()
          << "H 0.0 0.0 0.2\n"
          << "K_POINTS gamma\n";
   }
+
   Atoms::Geometry pwscf;
-  QVERIFY(Atoms::PwscfFormat::read(&pwscf, pwscfFile));
+  QVERIFY(Atoms::PwscfFormat::read(pwscf, pwscfFile));
+
   QFile::remove(pwscfFile);
+
   QVERIFY(pwscf.is3D());
   QCOMPARE(pwscf.numAtoms(), static_cast<size_t>(2));
   QVERIFY(std::fabs(60.0 - pwscf.unitCell().volume()) < 1.e-5);
@@ -491,9 +499,12 @@ void FormatsTest::readOptimizerInputsWithAtoms()
          << "0.0 0.0 0.2 2\n"
          << "%endblock AtomicCoordinatesAndAtomicSpecies\n";
   }
+
   Atoms::Geometry siesta;
-  QVERIFY(Atoms::SiestaFormat::read(&siesta, siestaFile));
+  QVERIFY(Atoms::SiestaFormat::read(siesta, siestaFile));
+
   QFile::remove(siestaFile);
+
   QVERIFY(siesta.is3D());
   QCOMPARE(siesta.numAtoms(), static_cast<size_t>(2));
   QVERIFY(std::fabs(60.0 - siesta.unitCell().volume()) < 1.e-5);

@@ -152,6 +152,7 @@ QString SearchBase::interpretTemplate(const QString& str, Structure* structure)
   }
 
   ret += "\n";
+
   return ret;
 }
 
@@ -162,12 +163,14 @@ void SearchBase::interpretKeyword_base(QString& line, Structure* structure)
     QString filename = line;
     filename.remove(0, QString("filecontents:").size());
     filename = filename.trimmed();
+
     QString err;
     if (!readableTemplateFile(filename, &err)) {
       Common::error(err);
       line = "";
       return;
     }
+
     QString rep;
     if (!Common::readFileToQString(filename, &rep))
       Common::error(QString("%1: could not open %2")
@@ -181,6 +184,7 @@ void SearchBase::interpretKeyword_base(QString& line, Structure* structure)
     QString filename = line;
     filename.remove(0, QString("copyfile:").size());
     filename = filename.trimmed();
+
     QString err;
     if (!readableTemplateFile(filename, &err)) {
       Common::error(err);
@@ -196,6 +200,7 @@ void SearchBase::interpretKeyword_base(QString& line, Structure* structure)
   auto it = m_keywordMap.constFind(line);
   if (it == m_keywordMap.constEnd())
     return;
+
   QString rep = it->handler(structure);
   chopTrailingNewline(rep);
   line = rep;
@@ -218,6 +223,7 @@ QString SearchBase::getTemplateKeywordHelp_base()
 
   QString text;
   QTextStream out(&text);
+
   out << "\nThe following keywords should be used instead of the indicated variable data:\n\n";
   out << QString("%1  %2\n")
            .arg(QString("Keyword"), -keywordWidth)
@@ -228,6 +234,7 @@ QString SearchBase::getTemplateKeywordHelp_base()
              .arg(row.keyword, -keywordWidth)
              .arg(row.description);
   }
+
   return text;
 }
 

@@ -179,12 +179,14 @@ void LegacyCompatTest::v4SessionRestoreIsStable()
   QVERIFY(tempDir.isValid());
   const QString srcData = Common::localPath(QString(TESTDATADIR), "legacy/xo-duplicateXtals-v4");
   const QString dstData = tempPath(tempDir, "xo-duplicateXtals");
+
   QVERIFY(QDir().mkpath(dstData));
   QVERIFY(QFile::copy(Common::localPath(srcData, "xtalopt.state"),
                       Common::localPath(dstData, "xtalopt.state")));
 
   const QString structureDir = Common::localPath(dstData, "00001x00001");
   QVERIFY(QDir().mkpath(structureDir));
+
   Xtal xtal(5.0, 5.0, 5.0, 90.0, 90.0, 90.0);
   Atoms::Atom& atom = xtal.addAtom();
   atom.setAtomicNumber(22);
@@ -196,6 +198,7 @@ void LegacyCompatTest::v4SessionRestoreIsStable()
   xtal.setStatus(Xtal::Optimized);
   xtal.setLocpath(structureDir);
   xtal.setCurrentOptStep(0);
+
   const QString structureState = Common::localPath(structureDir, "structure.state");
   writeStructureStateFile(xtal, structureState);
   {
@@ -206,6 +209,7 @@ void LegacyCompatTest::v4SessionRestoreIsStable()
   XtalOpt opt;
   opt.setRunMode(XtalOpt::RunModeReadOnly);
   opt.tracker()->blockSignals(true);
+
   QVERIFY(opt.resumeSearch(Common::localPath(dstData, "xtalopt.state")));
   opt.tracker()->blockSignals(false);
   QVERIFY(!QFile::exists(Common::localPath(dstData, "xtalopt.state.compat")));
@@ -240,6 +244,7 @@ void LegacyCompatTest::v4ConvertedSettingsAreStable()
   QVERIFY(tempDir.isValid());
   const QString srcData = Common::localPath(QString(TESTDATADIR), "legacy/xo-duplicateXtals-v4");
   const QString dstData = tempPath(tempDir, "xo-duplicateXtals");
+
   QVERIFY(QDir().mkpath(dstData));
   QVERIFY(QFile::copy(Common::localPath(srcData, "xtalopt.state"),
                       Common::localPath(dstData, "xtalopt.state")));
@@ -322,6 +327,7 @@ void LegacyCompatTest::convertProducesCurrentFormatPerType()
                       Common::localPath(dstData, "xtalopt.state")));
   const QString structureDir = Common::localPath(dstData, "00001x00001");
   QVERIFY(QDir().mkpath(structureDir));
+
   const QString structPath = Common::localPath(structureDir, "structure.state");
   Xtal structure;
   writeStructureStateFile(structure, structPath);
@@ -347,6 +353,7 @@ void LegacyCompatTest::convertProducesCurrentFormatPerType()
       QVERIFY2(group == "input" || group == "optscheme",
                qPrintable("unexpected group in compat file: " + group));
   }
+
   XtalOpt loaded;
   loaded.setRunMode(XtalOpt::RunModeReadOnly);
   QVERIFY(loaded.loadSchemeFile(stateCompat, false));
@@ -378,21 +385,25 @@ void LegacyCompatTest::convertMechanicalReadIgnoresMissingAssets()
   QFile inputFile(dstIn);
   QVERIFY(inputFile.open(QIODevice::WriteOnly | QIODevice::Text));
   QTextStream input(&inputFile);
+
   input << "chemicalFormulas = O1\n";
   input << "queueInterface = local\n";
   input << "localQueue = true\n";
   input << "exeLocation = gulp\n";
   input << "templatesDirectory = ./missing-templates\n";
   input << "ginTemplates = missing.gin\n";
+
   inputFile.close();
 
   XtalOpt opt;
   opt.setRunMode(XtalOpt::RunModeReadOnly);
   QVERIFY(opt.convertLegacyFileToCurrent(dstIn));
+
   const QString compat = dstIn + ".compat";
   QVERIFY(QFile::exists(compat));
   QFile compatFile(compat);
   QVERIFY(compatFile.open(QIODevice::ReadOnly | QIODevice::Text));
+
   const QString text = QString::fromLocal8Bit(compatFile.readAll());
   QVERIFY(text.contains("queueInterface = none"));
   QVERIFY(text.contains("remoteQueue = false"));
@@ -424,6 +435,7 @@ void LegacyCompatTest::objectiveSettingsLoadLegacyFiltrationAsConstraint()
   settings.setValue("wgt", 0.1);
   settings.endArray();
   settings.endGroup();
+
   settings.sync();
 
   XtalOpt loaded;
@@ -499,13 +511,15 @@ void LegacyCompatTest::legacyFiltrationStructureObjectivesNormalizeOnPlotLoad()
   xtal.setLocpath(structureDir);
   xtal.setEnthalpy(-1.0);
   xtal.setStrucObjValuesVec(QList<double>() << 0.0 << 4.0 << 1.0 << 8.0);
-  xtal.setStrucObjState(Structure::Os_Retain);
+  xtal.setStrucObjState(Structure::Os_Dismiss);
+
   const QString structureStateFile = Common::localPath(structureDir, "structure.state");
   writeStructureStateFile(xtal, structureStateFile);
   {
     QSettings settings(structureStateFile, QSettings::IniFormat);
     settings.beginGroup("structure");
     settings.setValue("version", OriginalStateVersion);
+    settings.setValue("status", Version14ObjectiveDismiss);
     settings.remove("constraintRedoCount");
     settings.setValue("objectivesFailCount", 1);
     settings.remove("userObjectives");
@@ -545,12 +559,14 @@ void LegacyCompatTest::legacyFiltrationStructureObjectivesNormalizeOnPlotLoad()
   QCOMPARE(loaded.tracker()->size(), 1);
 
   Structure* loadedStructure = loaded.tracker()->at(0);
+  QCOMPARE(loadedStructure->getStatus(), Structure::Dismissed);
   QCOMPARE(loadedStructure->getStrucObjNumber(), 3);
   QCOMPARE(loadedStructure->getStrucObjValues(1), 4.0);
   QCOMPARE(loadedStructure->getStrucObjValues(2), 8.0);
+  QCOMPARE(loadedStructure->getStrucObjState(), Structure::Os_Retain);
   QCOMPARE(loadedStructure->getStrucConstraintNumber(), 1);
   QCOMPARE(loadedStructure->getStrucConstraintValues(0), 1.0);
-  QCOMPARE(loadedStructure->getStrucConstraintState(), Structure::Cs_Retain);
+  QCOMPARE(loadedStructure->getStrucConstraintState(), Structure::Cs_Dismiss);
   QCOMPARE(loadedStructure->getStrucConstraintRedoCount(), 1);
 }
 
@@ -808,9 +824,11 @@ void LegacyCompatTest::loadInputFileConvertsLegacyNumberedAndAssetForms()
   QCOMPARE(opt.moleculeUnitInputs(), expected);
 
   // Per-species POTCAR ids converted from the left of '=' into the value.
-  const QString potcar = QString::fromStdString(opt.getOptimizerInputAsset(0, "POTCAR"));
-  QVERIFY(potcar.contains(QFileInfo(potcarTi.fileName()).absoluteFilePath()));
-  QVERIFY(potcar.contains(QFileInfo(potcarO.fileName()).absoluteFilePath()));
+  const Search::OptimizerInputAssetMap assets = opt.getOptimizerInputAssets(0, "POTCAR");
+  QCOMPARE(QString::fromStdString(assets.at("Ti")),
+           QFileInfo(potcarTi.fileName()).absoluteFilePath());
+  QCOMPARE(QString::fromStdString(assets.at("O")),
+           QFileInfo(potcarO.fileName()).absoluteFilePath());
 }
 
 void LegacyCompatTest::loadInputFileLoadsLegacyMolecularUnits()
@@ -1201,7 +1219,6 @@ void LegacyCompatTest::stateSettingsNormalizeSingleLegacyVaspPotcarEntry()
   QVERIFY(saved.processInputChemicalFormulas(saved.getInputFormulasString()));
   saved.setQueueInterface(0, "none");
   saved.setOptimizer(0, "vasp");
-  saved.setOptimizerInputAsset(0, "POTCAR", "%fileContents:/potentials/system/POTCAR%\n");
   QVERIFY(saved.saveSessionState(stateFile, false));
   {
     QSettings settings(stateFile, QSettings::IniFormat);
@@ -1217,8 +1234,8 @@ void LegacyCompatTest::stateSettingsNormalizeSingleLegacyVaspPotcarEntry()
   XtalOpt loaded;
   QVERIFY(loaded.readStateFile(stateFile, true));
 
-  const QString potcar = QString::fromStdString(loaded.getOptimizerInputAsset(0, "POTCAR"));
-  QCOMPARE(potcar, QString("system=%fileContents:/potentials/system/POTCAR%"));
+  const Search::OptimizerInputAssetMap assets = loaded.getOptimizerInputAssets(0, "POTCAR");
+  QCOMPARE(QString::fromStdString(assets.at("system")), QString("/potentials/system/POTCAR"));
 }
 
 void LegacyCompatTest::stateSettingsNormalizeLegacyVaspPotcarEntries()
@@ -1234,8 +1251,6 @@ void LegacyCompatTest::stateSettingsNormalizeLegacyVaspPotcarEntries()
   QVERIFY(saved.processInputChemicalFormulas(saved.getInputFormulasString()));
   saved.setQueueInterface(0, "none");
   saved.setOptimizer(0, "vasp");
-  saved.setOptimizerInputAsset(0, "POTCAR", "%fileContents:/potentials/O/POTCAR%\n"
-    "%fileContents:/potentials/Ti/POTCAR%\n");
   QVERIFY(saved.saveSessionState(stateFile, false));
   {
     QSettings settings(stateFile, QSettings::IniFormat);
@@ -1252,9 +1267,9 @@ void LegacyCompatTest::stateSettingsNormalizeLegacyVaspPotcarEntries()
   XtalOpt loaded;
   QVERIFY(loaded.readStateFile(stateFile, true));
 
-  const QString potcar = QString::fromStdString(loaded.getOptimizerInputAsset(0, "POTCAR"));
-  QCOMPARE(potcar, QString("O=%fileContents:/potentials/O/POTCAR%; "
-                   "Ti=%fileContents:/potentials/Ti/POTCAR%"));
+  const Search::OptimizerInputAssetMap assets = loaded.getOptimizerInputAssets(0, "POTCAR");
+  QCOMPARE(QString::fromStdString(assets.at("O")), QString("/potentials/O/POTCAR"));
+  QCOMPARE(QString::fromStdString(assets.at("Ti")), QString("/potentials/Ti/POTCAR"));
 }
 
 void LegacyCompatTest::stateSettingsRejectMismatchedLegacyVaspPotcarEntries()
@@ -1270,8 +1285,6 @@ void LegacyCompatTest::stateSettingsRejectMismatchedLegacyVaspPotcarEntries()
   QVERIFY(saved.processInputChemicalFormulas(saved.getInputFormulasString()));
   saved.setQueueInterface(0, "none");
   saved.setOptimizer(0, "vasp");
-  saved.setOptimizerInputAsset(0, "POTCAR", "%fileContents:/potentials/system/POTCAR%\n"
-    "%fileContents:/potentials/O/POTCAR%\n" "%fileContents:/potentials/Ti/POTCAR%\n");
   QVERIFY(saved.saveSessionState(stateFile, false));
   {
     QSettings settings(stateFile, QSettings::IniFormat);

@@ -196,6 +196,13 @@ bool convertAndReadStructureState(Search::Structure& structure,
     return false;
   structure.setStatus(currentState);
 
+  // In v15, the os_dismiss is not in active use; it is now equivalent
+  //   to a successful objective calcs and a dismissed constraint calc.
+  if (structure.getStrucObjState() == Structure::Os_Dismiss) {
+    structure.setStrucObjState(Structure::Os_Retain);
+    structure.setStrucConstraintState(Structure::Cs_Dismiss);
+  }
+
   if (structure.sizeOfHistory() > 0) {
     QList<unsigned int> atomicNums;
     QList<Common::Vector3> coords;
@@ -256,9 +263,7 @@ bool convertAndReadStructureState(Search::Structure& structure,
     structure.setStrucConstraintValuesVec(constraintValues);
     values = normalized;
     if (structure.getStrucConstraintState() == Structure::Cs_NotCalculated) {
-      if (structure.getStrucObjState() == Structure::Os_Dismiss)
-        structure.setStrucConstraintState(Structure::Cs_Dismiss);
-      else if (structure.getStrucObjState() == Structure::Os_Fail)
+      if (structure.getStrucObjState() == Structure::Os_Fail)
         structure.setStrucConstraintState(Structure::Cs_Fail);
       else
         structure.setStrucConstraintState(Structure::Cs_Retain);

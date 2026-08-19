@@ -69,6 +69,7 @@ bool parseCastepVector(const QString& line, Common::Vector3& vector)
   const QStringList fields = line.split(" ", QtCompat::SkipEmptyParts);
   if (fields.size() < 3)
     return false;
+
   bool ok0 = false, ok1 = false, ok2 = false;
   vector = Common::Vector3(fields.at(0).toDouble(&ok0), fields.at(1).toDouble(&ok1),
                    fields.at(2).toDouble(&ok2));
@@ -78,7 +79,7 @@ bool parseCastepVector(const QString& line, Common::Vector3& vector)
 } // namespace
 
 
-bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
+bool CastepFormat::read(Atoms::Geometry& s, const QString& filename)
 {
   QFile file(filename);
   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -109,6 +110,7 @@ bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
     if (lower.startsWith("%block lattice_cart")) {
       double scale = 1.0;
       int firstVectorLine = i + 1;
+
       if (firstVectorLine < lines.size()) {
         const QStringList fields = lines.at(firstVectorLine).split(" ", QtCompat::SkipEmptyParts);
         if (fields.size() == 1 && !castepIsNumber(fields.first())) {
@@ -121,10 +123,12 @@ bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
           ++firstVectorLine;
         }
       }
+
       if (firstVectorLine + 2 >= lines.size()) {
         Common::error("Incomplete LATTICE_CART block in CASTEP input.");
         return false;
       }
+
       for (int j = 0; j < 3; ++j) {
         Common::Vector3 vector;
         if (!parseCastepVector(lines.at(firstVectorLine + j), vector)) {
@@ -136,10 +140,12 @@ bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
         cellMatrix(j, 1) = vector.y() * scale;
         cellMatrix(j, 2) = vector.z() * scale;
       }
+
       cellFound = true;
     } else if (lower.startsWith("%block lattice_abc")) {
       double scale = 1.0;
       int firstParamLine = i + 1;
+
       if (firstParamLine < lines.size()) {
         const QStringList fields = lines.at(firstParamLine).split(" ", QtCompat::SkipEmptyParts);
         if (fields.size() == 1 && !castepIsNumber(fields.first())) {
@@ -152,10 +158,12 @@ bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
           ++firstParamLine;
         }
       }
+
       if (firstParamLine + 1 >= lines.size()) {
         Common::error("Incomplete LATTICE_ABC block in CASTEP input.");
         return false;
       }
+
       Common::Vector3 lengths, angles;
       if (!parseCastepVector(lines.at(firstParamLine), lengths) ||
           !parseCastepVector(lines.at(firstParamLine + 1), angles)) {
@@ -170,6 +178,7 @@ bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
       fractionalCoords = lower.startsWith("%block positions_frac");
       double scale = 1.0;
       int firstAtomLine = i + 1;
+
       if (!fractionalCoords && firstAtomLine < lines.size()) {
         const QStringList fields = lines.at(firstAtomLine).split(" ", QtCompat::SkipEmptyParts);
         if (fields.size() == 1 && !castepIsNumber(fields.first())) {
@@ -189,9 +198,11 @@ bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
           i = j;
           break;
         }
+
         const QStringList fields = l.split(" ", QtCompat::SkipEmptyParts);
         if (fields.size() < 4)
           continue;
+
         bool ok0 = false, ok1 = false, ok2 = false;
         Common::Vector3 pos(fields.at(1).toDouble(&ok0), fields.at(2).toDouble(&ok1),
                     fields.at(3).toDouble(&ok2));
@@ -204,6 +215,7 @@ bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
         atomicNums.append(atomicNum);
         coords.append(pos * scale);
       }
+
       coordsFound = !coords.isEmpty();
     }
   }
@@ -227,9 +239,9 @@ bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
   for (int i = 0; i < coords.size(); ++i)
     atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
 
-  s->clear();
-  s->setUnitCell(uc);
-  s->setAtoms(atoms);
+  s.clear();
+  s.setUnitCell(uc);
+  s.setAtoms(atoms);
   return true;
 }
 
@@ -271,7 +283,7 @@ bool CastepFormat::read(Atoms::Geometry* s, const QString& filename)
  *
  */
 
-bool CastepFormat::readOutput(Atoms::Geometry* s, const QString& filename)
+bool CastepFormat::readOutput(Atoms::Geometry& s, const QString& filename)
 {
   std::string text;
   if (!Common::readFileToString(filename, &text)) {
@@ -399,9 +411,9 @@ bool CastepFormat::readOutput(Atoms::Geometry* s, const QString& filename)
     atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
   }
 
-  s->clear();
-  s->setUnitCell(uc);
-  s->setAtoms(atoms);
+  s.clear();
+  s.setUnitCell(uc);
+  s.setAtoms(atoms);
   return true;
 }
 

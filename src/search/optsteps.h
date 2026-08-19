@@ -26,6 +26,8 @@ namespace Search {
 class Optimizer;
 class QueueInterface;
 
+using OptimizerInputAssetMap = std::map<std::string, std::string>;
+
 // Queue and optimizer settings for one optimization step.
 class OptSteps
 {
@@ -123,11 +125,14 @@ public:
   void setOptimizerTemplate(size_t optStep, const std::string& name,
                             const std::string& temp);
 
-  std::string optimizerInputAsset(size_t optStep, const std::string& name) const;
-  void setOptimizerInputAsset(size_t optStep, const std::string& name, const std::string& value);
+  OptimizerInputAssetMap optimizerInputAssets(size_t optStep, const std::string& name) const;
+  void setOptimizerInputAssets(size_t optStep, const std::string& name,
+                               const OptimizerInputAssetMap& assets);
 
 private:
   using PerStepFileTextMap = std::vector<std::map<std::string, std::string>>;
+  using PerStepInputAssetMap =
+    std::vector<std::map<std::string, OptimizerInputAssetMap>>;
 
   QueueInterfaceCreatorByName m_queueInterfaceCreatorByName;
   OptimizerCreatorByName m_optimizerCreatorByName;
@@ -147,7 +152,7 @@ private:
   PerStepFileTextMap m_optimizerTemplates;
 
   /// Optimizer input files.
-  PerStepFileTextMap m_optimizerInputAssets;
+  PerStepInputAssetMap m_optimizerInputAssets;
 };
 
 } // namespace Search

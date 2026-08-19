@@ -167,7 +167,8 @@ void Geometry::rescaleCell(double a, double b, double c, double alpha,
 {
   // 3D only.
   if (!is3D()) return;
-  if (!a && !b && !c && !alpha && !beta && !gamma)
+  if (a == 0.0 && b == 0.0 && c == 0.0 &&
+      alpha == 0.0 && beta == 0.0 && gamma == 0.0)
     return;
 
   const double targetVolume = getVolume();
@@ -186,25 +187,25 @@ void Geometry::rescaleCell(double a, double b, double c, double alpha,
   double nBeta = getBeta();
   double nGamma = getGamma();
 
-  if (a)
+  if (a != 0.0)
     nA = a;
-  if (b)
+  if (b != 0.0)
     nB = b;
-  if (c)
+  if (c != 0.0)
     nC = c;
-  if (alpha)
+  if (alpha != 0.0)
     nAlpha = alpha;
-  if (beta)
+  if (beta != 0.0)
     nBeta = beta;
-  if (gamma)
+  if (gamma != 0.0)
     nGamma = gamma;
 
   int freeLengths = 0;
-  if (!a)
+  if (a == 0.0)
     ++freeLengths;
-  if (!b)
+  if (b == 0.0)
     ++freeLengths;
-  if (!c)
+  if (c == 0.0)
     ++freeLengths;
 
   if (freeLengths > 0) {
@@ -212,11 +213,11 @@ void Geometry::rescaleCell(double a, double b, double c, double alpha,
     adjusted.setCellParameters(nA, nB, nC, nAlpha, nBeta, nGamma);
     const double scale =
       std::pow(targetVolume / adjusted.volume(), 1.0 / freeLengths);
-    if (!a)
+    if (a == 0.0)
       nA *= scale;
-    if (!b)
+    if (b == 0.0)
       nB *= scale;
-    if (!c)
+    if (c == 0.0)
       nC *= scale;
   }
 
@@ -333,8 +334,8 @@ bool Geometry::rotateCellAndCoordsToStandardOrientation()
   for (auto it = atoms().begin(), it_end = atoms().end(); it != it_end; ++it)
     fcoords.append(cartToFrac(it->pos()));
 
-  Common::Matrix3 newMat(getCellMatrixInStandardOrientation());
-  if (newMat.isZero())
+  Common::Matrix3 newMat = unitCell().cellMatrix();
+  if (!rotateCellAndCoordsToStandardOrientation(newMat, fcoords, false))
     return false;
 
   // Set the rotated basis
@@ -345,6 +346,33 @@ bool Geometry::rotateCellAndCoordsToStandardOrientation()
   for (int i = 0; i < static_cast<int>(atoms().size()); ++i)
     atom(i).setPos(fracToCart(fcoords[i]));
 
+  return true;
+}
+
+bool Geometry::rotateCellAndCoordsToStandardOrientation(Common::Matrix3& cell,
+                                                        QList<Common::Vector3>& fractionalCoordinates,
+                                                        bool positiveHandedness)
+{
+  // This is a 3D only function. We reject the rotation if cell is:
+  //  - an empty zero matrix,
+  //  - any singular or nearly singular matrix,
+  //  - a non-finite determinant.
+  if (!isCellMatrixUsable(cell))
+    return false;
+
+  if (positiveHandedness && cell.determinant() < 0.0) {
+    cell.setRow(2, -cell.row(2));
+    for (auto& coordinates : fractionalCoordinates)
+      coordinates[2] = -coordinates[2];
+  }
+
+  Geometry geometry;
+  geometry.setCellInfo(cell);
+  Common::Matrix3 newMat = geometry.getCellMatrixInStandardOrientation();
+  if (newMat.isZero())
+    return false;
+
+  cell = newMat;
   return true;
 }
 
@@ -447,6 +475,7 @@ bool Geometry::getShortestInteratomicDistance(double& shortest) const
     Common::Vector3 u1 = cellMatrix.row(0);
     Common::Vector3 u2 = cellMatrix.row(1);
     Common::Vector3 u3 = cellMatrix.row(2);
+
     for (int s_1 = -1; s_1 <= 1; s_1++)
       for (int s_2 = -1; s_2 <= 1; s_2++)
         for (int s_3 = -1; s_3 <= 1; s_3++)
@@ -523,12 +552,14 @@ bool Geometry::getShortestInteratomicDistancesBySpecies(QList<QString>& symbol1,
       const int sj = speciesOf[j];
       const int a = std::min(si, sj);
       const int b = std::max(si, sj);
+
       // Different atoms: the plain distance also counts.
       if (i != j) {
         const double d = std::fabs((v1 - v2).norm());
         if (d < shortest[a][b])
           shortest[a][b] = d;
       }
+
       for (int vecInd = 0; vecInd < uVecs.size(); vecInd++) {
         // Skip the zero image of an atom with itself (distance 0).
         if (i == j && uVecs.at(vecInd).norm() < ZERO08)
@@ -782,6 +813,7 @@ bool Geometry::generateIADHistogram(std::vector<double>* distance,
     Common::Vector3 u1 = cellMatrix.row(0);
     Common::Vector3 u2 = cellMatrix.row(1);
     Common::Vector3 u3 = cellMatrix.row(2);
+
     for (int s1 = -1; s1 <= 1; s1++)
       for (int s2 = -1; s2 <= 1; s2++)
         for (int s3 = -1; s3 <= 1; s3++)
@@ -800,6 +832,7 @@ bool Geometry::generateIADHistogram(std::vector<double>* distance,
       m.atomPositions = &atomPositions;
       m.translations = &translations;
       m.dist = distance;
+
       reduceNNHistChunks(*frequency, calcNNHistChunk(m));
     }
   } else {
@@ -807,11 +840,13 @@ bool Geometry::generateIADHistogram(std::vector<double>* distance,
     for (int j = 0; j < static_cast<int>(atomList.size()); j++) {
       v2 = atomPositions.at(j);
       diff = std::fabs((v1 - v2).norm());
+
       for (int k = 0; k < static_cast<int>(distance->size()); k++) {
         double radius = distance->at(k);
         if (diff != 0 && Common::fuzzyCompare(diff, radius, halfstep))
           (*frequency)[k]++;
       }
+
       for (int t = 0; t < static_cast<int>(translations.size()); t++) {
         if (translations.at(t).norm() < ZERO08)
           continue;
@@ -851,6 +886,7 @@ bool Geometry::compareIADDistributions(const std::vector<double>& d,
   // First determine step size of d, then convert smear to index units
   double stepSize = std::fabs(d.at(1) - d.at(0));
   int boxSize = std::ceil(smear / stepSize);
+
   if (boxSize > static_cast<int>(d.size())) {
     Common::error(QString("%1: Smear length is greater then d vector range.")
                    .arg(__func__));
@@ -858,6 +894,7 @@ bool Geometry::compareIADDistributions(const std::vector<double>& d,
   }
   // Smear
   std::vector<double> f1s, f2s, ds; // smeared vectors
+
   if (smear != 0) {
     double f1t, f2t, dt; // temporary variables
     for (int i = 0; i < static_cast<int>(d.size()) - boxSize; i++) {
@@ -1009,6 +1046,7 @@ bool Geometry::calculateNearestNeighborListsCellList(double cutoff)
   std::vector<ImageAtom> images;
   images.reserve(static_cast<size_t>(nAtoms) * (2 * expan[0] + 1) *
                  (2 * expan[1] + 1) * (2 * expan[2] + 1));
+
   for (int j = 0; j < nAtoms; j++) {
     const Common::Vector3& v1 = atoms()[j].pos();
     for (int s1 = -expan[0]; s1 <= expan[0]; s1++) {
@@ -1044,12 +1082,14 @@ bool Geometry::calculateNearestNeighborListsCellList(double cutoff)
     cy = std::min(ny - 1, std::max(0, static_cast<int>((p[1] - lo[1]) / side)));
     cz = std::min(nz - 1, std::max(0, static_cast<int>((p[2] - lo[2]) / side)));
   };
+
   auto flat = [&](int cx, int cy, int cz) {
     return (static_cast<size_t>(cz) * ny + cy) * nx + cx;
   };
 
   // Bin the image atoms into the grid.
   std::vector<std::vector<int> > grid(static_cast<size_t>(nx) * ny * nz);
+
   for (int k = 0; k < static_cast<int>(images.size()); k++) {
     int cx, cy, cz;
     cellOf(images[k].pos, cx, cy, cz);
@@ -1062,6 +1102,7 @@ bool Geometry::calculateNearestNeighborListsCellList(double cutoff)
     const Common::Vector3& v0 = atoms()[i].pos();
     int cx, cy, cz;
     cellOf(v0, cx, cy, cz);
+
     for (int dx = -1; dx <= 1; dx++) {
       const int gx = cx + dx;
       if (gx < 0 || gx >= nx) continue;
@@ -1083,6 +1124,7 @@ bool Geometry::calculateNearestNeighborListsCellList(double cutoff)
         }
       }
     }
+
     // Sort the neighbors list based on the distances (ascending)
     std::sort(nnlist.at(i).begin(), nnlist.at(i).end(),
               [](const std::pair<int, double>& a, const std::pair<int, double>& b) {

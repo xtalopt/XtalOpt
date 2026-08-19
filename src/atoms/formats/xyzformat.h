@@ -44,7 +44,7 @@ public:
   /**
    * Read an XYZ file into @p s.
    */
-  static bool read(Atoms::Geometry* s, const QString& filename);
+  static bool read(Atoms::Geometry& s, const QString& filename);
 
   /**
    * Write @p s as XYZ.

@@ -97,9 +97,12 @@ const OptimizerDefaults& SIESTAOptimizer::defaults()
   static const char* const templates[] = { "xtal.fdf", nullptr };
   static const char* const assets[] = { "PSF", nullptr };
   static const char* const outputs[] = { "xtal.out", nullptr };
+  // clang-format off
   static const OptimizerDefaults s{
-    "SIESTA", templates, assets, "xtal.out", "siesta: Final energy (eV):",
-    outputs, "siesta", "xtal.fdf", "xtal.out", "" };
+    "SIESTA", templates, assets,
+    "xtal.out", "siesta: Final energy (eV):", outputs,
+    "siesta", "xtal.fdf", "xtal.out", "" };
+  // clang-format on
   return s;
 }
 
@@ -116,21 +119,15 @@ SIESTAOptimizer::~SIESTAOptimizer()
 bool SIESTAOptimizer::addOptimizerInputFiles(Structure* s, int optStep,
                                              QHash<QString, QString>& files) const
 {
-  const QString rawPsfAsset =
-    QString::fromStdString(m_search->getOptimizerInputAsset(optStep, "PSF"));
-  const QHash<QString, QString> psfAssets = inputAssetTextToMap(rawPsfAsset);
-  if (!rawPsfAsset.trimmed().isEmpty() && psfAssets.isEmpty()) {
-    Common::error(QString("Could not read the saved PSF input asset for %1.")
-                    .arg(s->getTag()));
-    return false;
-  }
-  if (psfAssets.isEmpty())
+  const OptimizerInputAssetMap psfAssets =
+    m_search->getOptimizerInputAssets(optStep, "PSF");
+  if (psfAssets.empty())
     return true;
 
   const QStringList symbols = s->getSymbols();
   for (const auto& symbol : symbols) {
-    const QString psfAsset = psfAssets.value(symbol);
-    if (psfAsset.isEmpty()) {
+    const auto psfIt = psfAssets.find(symbol.toStdString());
+    if (psfIt == psfAssets.end() || psfIt->second.empty()) {
       Common::error(QString("No PSF input asset for species %1 in %2.")
                       .arg(symbol)
                       .arg(s->getTag()));
@@ -138,7 +135,7 @@ bool SIESTAOptimizer::addOptimizerInputFiles(Structure* s, int optStep,
     }
 
     QString contents;
-    if (!readSavedInputAssetValue(psfAsset, contents))
+    if (!readInputAssetFile(QString::fromStdString(psfIt->second), contents))
       return false;
     files.insert(symbol + ".psf", contents);
   }
@@ -149,7 +146,7 @@ bool SIESTAOptimizer::addOptimizerInputFiles(Structure* s, int optStep,
 bool SIESTAOptimizer::readOutput(Structure* s, const QString& filename) const
 {
   Atoms::Geometry structure;
-  if (!Atoms::SiestaFormat::readOutput(&structure, filename))
+  if (!Atoms::SiestaFormat::readOutput(structure, filename))
     return false;
 
   double energy = 0.0;

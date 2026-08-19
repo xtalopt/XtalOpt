@@ -43,7 +43,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="push_savePlot">
+     <widget class="QPushButton" name="push_savePlot">
        <property name="font">
         <font>
          <pointsize>11</pointsize>
@@ -54,10 +54,25 @@
        </property>
        <property name="text">
         <string>Save View</string>
-       </property>
-      </widget>
-     </item>
-     <item>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="push_saveData">
+      <property name="font">
+       <font>
+        <pointsize>11</pointsize>
+       </font>
+      </property>
+      <property name="focusPolicy">
+       <enum>Qt::StrongFocus</enum>
+      </property>
+      <property name="text">
+       <string>Save Data</string>
+      </property>
+     </widget>
+    </item>
+    <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -562,7 +577,7 @@
           </widget>
          </item>
          <item row="3" column="0">
-          <widget class="QCheckBox" name="cb_showIncompletes">
+          <widget class="QCheckBox" name="cb_showInprogress">
            <property name="font">
             <font>
              <pointsize>11</pointsize>
@@ -572,7 +587,7 @@
             <enum>Qt::StrongFocus</enum>
            </property>
            <property name="text">
-            <string>Show incomplete structures</string>
+            <string>Show inprogress structures</string>
            </property>
            <property name="checked">
             <bool>true</bool>
@@ -644,10 +659,11 @@
   <tabstop>cb_showComplete</tabstop>
   <tabstop>cb_showSimilarities</tabstop>
   <tabstop>cb_showDismissed</tabstop>
-  <tabstop>cb_showIncompletes</tabstop>
+  <tabstop>cb_showInprogress</tabstop>
   <tabstop>cb_showFailures</tabstop>
   <tabstop>push_refresh</tabstop>
   <tabstop>push_savePlot</tabstop>
+  <tabstop>push_saveData</tabstop>
   <tabstop>cb_showLegend</tabstop>
   <tabstop>cb_smartLabelPlacement</tabstop>
   <tabstop>pushButton</tabstop>

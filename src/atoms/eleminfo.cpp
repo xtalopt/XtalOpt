@@ -36,9 +36,17 @@ vector<double> ElementInfo::masses = ElementInfoDatabase::_masses;
 vector<double> ElementInfo::covalentRadii = ElementInfoDatabase::_covalentRadii;
 vector<double> ElementInfo::vdwRadii = ElementInfoDatabase::_vdwRadii;
 
+unsigned int ElementInfo::getNumberOfElements()
+{
+  // Return number of entries in symbol, mass, and radii list
+  //   that are defined for real elements.
+  // This assumes the lists are always maintain the same length!
+  return atomicSymbols.size() - 1;
+}
+
 std::string ElementInfo::getAtomicSymbol(unsigned int atomicNum)
 {
-  if (atomicNum == 0 || atomicNum > 117) {
+  if (atomicNum == 0 || atomicNum >= atomicSymbols.size()) {
     Common::error(QString("%1: invalid atomicNum, %2.")
                  .arg(__func__)
                  .arg(atomicNum));
@@ -49,7 +57,7 @@ std::string ElementInfo::getAtomicSymbol(unsigned int atomicNum)
 
 double ElementInfo::getAtomicMass(unsigned int atomicNum)
 {
-  if (atomicNum == 0 || atomicNum > 117) {
+  if (atomicNum == 0 || atomicNum >= masses.size()) {
     Common::error(QString("%1: invalid atomicNum, %2.")
                  .arg(__func__)
                  .arg(atomicNum));
@@ -160,7 +168,7 @@ bool ElementInfo::readComposition(const string& comp, vector<unsigned int>& atom
 
 double ElementInfo::getVdwRadius(unsigned int atomicNum)
 {
-  if (atomicNum == 0 || atomicNum > 117) {
+  if (atomicNum == 0 || atomicNum >= vdwRadii.size()) {
     Common::error(QString("%1: invalid atomicNum, %2.")
                  .arg(__func__)
                  .arg(atomicNum));
@@ -176,7 +184,7 @@ double ElementInfo::getAverageVdwRadius()
 
 double ElementInfo::getVdwVolume(unsigned int atomicNum)
 {
-  if (atomicNum == 0 || atomicNum > 117) {
+  if (atomicNum == 0 || atomicNum >= vdwRadii.size()) {
     Common::error(QString("%1: invalid atomicNum, %2.")
                  .arg(__func__)
                  .arg(atomicNum));
@@ -187,7 +195,7 @@ double ElementInfo::getVdwVolume(unsigned int atomicNum)
 
 double ElementInfo::getCovalentRadius(unsigned int atomicNum)
 {
-  if (atomicNum == 0 || atomicNum > 117) {
+  if (atomicNum == 0 || atomicNum >= covalentRadii.size()) {
     Common::error(QString("%1: invalid atomicNum, %2.")
                  .arg(__func__)
                  .arg(atomicNum));
@@ -203,7 +211,7 @@ double ElementInfo::getAverageCovalentRadius()
 
 double ElementInfo::getCovalentVolume(unsigned int atomicNum)
 {
-  if (atomicNum == 0 || atomicNum > 117) {
+  if (atomicNum == 0 || atomicNum >= covalentRadii.size()) {
     Common::error(QString("%1: invalid atomicNum, %2.")
                  .arg(__func__)
                  .arg(atomicNum));
@@ -214,7 +222,7 @@ double ElementInfo::getCovalentVolume(unsigned int atomicNum)
 
 void ElementInfo::applyScalingFactor(double sf)
 {
-  for (int i = 1; i < 118; i++) {
+  for (size_t i = 1; i < covalentRadii.size(); i++) {
     covalentRadii[i] = ElementInfoDatabase::_covalentRadii[i] * sf;
     vdwRadii[i] = ElementInfoDatabase::_vdwRadii[i] * sf;
   }
@@ -225,7 +233,7 @@ void ElementInfo::applyScalingFactor(double sf)
 // them, but we don't know which...
 void ElementInfo::setRadius(unsigned int atomicNum, double newRadius)
 {
-  if (atomicNum == 0 || atomicNum > 117) {
+  if (atomicNum == 0 || atomicNum >= covalentRadii.size()) {
     Common::error(QString("%1: invalid atomicNum, %2.")
                  .arg(__func__)
                  .arg(atomicNum));

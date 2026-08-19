@@ -176,6 +176,7 @@ SearchBase::SearchBase(QObject* parent)
   m_sshMethod = defaultSshMethod();
   clearPromptHandlers();
 
+  // clang-format off
   // Connections
   connect(tracker(), &Tracker::newStructureAdded,
           this, &SearchBase::reportStructureStateChanged);
@@ -260,8 +261,6 @@ SearchBase::SearchBase(QObject* parent)
                   "%id% -- Structure id number");
   registerKeyword("optStep",    [](Structure* s) -> QString { return QString::number(s->getCurrentOptStep()); },
                   "%optStep% -- Current optimization step");
-  registerKeyword("incar",      [](Structure* s) -> QString { return QString::number(s->getCurrentOptStep()); },
-                  "%incar% -- Legacy alias for %optStep%");
   // filecontents: and copyfile: are handled as prefix keywords in interpretKeyword_base()
   registerKeyword("filecontents:", [](Structure*) -> QString { return ""; },
                   "%fileContents:/path/to/local/file% -- Replaced with the contents of the specified file");
@@ -435,32 +434,27 @@ SearchBase::SearchBase(QObject* parent)
   }, "%cellVector3Bohr% -- Third cell vector in Bohr");
   registerKeyword("POSCAR", [](Structure* s) -> QString {
     QWriteLocker locker(&s->lock());
-
     const QString poscar = Atoms::PoscarFormat::writeToString(*s, s->getLocpath());
-
     if (s->hasBonds() && s->reusePreoptBonding()) {
       Atoms::PoscarFormat::reorderAtomsToMatchPoscar(*s);
       s->setPreoptBonding(s->bonds());
     }
-
     return poscar;
   }, "%POSCAR% -- VASP POSCAR generator");
   registerKeyword("siestaZMatrix", [](Structure* s) -> QString {
     QWriteLocker locker(&s->lock());
-
     const QString zMatrix = Atoms::SiestaFormat::writeSiestaZMatrixToString(
       *s, true, true, true, s->reusePreoptBonding());
     if (zMatrix.isEmpty()) {
       Common::error("Writing the SIESTA z-matrix failed.");
       return QString();
     }
-
     if (s->reusePreoptBonding()) {
       s->setPreoptBonding(s->bonds());
     }
-
     return zMatrix;
   }, "%siestaZMatrix% -- SIESTA Z-matrix coordinates");
+  // clang-format on
 }
 
 SearchBase::~SearchBase()
@@ -512,6 +506,10 @@ void SearchBase::reportStructureStateChanged(Structure* structure)
 
 void SearchBase::stopQueueThread()
 {
+  // Added to avoid waiting for completion of script runs
+  //   in gui exit.
+  m_shuttingDown.store(true);
+
   if (!m_queueThread)
     return;
 
@@ -529,14 +527,6 @@ void SearchBase::stopQueueThread()
   m_queueThread->quit();
   if (QThread::currentThread() != m_queueThread.get())
     m_queueThread->wait();
-}
-
-void SearchBase::reset()
-{
-  queue()->reset();
-  // Wait for structure work before deleting the structures.
-  QThreadPool::globalInstance()->waitForDone(-1);
-  deleteTrackedStructures();
 }
 
 void SearchBase::addRestoredStructure(Structure* structure, bool queueWaitingForOptimization)
@@ -586,6 +576,15 @@ bool SearchBase::setSshMethod(const QString& method)
 
 bool SearchBase::createSSHConnections()
 {
+  // Applied for correct ownership of ssh in GUI; it delays the messages for
+  //   status updates/gui updates though!
+  if (QThread::currentThread() != thread()) {
+    bool created = false;
+    QMetaObject::invokeMethod(this, "createSSHConnections", Qt::BlockingQueuedConnection,
+                              Q_RETURN_ARG(bool, created));
+    return created;
+  }
+
   m_ssh.reset();
 
   beginProgressUpdate(tr("Preparing remote connection..."), 0, 0);
@@ -1513,7 +1512,7 @@ bool SearchBase::checkScriptPath(const QString& path, const QString& label, int 
                                  QueueInterface* queue, QString* err) const
 {
   const QString trimmed = path.trimmed();
-  const bool remoteScript = isRemoteQueue() && queue && queue->getIDString().toLower() != "none";
+  const bool remoteScript = isRemoteQueue() && queue && queue->isBatchQueue();
 
   if (remoteScript) {
     if (!isRemoteAbsolutePath(trimmed)) {
@@ -1580,7 +1579,7 @@ bool SearchBase::anyBatchQueueInterfaces() const
   for (size_t i = 0; i < getNumOptSteps(); ++i) {
     if (!queueInterface(i))
       continue;
-    if (queueInterface(i)->getIDString().toLower() != "none")
+    if (queueInterface(i)->isBatchQueue())
       return true;
   }
   return false;

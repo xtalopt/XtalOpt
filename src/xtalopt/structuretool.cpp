@@ -15,15 +15,7 @@
 #include <common/constants.h>
 #include <common/compatibility/qt_compat.h>
 #include <common/output.h>
-#include <atoms/formats/castepformat.h>
-#include <atoms/formats/cifformat.h>
-#include <atoms/formats/cmlformat.h>
 #include <atoms/formats/formats.h>
-#include <atoms/formats/gulpformat.h>
-#include <atoms/formats/mtpformat.h>
-#include <atoms/formats/poscarformat.h>
-#include <atoms/formats/pwscfformat.h>
-#include <atoms/formats/siestaformat.h>
 #include <atoms/formats/xyzformat.h>
 #include <atoms/eleminfo.h>
 #include <atoms/generators.h>
@@ -44,7 +36,6 @@ extern "C" {
 
 #include <fstream>
 #include <iomanip>
-#include <iostream>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -171,6 +162,7 @@ OutputCell outputCellFromCommandLine(int argc, char* argv[])
 void readRawOptions(ArgParser* parser, int argc, char* argv[], StructureToolOptions& options)
 {
   options.outputCell = outputCellFromCommandLine(argc, argv);
+
   options.printSymmetry = ap_found(parser, "symmetry");
   options.doNiggli = ap_found(parser, "niggli");
   options.doStandardOrientation = ap_found(parser, "standard-orient");
@@ -215,8 +207,10 @@ bool parseSpaceGroupText(const QString& text, int& spaceGroup)
 {
   bool ok = false;
   const int parsed = text.toInt(&ok);
+
   if (!ok || parsed < 1 || parsed > 230)
     return false;
+
   spaceGroup = parsed;
   return true;
 }
@@ -230,12 +224,14 @@ QString normalizedCompositionFormula(const QString& formula, QString& errorMessa
   }
 
   QMap<QString, unsigned int> alphabeticComposition;
+
   for (std::map<unsigned int, unsigned int>::const_iterator it = composition.begin(); it != composition.end(); ++it) {
     alphabeticComposition.insert(
       QString::fromStdString(Atoms::ElementInfo::getAtomicSymbol(it->first)), it->second);
   }
 
   QString normalized;
+
   for (QMap<QString, unsigned int>::const_iterator it = alphabeticComposition.constBegin(); it != alphabeticComposition.constEnd(); ++it) {
     normalized += QString("%1%2").arg(it.key()).arg(it.value());
   }
@@ -452,8 +448,9 @@ bool generateMoleculeFromFormulaRequest(const std::string& requestText, Atoms::G
 bool writeStructure(Atoms::Geometry& structure, const std::string& outputFile,
                     const QString& format, double symprec)
 {
-  std::ostream* out = &std::cout;
+  std::ostringstream text;
   std::ofstream file;
+  std::ostream* out = &text;
   if (!outputFile.empty()) {
     file.open(outputFile.c_str(), std::ios::out | std::ios::trunc);
     if (!file.is_open()) {
@@ -463,21 +460,12 @@ bool writeStructure(Atoms::Geometry& structure, const std::string& outputFile,
     out = &file;
   }
 
-  if (format == "POSCAR")
-    return Atoms::PoscarFormat::write(structure, *out);
-  if (format == "CML")
-    return Atoms::CmlFormat::write(structure, *out);
-  if (format == "CIF")
-    return Atoms::CifFormat::write(structure, *out, symprec);
-  if (format == "XYZ")
-    return Atoms::XyzFormat::write(structure, *out);
-  if (format == "MTP")
-    return Atoms::MtpFormat::write(structure, *out);
+  const bool written = Atoms::Formats::write(structure, *out, format, symprec);
 
-  Common::error(QString("Unsupported output format: %1. Currently supported formats are:\n"
-                       "  POSCAR/VASP, CML, CIF, XYZ, and MTP.")
-                       .arg(format));
-  return false;
+  if (written && outputFile.empty())
+    Common::message(QString::fromStdString(text.str()));
+
+  return written;
 }
 
 int runMolUnit(const StructureToolOptions& options)
@@ -500,7 +488,7 @@ bool readMoleculeFromXyzFile(const std::string& inputFile, Atoms::Geometry& mole
   //   cell the file may carry is dropped.
   Atoms::Geometry structure;
   const QString filename = QString::fromLocal8Bit(inputFile.c_str());
-  if (!Atoms::XyzFormat::read(&structure, filename)) {
+  if (!Atoms::XyzFormat::read(structure, filename)) {
     error = QString("--molcrystal failed to read XYZ molecule file: %1").arg(filename);
     return false;
   }
@@ -718,59 +706,14 @@ bool printNormalizedRDF(Atoms::Geometry& structure, int bins, double cutoff, dou
   return true;
 }
 
-QString normalizedFormat(const QString& format)
-{
-  const QString upper = format.toUpper();
-  if (upper == "VASP")
-    return "POSCAR";
-  if (upper == "CFG")
-    return "MTP";
-  return upper;
-}
-
 bool readStructure(Atoms::Geometry& structure, const std::string& inputFile, const std::string& format)
 {
   const QString filename = QString::fromLocal8Bit(inputFile.c_str());
   if (format.empty())
-    return Atoms::Formats::read(&structure, filename);
+    return Atoms::Formats::read(structure, filename);
 
-  const QString upper = normalizedFormat(QString::fromLocal8Bit(format.c_str()));
-
-  if (upper == "CASTEP")
-    return Atoms::CastepFormat::read(&structure, filename);
-  if (upper == "CIF")
-    return Atoms::CifFormat::read(&structure, filename);
-  if (upper == "CML") {
-    std::string text;
-    if (!Common::readFileToString(filename, &text)) {
-      Common::error(QString("Failed to open CML file: %1").arg(filename));
-      return false;
-    }
-    std::istringstream in(text);
-    return Atoms::CmlFormat::read(structure, in);
-  }
-  if (upper == "GULP")
-    return Atoms::GulpFormat::readOutput(&structure, filename);
-  if (upper == "MTP")
-    return Atoms::MtpFormat::read(&structure, filename);
-  if (upper == "POSCAR") {
-    std::string text;
-    if (!Common::readFileToString(filename, &text)) {
-      Common::error(QString("Failed to open POSCAR file: %1").arg(filename));
-      return false;
-    }
-    std::istringstream in(text);
-    return Atoms::PoscarFormat::read(structure, in);
-  }
-  if (upper == "PWSCF")
-    return Atoms::PwscfFormat::read(&structure, filename);
-  if (upper == "SIESTA")
-    return Atoms::SiestaFormat::read(&structure, filename);
-  if (upper == "XYZ")
-    return Atoms::XyzFormat::read(&structure, filename);
-
-  Common::error(QString("Unsupported input format: %1").arg(QString::fromLocal8Bit(format.c_str())));
-  return false;
+  return Atoms::Formats::read(structure, filename,
+                              QString::fromLocal8Bit(format.c_str()));
 }
 
 bool compareRDFtoFile(Atoms::Geometry& structure, const std::string& compareFile,
@@ -854,7 +797,7 @@ bool hasStructureReport(const StructureToolOptions& options)
 QString outputFormatForFile(const std::string& outputFile, const std::string& explicitFormat)
 {
   if (!explicitFormat.empty())
-    return normalizedFormat(QString::fromLocal8Bit(explicitFormat.c_str()));
+    return Atoms::Formats::normalizedFormatName(QString::fromLocal8Bit(explicitFormat.c_str()));
 
   if (outputFile.empty())
     return "POSCAR";
@@ -1010,8 +953,9 @@ bool isInvocation(int argc, char* argv[])
 
 void printHelp(QTextStream& out)
 {
+  // clang-format off
   out << "Structure Toolset Options (used with \"--input\" structure file):\n";
-  out << "  -f, --format <fmt>                  Input <file> FORMAT (POSCAR,CIF,XYZ,CML,MTP,CASTEP,PWSCF,SIESTA; Default: auto)\n";
+  out << "  -f, --format <fmt>                  Input <file> FORMAT (POSCAR,CIF,XYZ,CML,MTP,GULP,CASTEP,PWSCF,SIESTA; Default: auto)\n";
   out << "  -o, --output <file>                 Write output structure to <file> instead of printing to output\n";
   out << "      --output-format <fmt>           Output <file> FORMAT (POSCAR,CIF,XYZ,MTP,CML; Default: POSCAR)\n";
   out << "      --symprec <val>                 Spglib symmetry tolerance VALUE (Default: 0.01)\n";
@@ -1043,6 +987,7 @@ void printHelp(QTextStream& out)
   out << "      --molcrystal <spg> <\"xyz\">      Generate molecular crystal from SPACEGROUP and \"SYMBOL X Y Z, ...\" molecule\n";
   out << "      --molcrystal <spg> <frm> <temp> Generate molecular crystal from SPACEGROUP and generated molecular unit\n";
   out << "      --molcrystal <spg> -i <file>    Generate molecular crystal from SPACEGROUP and input XYZ molecule <file>\n";
+  // clang-format on
 }
 
 } // namespace StructureTool

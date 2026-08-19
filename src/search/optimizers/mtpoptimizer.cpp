@@ -81,10 +81,13 @@ const OptimizerDefaults& MTPOptimizer::defaults()
                                             nullptr };
   static const char* const assets[] = { nullptr };
   static const char* const outputs[] = { "xtal.mot_0", nullptr };
+  // clang-format off
   static const OptimizerDefaults s{
-    "MTP", templates, assets, "xtal.mot_0", "Energy", outputs,
+    "MTP", templates, assets,
+    "xtal.mot_0", "Energy", outputs,
     "mlp relax mtp.relax --cfg-filename=mtp.cfg --save-relaxed=xtal.mot",
     "mtp.cfg", "mtp.out", "" };
+  // clang-format on
   return s;
 }
 
@@ -101,7 +104,7 @@ MTPOptimizer::~MTPOptimizer()
 bool MTPOptimizer::readOutput(Structure* s, const QString& filename) const
 {
   Atoms::Geometry structure;
-  if (!Atoms::MtpFormat::readOutput(&structure, filename))
+  if (!Atoms::MtpFormat::read(structure, filename))
     return false;
 
   double energy = 0.0;

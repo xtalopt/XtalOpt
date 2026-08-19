@@ -34,12 +34,12 @@ public:
   /**
    * Read a SIESTA input/structure file.
    */
-  static bool read(Atoms::Geometry* s, const QString& filename);
+  static bool read(Atoms::Geometry& s, const QString& filename);
 
   /**
    * Read SIESTA optimizer output.
    */
-  static bool readOutput(Atoms::Geometry* s, const QString& filename);
+  static bool readOutput(Atoms::Geometry& s, const QString& filename);
 
   /**
    * Write a z-matrix using the specification in SIESTA (Spanish Initiative

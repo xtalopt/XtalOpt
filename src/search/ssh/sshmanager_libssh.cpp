@@ -192,6 +192,7 @@ SSHManagerLibSSH* SSHManagerLibSSH::createConnections(
 {
   std::unique_ptr<SSHManagerLibSSH> manager(new SSHManagerLibSSH(5, parent));
   QString pw = "";
+
   for (;;) {
     try {
       manager->makeConnections(host, user, pw, port);
@@ -250,6 +251,7 @@ SSHManagerLibSSH* SSHManagerLibSSH::createConnections(
     }     // end catch
     break;
   } // end forever
+
   return manager.release();
 }
 

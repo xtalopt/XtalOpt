@@ -18,6 +18,7 @@
 #include <search/optimizer.h>
 #include <search/queueinterface.h>
 
+#include <atoms/eleminfo.h>
 #include <common/output.h>
 
 #include <QString>
@@ -88,7 +89,7 @@ void OptSteps::append()
     m_optimizerAtOptStep.push_back(nullptr);
     m_queueInterfaceTemplates.push_back(templateMap());
     m_optimizerTemplates.push_back(templateMap());
-    m_optimizerInputAssets.push_back(templateMap());
+    m_optimizerInputAssets.push_back(PerStepInputAssetMap::value_type());
   }
   // We will duplicate the most recent opt step otherwise
   else {
@@ -221,7 +222,7 @@ bool OptSteps::setOptimizer(size_t optStep, const std::string& optName)
     setOptimizerTemplate(optStep, templateName.toStdString(), "");
   }
   for (const auto& assetName : m_optimizerAtOptStep[optStep]->getOptimizerInputAssetNames()) {
-    setOptimizerInputAsset(optStep, assetName.toStdString(), "");
+    setOptimizerInputAssets(optStep, assetName.toStdString(), OptimizerInputAssetMap());
   }
   return true;
 }
@@ -261,7 +262,8 @@ void OptSteps::setOptimizerTemplate(size_t optStep,
   m_optimizerTemplates[optStep][name] = temp;
 }
 
-std::string OptSteps::optimizerInputAsset(size_t optStep, const std::string& name) const
+OptimizerInputAssetMap OptSteps::optimizerInputAssets(size_t optStep,
+                                                      const std::string& name) const
 {
   if (optStep >= m_numSteps) {
     Common::error(QString("%1: optStep %2 is out of bounds. Number of opt "
@@ -269,20 +271,20 @@ std::string OptSteps::optimizerInputAsset(size_t optStep, const std::string& nam
             .arg(__func__)
             .arg(optStep + 1)
             .arg(m_numSteps));
-    return "";
+    return OptimizerInputAssetMap();
   }
   if (m_optimizerInputAssets[optStep].count(name) == 0) {
     Common::error(QString("%1: invalid input asset name %2 for opt step %3.")
             .arg(__func__)
             .arg(name.c_str())
             .arg(optStep + 1));
-    return "";
+    return OptimizerInputAssetMap();
   }
   return m_optimizerInputAssets[optStep].at(name);
 }
 
-void OptSteps::setOptimizerInputAsset(size_t optStep, const std::string& name,
-                                          const std::string& value)
+void OptSteps::setOptimizerInputAssets(size_t optStep, const std::string& name,
+                                       const OptimizerInputAssetMap& assets)
 {
   if (optStep >= m_numSteps) {
     Common::error(QString("%1: optStep %2 is out of bounds. Number of opt "
@@ -292,7 +294,19 @@ void OptSteps::setOptimizerInputAsset(size_t optStep, const std::string& name,
             .arg(m_numSteps));
     return;
   }
-  m_optimizerInputAssets[optStep][name] = value;
+  OptimizerInputAssetMap canonicalAssets;
+  for (const auto& asset : assets) {
+    std::string id = asset.first;
+    if (QString::compare(QString::fromStdString(id), "system", Qt::CaseInsensitive) == 0) {
+      id = "system";
+    } else {
+      const unsigned int atomicNum = Atoms::ElementInfo::getAtomicNum(id);
+      if (atomicNum != 0)
+        id = Atoms::ElementInfo::getAtomicSymbol(atomicNum);
+    }
+    canonicalAssets[id] = asset.second;
+  }
+  m_optimizerInputAssets[optStep][name] = canonicalAssets;
 }
 
 } // namespace Search

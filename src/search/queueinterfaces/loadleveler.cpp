@@ -73,7 +73,7 @@ QueueInterface::QueueStatus LoadLevelerQueueInterface::parseQueueStatus(
   if (rawStatus)
     *rawStatus = status;
 
-  static const QRegularExpression runningStatusMatcher("^(?:C|CA|CK|CP|E|EP|MP|R|RM|RP|ST|TX|V|VP)$");
+  static const QRegularExpression runningStatusMatcher("^(?:CK|CP|E|EP|MP|R|RP|ST|V|VP|C|CA|RM|TX)$");
   static const QRegularExpression queuedStatusMatcher("^(?:D|H|HS|I|NQ|P|S)$");
   static const QRegularExpression errorStatusMatcher("^(?:NR|SX|X|XP)$");
 
@@ -82,8 +82,7 @@ QueueInterface::QueueStatus LoadLevelerQueueInterface::parseQueueStatus(
   if (queuedStatusMatcher.match(status).hasMatch())
     return QueueInterface::Queued;
   if (errorStatusMatcher.match(status).hasMatch()) {
-    Common::warning(tr("LoadLeveler returned an error status in the queue: %1")
-                    .arg(status));
+    Common::warning(tr("LoadLeveler returned an error status in the queue: %1").arg(status));
     return QueueInterface::Error;
   }
   return QueueInterface::Unknown;

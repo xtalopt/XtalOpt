@@ -308,13 +308,21 @@ bool QueueInterface::grepFile(Structure* s, const QString& matchText,
 
 bool QueueInterface::writeCopyFilesToLocalDir(Structure* s, QStringList& extraFilenames) const
 {
-  if (s->copyFiles().empty())
+  std::vector<std::string> copyFiles;
+  QString locpath;
+  {
+    QReadLocker structureLocker(&s->lock());
+    copyFiles = s->copyFiles();
+    locpath = s->getLocpath();
+  }
+
+  if (copyFiles.empty())
     return true;
 
-  for (const auto& copyFile : s->copyFiles()) {
+  for (const auto& copyFile : copyFiles) {
     QFile infile(copyFile.c_str());
     QString filename = QFileInfo(infile).fileName();
-    QFile outfile(Common::localPath(s->getLocpath(), filename));
+    QFile outfile(Common::localPath(locpath, filename));
     const QFileInfo inputInfo(infile);
     const QFileInfo outputInfo(outfile);
 
@@ -350,7 +358,10 @@ bool QueueInterface::writeCopyFilesToLocalDir(Structure* s, QStringList& extraFi
     }
     extraFilenames.append(filename);
   }
-  s->clearCopyFiles();
+  {
+    QWriteLocker structureLocker(&s->lock());
+    s->clearCopyFiles();
+  }
   return true;
 }
 

@@ -46,7 +46,7 @@ namespace {
 bool usesLocalExecutionHost(const SearchBase* search, const QueueInterface* queue)
 {
   // Direct-run jobs are always executed locallly.
-  return queue->getIDString().toLower() == "none" || !search->isRemoteQueue();
+  return !queue->isBatchQueue() || !search->isRemoteQueue();
 }
 
 struct ScriptCalculationContext
@@ -141,18 +141,28 @@ bool runExternalScripts(Structure* s, const ScriptCalculationContext& context,
     const double requested = context.search->hoursForCancelScriptAfterTime() * 3600000.0;
     timeoutMs = requested >= INT_MAX ? INT_MAX : static_cast<int>(requested);
   }
+
   QElapsedTimer timer;
   timer.start();
 
   for (const auto& script : scripts) {
     if (context.search->isShuttingDown())
       return false;
+
     const int remaining = timeoutMs < 0 ? -1
                           : qMax(0, timeoutMs - static_cast<int>(qMin<qint64>(timer.elapsed(), INT_MAX)));
     if (remaining == 0)
       return false;
+
+    // The command is run by a shell (remote) or by QProcess (local); quote the
+    //   path so whitespaces in it cannot split the command.
+    const QString executable = context.localRun
+                               ? "\"" + script.executable + "\""
+                               : Common::quoteRemotePath(script.executable);
+
     const QueueInterface::CommandResult result =
-      context.queue->runACommand(context.workDir, script.executable, remaining);
+      context.queue->runACommand(context.workDir, executable, remaining);
+
     if (!result.succeeded()) {
       Common::error(QObject::tr("Failed to run the user script for %1 %2 for structure %3")
                       .arg(scriptKind)
@@ -170,8 +180,10 @@ bool checkAndGetScriptOutputs(Structure* s, const ScriptCalculationContext& cont
 {
   QStringList outputFiles;
   outputFiles.reserve(static_cast<int>(scripts.size()));
+
   for (const auto& script : scripts)
     outputFiles.append(script.outputFile);
+
   if (outputFiles.isEmpty())
     return true;
 
@@ -189,6 +201,7 @@ bool checkAndGetScriptOutputs(Structure* s, const ScriptCalculationContext& cont
   QThread::msleep(OBJECTIVE_CHECK_MS);
 
   const QString lowerKind = scriptKind.toLower();
+
   for (const auto& script : scripts) {
     const QString localOutput = Common::localPath(context.localDir, script.outputFile);
     if (!context.localRun)
@@ -208,45 +221,26 @@ bool checkAndGetScriptOutputs(Structure* s, const ScriptCalculationContext& cont
   return true;
 }
 
-bool readObjectiveValue(const QString& filename, const QString& localDir, double& value)
+// Read the first field of a script output file. Constraints also accept
+//   "true"/"false" input. A missing, unreadable, or non-finite value is not valid.
+bool readScriptValue(const QString& filename, const QString& localDir,
+                     bool acceptBoolean, double& value)
 {
   bool valid = false;
   value = 0.0;
 
   QFile file(Common::localPath(localDir, filename));
-  if (file.open(QIODevice::ReadOnly)) {
-    QTextStream in(&file);
-    const QString firstLine = in.readLine();
-    const QStringList fields = firstLine.split(" ", QtCompat::SkipEmptyParts);
-    if (!fields.isEmpty())
-      value = fields.at(0).toDouble(&valid);
-    file.close();
-  }
 
-  if (GS_ISNAN(value) || GS_ISINF(value)) {
-    value = 0.0;
-    valid = false;
-  }
-
-  return valid;
-}
-
-bool readConstraintValue(const QString& filename, const QString& localDir, double& value)
-{
-  bool valid = false;
-  value = 0.0;
-
-  QFile file(Common::localPath(localDir, filename));
   if (file.open(QIODevice::ReadOnly)) {
     QTextStream in(&file);
     const QString firstLine = in.readLine();
     const QStringList fields = firstLine.split(" ", QtCompat::SkipEmptyParts);
     if (!fields.isEmpty()) {
       const QString str = fields.at(0);
-      if (str.compare("true", Qt::CaseInsensitive) == 0) {
+      if (acceptBoolean && str.compare("true", Qt::CaseInsensitive) == 0) {
         value = 1.0;
         valid = true;
-      } else if (str.compare("false", Qt::CaseInsensitive) == 0) {
+      } else if (acceptBoolean && str.compare("false", Qt::CaseInsensitive) == 0) {
         value = 0.0;
         valid = true;
       } else {
@@ -269,8 +263,10 @@ bool readConstraintValue(const QString& filename, const QString& localDir, doubl
 bool SearchBase::startConstraintCalculations(Structure* s)
 {
   const ScriptCalculationContext context = calculationContext(this, s);
+
   std::vector<ExternalScript> scripts;
   scripts.reserve(getConstraintsNum());
+
   for (int i = 0; i < getConstraintsNum(); ++i)
     scripts.push_back(ExternalScript(i + 1, getConstraintExe(i), getConstraintOut(i)));
 
@@ -310,7 +306,7 @@ bool SearchBase::finishConstraintCalculations(Structure* s)
   for (int i = 0; i < getConstraintsNum(); i++) {
     double value = 0.0;
     const QString constraintFile = getConstraintOut(i);
-    const bool valid = readConstraintValue(constraintFile, context.localDir, value);
+    const bool valid = readScriptValue(constraintFile, context.localDir, true, value);
     values.append(value);
     if (!valid) {
       Common::error(tr("Failed to read any results from output file for constraint %1 for structure %2")
@@ -399,7 +395,7 @@ bool SearchBase::finishObjectiveCalculations(Structure* s)
 
     double value = 0.0;
     const QString objectiveFile = getObjectivesOut(i);
-    const bool valid = readObjectiveValue(objectiveFile, context.localDir, value);
+    const bool valid = readScriptValue(objectiveFile, context.localDir, false, value);
     if (!valid) {
       Common::error(tr("Failed to read any results from output file for objective %1 for structure %2")
               .arg(i + 1)

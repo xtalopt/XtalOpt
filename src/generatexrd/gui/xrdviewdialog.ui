@@ -124,7 +124,7 @@
         <double>1.000000000000000</double>
        </property>
        <property name="maximum">
-        <double>360.000000000000000</double>
+        <double>180.000000000000000</double>
        </property>
        <property name="singleStep">
         <double>1.000000000000000</double>
@@ -194,7 +194,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="saveDataButton">
+      <widget class="QPushButton" name="saveImageButton">
        <property name="enabled">
         <bool>false</bool>
        </property>
@@ -202,7 +202,7 @@
         <enum>Qt::StrongFocus</enum>
        </property>
        <property name="text">
-        <string>Save Data</string>
+        <string>Save View</string>
        </property>
        <property name="autoDefault">
         <bool>false</bool>
@@ -213,7 +213,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="saveImageButton">
+      <widget class="QPushButton" name="saveDataButton">
        <property name="enabled">
         <bool>false</bool>
        </property>
@@ -221,7 +221,7 @@
         <enum>Qt::StrongFocus</enum>
        </property>
        <property name="text">
-        <string>Save View</string>
+        <string>Save Data</string>
        </property>
        <property name="autoDefault">
         <bool>false</bool>
@@ -266,8 +266,8 @@
   <tabstop>max2thetaSpin</tabstop>
   <tabstop>resetParametersButton</tabstop>
   <tabstop>resetViewButton</tabstop>
-  <tabstop>saveDataButton</tabstop>
   <tabstop>saveImageButton</tabstop>
+  <tabstop>saveDataButton</tabstop>
   <tabstop>closeButton</tabstop>
  </tabstops>
  <resources/>

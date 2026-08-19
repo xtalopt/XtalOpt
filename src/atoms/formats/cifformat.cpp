@@ -485,7 +485,7 @@ QString symOpText(const SymOp& op)
 
 
 
-bool CifFormat::read(Geometry* s, const QString& filename)
+bool CifFormat::read(Geometry& s, const QString& filename)
 {
   QFile file(filename);
   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -794,9 +794,9 @@ bool CifFormat::read(Geometry* s, const QString& filename)
   for (const AtomKey& key : expandedAtoms)
     atoms.push_back(Atom(key.atomicNumber, cell.toCartesian(key.frac)));
 
-  s->clear();
-  s->setUnitCell(cell);
-  s->setAtoms(atoms);
+  s.clear();
+  s.setUnitCell(cell);
+  s.setAtoms(atoms);
   return true;
 }
 

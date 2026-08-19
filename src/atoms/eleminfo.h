@@ -32,6 +32,8 @@ namespace Atoms {
 class ElementInfo
 {
 public:
+  static unsigned int getNumberOfElements();
+
   static std::string getAtomicSymbol(unsigned int atomicNum);
 
   static double getAtomicMass(unsigned int atomicNum);

@@ -21,7 +21,7 @@
 #include <common/gui/qt_compat_gui.h>
 #include <atoms/basis/atom.h>
 #include <atoms/eleminfo.h>
-#include <atoms/formats/poscarformat.h>
+#include <atoms/formats/formats.h>
 #include <atoms/geometry.h>
 
 #include <QCheckBox>
@@ -37,13 +37,12 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPushButton>
-#include <QTextStream>
 
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <fstream>
 #include <map>
-#include <sstream>
 
 namespace Atoms {
 namespace {
@@ -517,6 +516,7 @@ StructureViewDialog::StructureViewDialog(QWidget* parent)
   ui->bondMaxSpin->setValue(kDefaultBondLengthMaximum);
 
   QDoubleSpinBox* bondMaxSpin = ui->bondMaxSpin;
+
   connect(ui->resetViewButton, &QPushButton::clicked,
           ui->viewWidget, &StructureViewWidget::resetView);
   connect(ui->atomLabelsBox, &QCheckBox::toggled,
@@ -525,6 +525,7 @@ StructureViewDialog::StructureViewDialog(QWidget* parent)
           ui->viewWidget, &StructureViewWidget::setDepthCueingEnabled);
   connect(ui->bondsBox, &QCheckBox::toggled,
           ui->viewWidget, &StructureViewWidget::setBondsVisible);
+
   // The bond settings are only useful while bonds are shown, and bonds start
   //   hidden. Their values are kept while they are off, so turning bonds back
   //   on restores whatever the user had set.
@@ -554,6 +555,8 @@ StructureViewDialog::StructureViewDialog(QWidget* parent)
 
 void StructureViewDialog::displayStructure(const Geometry& structure, const QString& label)
 {
+  m_structure = structure;
+
   StructureViewSnapshot snapshot;
   snapshot.label = label;
   snapshot.formula = structure.getChemicalFormula();
@@ -567,6 +570,7 @@ void StructureViewDialog::displayStructure(const Geometry& structure, const QStr
 
   snapshot.atoms.reserve(structure.numAtoms());
   Common::Vector3 centroid = Common::Vector3::Zero();
+
   for (size_t i = 0; i < structure.numAtoms(); ++i) {
     const Atom& atom = structure.atom(i);
     const unsigned short atomicNumber = atom.atomicNumber();
@@ -598,12 +602,6 @@ void StructureViewDialog::displayStructure(const Geometry& structure, const QStr
       }
     }
   }
-
-  std::ostringstream poscarStream;
-  if (snapshot.hasCell && PoscarFormat::write(structure, poscarStream, label))
-    m_poscarText = QString::fromStdString(poscarStream.str());
-  else
-    m_poscarText.clear();
 
   ui->viewWidget->setStructureSnapshot(snapshot);
   ui->infoLabel->setText(
@@ -645,31 +643,51 @@ void StructureViewDialog::saveImage() const
 
 void StructureViewDialog::saveData() const
 {
-  if (m_poscarText.isEmpty()) {
+  if (m_structure.numAtoms() == 0) {
     QMessageBox::warning(const_cast<StructureViewDialog*>(this), tr("Save Structure Data"),
-                         tr("POSCAR data is not available for this structure."));
+                         tr("Structure data is not available for this structure."));
     return;
   }
 
+  const QString poscarFilter = tr("VASP POSCAR (*.vasp)");
+  const QString cifFilter = tr("CIF (*.cif)");
+  const QString cmlFilter = tr("CML (*.cml)");
+  const QString xyzFilter = tr("XYZ (*.xyz)");
+  const QString mtpFilter = tr("MTP (*.cfg)");
   const QString defaultName = ui->viewWidget->structureSnapshot().label.isEmpty()
                                 ? QStringLiteral("POSCAR")
                                 : ui->viewWidget->structureSnapshot().label + QStringLiteral(".vasp");
+  QString selectedFilter = poscarFilter;
   QString filename = QFileDialog::getSaveFileName(
     const_cast<StructureViewDialog*>(this), tr("Save Structure Data"),
-    QDir(defaultSaveDir()).filePath(defaultName), tr("VASP POSCAR (*.vasp);;All files (*.*)"),
-    nullptr, QFileDialog::DontUseNativeDialog);
+    QDir(defaultSaveDir()).filePath(defaultName),
+    poscarFilter + ";;" + cifFilter + ";;" + cmlFilter + ";;" + xyzFilter + ";;" + mtpFilter,
+    &selectedFilter, QFileDialog::DontUseNativeDialog);
   if (filename.isEmpty())
     return;
 
-  QFile file(filename);
-  if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+  QString format = "POSCAR";
+  if (selectedFilter == cifFilter)
+    format = "CIF";
+  else if (selectedFilter == cmlFilter)
+    format = "CML";
+  else if (selectedFilter == xyzFilter)
+    format = "XYZ";
+  else if (selectedFilter == mtpFilter)
+    format = "MTP";
+
+  const QByteArray encodedFilename = QFile::encodeName(filename);
+  std::ofstream file(encodedFilename.constData());
+  if (!file) {
     QMessageBox::warning(const_cast<StructureViewDialog*>(this), tr("Save Structure Data"),
                          tr("Could not open '%1' for writing.").arg(filename));
     return;
   }
 
-  QTextStream stream(&file);
-  stream << m_poscarText;
+  if (!Formats::write(m_structure, file, format) || !file.good()) {
+    QMessageBox::warning(const_cast<StructureViewDialog*>(this), tr("Save Structure Data"),
+                         tr("Could not write '%1'.").arg(filename));
+  }
 }
 
 } // namespace Atoms

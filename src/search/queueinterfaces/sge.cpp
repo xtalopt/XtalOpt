@@ -86,7 +86,8 @@ QueueInterface::QueueStatus SgeQueueInterface::parseQueueStatus(
       if (status.contains('q') || status.contains('w') || status.contains('h'))
         return QueueInterface::Queued;
       if (status.contains('r') || status.contains('R') || status.contains('t') ||
-          status.contains('s') || status.contains('S') || status.contains('T') || status.contains('d'))
+          status.contains('s') || status.contains('S') || status.contains('T') ||
+          status.contains('d'))
         return QueueInterface::Running;
       return QueueInterface::Unknown;
     }

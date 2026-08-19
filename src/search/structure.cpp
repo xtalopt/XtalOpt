@@ -30,6 +30,22 @@ using namespace std;
 namespace Search {
 
 namespace {
+
+// A non-finite energy or coordinate would corrupt every later
+//   calculation, so it is rejected before anything is changed.
+bool hasFiniteUpdateData(const QList<Common::Vector3>& coords,
+                         double energy, double enthalpy)
+{
+  if (!GS_ISFINITE(energy) || !GS_ISFINITE(enthalpy))
+    return false;
+  for (const auto& coord : coords) {
+    if (!GS_ISFINITE(coord.x()) || !GS_ISFINITE(coord.y()) ||
+        !GS_ISFINITE(coord.z()))
+      return false;
+  }
+  return true;
+}
+
 bool hasUsablePrimaryObjective(const Search::Structure* structure)
 {
   return structure->getStrucObjNumber() > 0 && !GS_ISNAN(structure->getStrucObjValues(0)) &&
@@ -209,7 +225,8 @@ bool Structure::isKilledOrRemovedState() const
 
 bool Structure::isStoppedFinalState(State state)
 {
-  return Structure::isKilledOrRemovedState(state) || Structure::isDismissedFinalState(state) ||
+  return Structure::isKilledOrRemovedState(state) ||
+         Structure::isDismissedFinalState(state) ||
          Structure::isFailedFinalState(state);
 }
 
@@ -467,13 +484,6 @@ Structure& Structure::operator=(Structure&& other) noexcept
   return *this;
 }
 
-
-
-
-
-
-
-
 void Structure::structureChanged()
 {
   m_simString.clear();
@@ -488,6 +498,7 @@ bool Structure::updateAndSkipHistory(const QList<unsigned int>& atomicNums,
   Q_ASSERT_X(atomicNums.size() == coords.size(), Q_FUNC_INFO,
              "Lengths of atomicNums and coords must match.");
   if (atomicNums.size() != coords.size() ||
+      !hasFiniteUpdateData(coords, energy, enthalpy) ||
       (!cell.isZero() && !Atoms::Geometry::isCellMatrixUsable(cell)))
     return false;
 
@@ -520,7 +531,9 @@ bool Structure::updateAndAddToHistory(const QList<unsigned int>& atomicNums,
 {
   Q_ASSERT_X(atomicNums.size() == coords.size(), Q_FUNC_INFO,
              "Lengths of atomicNums and coords must match numAtoms().");
-  if (atomicNums.size() != coords.size() || (!cell.isZero() && !Atoms::Geometry::isCellMatrixUsable(cell)))
+  if (atomicNums.size() != coords.size() ||
+      !hasFiniteUpdateData(coords, energy, enthalpy) ||
+      (!cell.isZero() && !Atoms::Geometry::isCellMatrixUsable(cell)))
     return false;
 
   // Update history

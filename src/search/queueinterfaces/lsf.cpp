@@ -28,21 +28,6 @@
 #include <QRegularExpression>
 
 namespace Search {
-namespace {
-
-bool isRunningStatus(const QString& status)
-{
-  return status == "RUN" || status == "USUSP" || status == "SSUSP" ||
-         status == "UNKWN" || status == "ZOMBI" || status == "DONE" ||
-         status == "EXIT" || status == "POST_DONE" || status == "POST_ERR";
-}
-
-bool isQueuedStatus(const QString& status)
-{
-  return status == "PEND" || status == "PROV" || status == "PSUSP" || status == "WAIT";
-}
-
-} // namespace
 
 const QueueDefaults& LsfQueueInterface::defaults()
 {
@@ -90,9 +75,12 @@ QueueInterface::QueueStatus LsfQueueInterface::parseQueueStatus(
       const QString status = entryList.at(1);
       if (rawStatus)
         *rawStatus = status;
-      if (isRunningStatus(status))
+      if (status == "RUN" || status == "USUSP" || status == "SSUSP" || status == "UNKWN" ||
+          status == "DONE" || status == "EXIT" || status == "ZOMBI" ||
+          status == "POST_DONE" || status == "POST_ERR")
         return QueueInterface::Running;
-      if (isQueuedStatus(status))
+      if (status == "PEND" || status == "PROV" || status == "PSUSP" ||
+          status == "WAIT" || status == "FWD_PEND")
         return QueueInterface::Queued;
       return QueueInterface::Unknown;
     }

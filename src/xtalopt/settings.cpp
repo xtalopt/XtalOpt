@@ -65,6 +65,7 @@ Row baseRow(const char* kw, const char* def, bool req, bool rt)
   r.defaultValue = def;
   r.required = req;
   r.runtimeChangeable = rt;
+
   return r;
 }
 
@@ -84,11 +85,13 @@ Row repeated(const char* kw, const char* def, bool req, bool rt, ListM listFn, A
   r.list = [listFn](const XtalOpt& o) -> QStringList { return (o.*listFn)(); };
   r.add = [addFn](XtalOpt& o, const QString& v) -> bool { return (o.*addFn)(v); };
   r.clear = [clearFn](XtalOpt& o) { (o.*clearFn)(); };
+
   return r;
 }
 
 // Call a setting's setter function
 template <class S, class T> bool callSetter(XtalOpt& o, S s, const T& v, std::true_type) { return (o.*s)(v); }
+
 template <class S, class T> bool callSetter(XtalOpt& o, S s, const T& v, std::false_type) { (o.*s)(v); return true; }
 
 template <class S, class T> bool callSetter(XtalOpt& o, S s, const T& v)
@@ -103,6 +106,7 @@ Row scalar(const char* kw, const char* def, bool req, bool rt, Getter g, Setter 
 {
   using T = typename std::decay<
     decltype((std::declval<const XtalOpt&>().*g)())>::type;
+
   Row r = baseRow(kw, def, req, rt);
   r.get = [g](const XtalOpt& o) -> QString {
     return Common::valueToText((o.*g)());
@@ -113,6 +117,7 @@ Row scalar(const char* kw, const char* def, bool req, bool rt, Getter g, Setter 
       return false;
     return callSetter(o, s, tmp);
   };
+
   return r;
 }
 
@@ -124,6 +129,7 @@ const QList<Row>& rows()
   static const QList<Row> table = []() {
     QList<Row> t;
 
+    // clang-format off
     //  Required inputs
     t << scalar("chemicalFormulas", "", true, false, &XtalOpt::getInputFormulasString, &XtalOpt::setInputFormulasString);
     t << optscheme("queueInterface", "none", true, false);
@@ -276,6 +282,7 @@ const QList<Row>& rows()
     t << scalar("user2", "", false, false, &XtalOpt::getUser2, &XtalOpt::setUser2);
     t << scalar("user3", "", false, false, &XtalOpt::getUser3, &XtalOpt::setUser3);
     t << scalar("user4", "", false, false, &XtalOpt::getUser4, &XtalOpt::setUser4);
+    // clang-format on
 
     return t;
   }();

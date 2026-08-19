@@ -16,6 +16,7 @@
 #include <atoms/formats/cmlformat.h>
 
 #include <atoms/eleminfo.h>
+#include <common/fileutils.h>
 #include <common/output.h>
 #include <atoms/geometry.h>
 
@@ -219,6 +220,23 @@ bool readBondArray(QXmlStreamReader& xml, Atoms::Geometry* s,
 }
 
 } // anonymous namespace
+
+bool CmlFormat::read(Atoms::Geometry& s, const QString& filename)
+{
+  std::string text;
+  if (!Common::readFileToString(filename, &text)) {
+    Common::error(QString("Failed to open CML file: %1").arg(filename));
+    return false;
+  }
+
+  std::istringstream in(text);
+  Atoms::Geometry parsed;
+  if (!read(parsed, in))
+    return false;
+
+  s = parsed;
+  return true;
+}
 
 bool CmlFormat::read(Atoms::Geometry& s, std::istream& file)
 {

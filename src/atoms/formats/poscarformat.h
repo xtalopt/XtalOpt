@@ -32,6 +32,11 @@ class PoscarFormat
 {
 public:
   /**
+   * Read POSCAR/CONTCAR data from @p filename.
+   */
+  static bool read(Atoms::Geometry& s, const QString& filename);
+
+  /**
    * Read POSCAR/CONTCAR data from @p in.
    */
   static bool read(Atoms::Geometry& s, std::istream& in);

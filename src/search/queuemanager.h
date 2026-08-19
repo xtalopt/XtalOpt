@@ -197,8 +197,9 @@ public slots:
   /**
    * Assign the identity and paths to a generated Structure, then add it to
    * the queue. On success the Tracker keeps @p s; on failure it is deleted.
+   * @return true if the Structure was added.
    */
-  void addNewStructure(Structure* s, uint generation, const QString& parents);
+  bool addNewStructure(Structure* s, uint generation, const QString& parents);
 
   /**
    * Report that a requested structure could not be generated.

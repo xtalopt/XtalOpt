@@ -174,12 +174,12 @@ void XrdViewDialog::saveData() const
     return;
 
   const QString defaultName = m_lastTag.isEmpty()
-                                ? QStringLiteral("xrd-data.txt")
-                                : m_lastTag + QStringLiteral("-xrd.txt");
+                                ? QStringLiteral("xrd-data.dat")
+                                : m_lastTag + QStringLiteral("-xrd.dat");
   QString filename = QFileDialog::getSaveFileName(
     const_cast<XrdViewDialog*>(this), tr("Save XRD Data"),
     QDir(defaultSaveDir()).filePath(defaultName),
-    tr("Text files (*.txt);;Data files (*.dat);;All files (*.*)"),
+    tr("Data files (*.dat);;Text files (*.txt)"),
     nullptr, QFileDialog::DontUseNativeDialog);
   if (filename.isEmpty())
     return;

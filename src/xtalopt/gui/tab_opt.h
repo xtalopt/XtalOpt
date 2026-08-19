@@ -39,6 +39,7 @@ public:
 
 public slots:
   void writeSchemeFile(const QString& filename) override;
+  void saveScheme() override;
   void loadScheme() override;
   void configureQueueInterface() override;
   void updateJobCancel();

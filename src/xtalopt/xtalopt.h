@@ -58,10 +58,11 @@ public:
   // Values obtained from the structured input entries.
   const QList<CellComp>& compList() const { return x_compList; }
   QList<CellComp>& compList() { return x_compList; }
-  const QHash<QPair<int, int>, IAD>& interComp() const { return x_interComp; }
-  QHash<QPair<int, int>, IAD>& interComp() { return x_interComp; }
-  const EleRadii& eleMinRadii() const { return x_eleMinRadii; }
-  EleRadii& eleMinRadii() { return x_eleMinRadii; }
+  const PairCustomDistances& pairCustomDistances() const { return x_pairCustomDistances; }
+  PairCustomDistances& pairCustomDistances() { return x_pairCustomDistances; }
+  void clearCustomIADs() { x_pairCustomDistances.clearCustomDistances(); }
+  const EleScaledRadii& eleScaledRadii() const { return x_eleScaledRadii; }
+  EleScaledRadii& eleScaledRadii() { return x_eleScaledRadii; }
   const EleVolume& eleVolumes() const { return x_eleVolumes; }
   EleVolume& eleVolumes() { return x_eleVolumes; }
   const QList<RefEnergy>& refEnergies() const { return x_refEnergies; }
@@ -80,7 +81,6 @@ public:
   QStringList constraintLines() const;
   QStringList customIADLines() const;
   QStringList molUnitLines() const;
-  void clearCustomIADs() { x_interComp.clear(); }
 
   // Change the atom limits (if needed) with a warning to user.
   void adjustAtomCountLimits(int numAtoms);
@@ -265,25 +265,13 @@ public:
 
   bool checkStepOptimizedStructure(Search::Structure* s, QString* err = nullptr) override;
 
-  bool checkLimits();
-
-  bool checkCustomIADs(bool reportError = true) const;
+  bool verifyCustomIADValues(bool reportError = true) const;
 
   bool checkComposition(Xtal* xtal, bool isSeed = false);
 
   bool checkLattice(Xtal* xtal);
 
   bool checkXtal(Xtal* xtal);
-
-  // Returns true if all IAD checks passed, and false otherwise
-  static bool checkInternalIADs(const Atoms::Geometry& geometry, const minIADs& iads,
-                                bool ignoreBondedAtoms);
-
-  // These two geometries under comparison should have the same unit cell
-  // Returns true if all IAD checks passed, and false otherwise
-  // Does not check internal IADs.
-  static bool checkBetweenGeometriesIADs(const Atoms::Geometry& geometry1,
-                                         const Atoms::Geometry& geometry2, const minIADs& iads);
 
   // Save session
   bool saveSessionState(QString filename, bool notify = false);
@@ -295,7 +283,7 @@ public:
   bool importStateFile(const QString& filename);
 
   // Resume a saved session using the SearchBase session functions.
-  bool resumeSearch(const QString& filename, bool* settingsOnlyLoaded = nullptr);
+  bool resumeSearch(const QString& filename, bool* onlyMainStateWasLoaded = nullptr);
 
   // Write job/search settings to a scheme file.
   bool saveSchemeFile(const QString& filename);
@@ -342,6 +330,9 @@ public:
 
   // Process the saved single-line inputs again.
   bool rebuildDerivedSettings();
+
+  // Warn if the volume limits "can" conflict with the cell or distance limits.
+  void warnVolumeLimitConflicts();
 
   // Parse one molecule-unit entry.
   bool processInputMoleculeUnit(QString s);
@@ -447,11 +438,12 @@ private:
   Xtal* checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, const QList<QString>& bSymbols);
 
   void ensureBuiltinObjective();
+  bool outputFilenameInUse(const QString& out) const;
   bool validateUserObjectiveDefinition(ObjType objtyp, const QString& objexe, const QString& objout,
                                        double objwgt, QString* errorMessage = nullptr) const;
   bool validateConstraintDefinition(const QString& exe, const QString& out, QString* errorMessage = nullptr) const;
 
-  bool runSearch(const QString& stateFile, bool* settingsOnlyLoaded);
+  bool runSearch(const QString& stateFile, bool* onlyMainStateWasLoaded);
   bool checkLocalInputFiles(bool includeSeeds, QString* errorMessage) const;
   bool checkOptimizerAndQueue(const QString& readinessAction, QString* errorMessage);
   bool canRequestStateFileSave() const;
@@ -603,8 +595,8 @@ private:
   QString x_inputEleVolmString;
   QString x_inputForcedSpgsString;
   QList<CellComp> x_compList;
-  QHash<QPair<int, int>, IAD> x_interComp;
-  EleRadii x_eleMinRadii;
+  PairCustomDistances x_pairCustomDistances;
+  EleScaledRadii x_eleScaledRadii;
   EleVolume x_eleVolumes;
   QList<RefEnergy> x_refEnergies;
   QStringList x_moleculeUnitInputs;
@@ -620,6 +612,8 @@ private:
 public:
   // Whether a runtime setting feeds the similarity check that is in use.
   bool similarityKeywordInUse(const QString& keyword) const;
+  bool spacegroupKeywordInUse(const QString& keyword) const;
+  bool selectionKeywordInUse(const QString& keyword) const;
 
   // Clear molecule units.
   void clearMoleculeUnits()
@@ -727,8 +721,8 @@ protected:
 
   Xtal* generateSuperCell(Xtal* parentXtal, uint expansion, bool distort);
 
-  void initializeAndAddXtal(Xtal* xtal, unsigned int generation,
-                             const QString& parents);
+  bool initializeAndAddXtal(Xtal* xtal, unsigned int generation,
+                            const QString& parents);
 
   // Check and add a generated initial structure.
   bool acceptInitialXtal(Xtal* generated);

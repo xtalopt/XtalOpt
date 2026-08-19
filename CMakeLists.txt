@@ -3,7 +3,7 @@ project(XtalOpt)
 
 set(XtalOpt_VERSION_MAJOR 15)
 set(XtalOpt_VERSION_MINOR 0)
-set(XtalOpt_VERSION_PATCH 0.rc8)
+set(XtalOpt_VERSION_PATCH 0.rc9)
 
 # Version definitions
 set(XtalOpt_VERSION "${XtalOpt_VERSION_MAJOR}.${XtalOpt_VERSION_MINOR}")

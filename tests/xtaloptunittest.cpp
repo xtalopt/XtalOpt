@@ -128,14 +128,6 @@ QString exportedOptionsText(XtalOpt& opt)
   return QString::fromLocal8Bit(file.readAll());
 }
 
-void insertCustomIAD(XtalOpt& opt, int atomicNum1, int atomicNum2, double value)
-{
-  IAD iad;
-  iad.minIAD = value;
-  opt.interComp().insert(qMakePair(atomicNum1, atomicNum2), iad);
-  opt.interComp().insert(qMakePair(atomicNum2, atomicNum1), iad);
-}
-
 // Write a current state file with the given objective entries.
 void writeObjectiveStateFixture(const QString& stateFile, const QStringList& entries)
 {
@@ -352,6 +344,7 @@ private slots:
 void XtalOptUnitTest::constructorUsesBuiltInDefaults()
 {
   XtalOpt opt;
+
   QCOMPARE(opt.getNumInitial(), static_cast<uint>(20));
   QCOMPARE(opt.getMaxNumStructures(), 100);
   QCOMPARE(static_cast<int>(opt.getNumOptSteps()), 1);
@@ -891,8 +884,8 @@ void XtalOptUnitTest::offspringReplacementUsesValidRunComposition()
   opt.setBetaMax(90.0);
   opt.setGammaMin(90.0);
   opt.setGammaMax(90.0);
-  opt.setVolMin(512.0);
-  opt.setVolMax(512.0);
+  opt.setVolMin(256.0);
+  opt.setVolMax(256.0);
 
   Xtal seed;
   seed.setGeneration(1);
@@ -1215,32 +1208,34 @@ void XtalOptUnitTest::rebuildDerivedSettingsClearsCachesWhenInputsEmpty()
 
 void XtalOptUnitTest::optimizerAssetSyntaxReadAndWrite()
 {
-  // Check the optimizer input-file text used by the command line and GUI.
+  XtalOpt opt;
+  QVERIFY(opt.setOptimizer(0, "vasp"));
 
-  // Read one "id file" line and reject an incomplete line.
-  QString id, file;
-  QVERIFY(Search::Optimizer::parseAssetIdFileLine("Ti /p/Ti/POTCAR", id, file));
-  QCOMPARE(id, QString("Ti"));
-  QCOMPARE(file, QString("/p/Ti/POTCAR"));
-  QVERIFY(!Search::Optimizer::parseAssetIdFileLine("Ti", id, file));
-  QVERIFY(!Search::Optimizer::parseAssetIdFileLine("", id, file));
+  Search::OptimizerInputAssetMap assets;
+  assets["ti"] = "/p/Ti/POTCAR";
+  assets["SYSTEM"] = "/p/POTCAR";
+  opt.setOptimizerInputAssets(0, "POTCAR", assets);
 
-  // Wrap a plain file name (%fileContents:%) keeping an input keyword.
-  QCOMPARE(Search::Optimizer::inputAssetValueForSave("/p/POTCAR"), QString("%fileContents:/p/POTCAR%"));
-  QCOMPARE(Search::Optimizer::inputAssetValueForSave("%copyFile:/p/POTCAR%"),
-           QString("%copyFile:/p/POTCAR%"));
+  const Search::OptimizerInputAssetMap saved = opt.getOptimizerInputAssets(0, "POTCAR");
+  QCOMPARE(QString::fromStdString(saved.at("Ti")), QString("/p/Ti/POTCAR"));
+  QCOMPARE(QString::fromStdString(saved.at("system")), QString("/p/POTCAR"));
 
-  // Save input files as a map and read editable lines back.
-  QHash<QString, QString> assets;
-  assets.insert("O", Search::Optimizer::inputAssetValueForSave("/p/O/POTCAR"));
-  assets.insert("Ti", Search::Optimizer::inputAssetValueForSave("/p/Ti/POTCAR"));
-  const QString parsedStr = Search::Optimizer::inputAssetFilesToText(assets);
-  QCOMPARE(parsedStr, QString("O=%fileContents:/p/O/POTCAR%; " "Ti=%fileContents:/p/Ti/POTCAR%"));
-  QCOMPARE(Search::Optimizer::inputAssetTextToFiles(parsedStr), QString("O /p/O/POTCAR\nTi /p/Ti/POTCAR"));
+  QTemporaryDir tempDir;
+  QVERIFY(tempDir.isValid());
+  const QString stateFile = tempPath(tempDir, "xtalopt.state");
+  QVERIFY(opt.saveSessionState(stateFile, false));
+  {
+    QSettings settings(stateFile, QSettings::IniFormat);
+    const QString key = "xtalopt/optscheme/optimizer/0/assets/vasp/POTCAR";
+    QCOMPARE(settings.value(key).toString(), QString("Ti=/p/Ti/POTCAR; system=/p/POTCAR"));
+    settings.setValue(key, "Ti=%fileContents:/p/Ti/POTCAR%; system=/p/POTCAR");
+  }
 
-  // Keep plain input text.
-  QCOMPARE(Search::Optimizer::inputAssetTextToFiles("just some literal text"),
-           QString("just some literal text"));
+  XtalOpt loaded;
+  QVERIFY(loaded.readStateFile(stateFile, false));
+  const Search::OptimizerInputAssetMap loadedAssets = loaded.getOptimizerInputAssets(0, "POTCAR");
+  QCOMPARE(QString::fromStdString(loadedAssets.at("Ti")), QString("/p/Ti/POTCAR"));
+  QCOMPARE(QString::fromStdString(loadedAssets.at("system")), QString("/p/POTCAR"));
 }
 
 void XtalOptUnitTest::saveInputFileCoversEveryScalarKeyword()
@@ -1365,6 +1360,7 @@ void XtalOptUnitTest::loadInputFileAppliesFailActionPolicy()
 
   QFile inputFile(tempPath(tempDir, "xtalopt.in"));
   QVERIFY(inputFile.open(QIODevice::WriteOnly | QIODevice::Text));
+
   QTextStream input(&inputFile);
   input << "chemicalFormulas = O1\n";
   input << "queueInterface = none\n";
@@ -1373,6 +1369,7 @@ void XtalOptUnitTest::loadInputFileAppliesFailActionPolicy()
   input << "templatesDirectory = " << tempDir.path() << "\n";
   input << "ginTemplates = xtal.gin\n";
   input << "localWorkingDirectory = " << tempPath(tempDir, "run") << "\n";
+
   inputFile.close();
 
   XtalOpt opt;
@@ -1397,6 +1394,7 @@ void XtalOptUnitTest::loadInputFileAppliesScalarSettingRegistry()
 
   QFile inputFile(tempPath(tempDir, "xtalopt.in"));
   QVERIFY(inputFile.open(QIODevice::WriteOnly | QIODevice::Text));
+
   QTextStream input(&inputFile);
   input << "chemicalFormulas = O1\n";
   input << "queueInterface = pbs\n";
@@ -1454,10 +1452,12 @@ void XtalOptUnitTest::loadInputFileAppliesScalarSettingRegistry()
   input << "autoCancelScriptAfterTime = false\n";
   input << "hoursForAutoCancelScript = 3.5\n";
   input << "queueRefreshInterval = 11\n";
+
   inputFile.close();
 
   XtalOpt opt;
   QVERIFY(opt.loadInputFile(inputFile.fileName(), true));
+
   QVERIFY(opt.isVerbose());
   QVERIFY(opt.getSaveHullSnapshots());
   QCOMPARE(opt.getParentsPoolSize(), static_cast<uint>(33));
@@ -1676,16 +1676,15 @@ void XtalOptUnitTest::importReadResolvesInputsWithoutRunArtifacts()
     input << "templatesDirectory = .\n";
     input << "incarTemplates = INCAR\n";
     input << "kpointsTemplates = KPOINTS\n";
-    input << "potcarFile = O POTCAR_O\n";
+    input << "potcarFile = o POTCAR_O\n";
     input << "localWorkingDirectory = ./local\n";
     inputFile.close();
 
     XtalOpt opt;
     QVERIFY(opt.loadInputFile(inputFile.fileName(), true));
 
-    const QString text = QString::fromStdString(opt.getOptimizerInputAsset(0, "POTCAR"));
-    QVERIFY(text.contains(QFileInfo(potcarFile.fileName()).absoluteFilePath()));
-    QVERIFY(!text.contains("%fileContents:POTCAR_O%"));
+    const Search::OptimizerInputAssetMap assets = opt.getOptimizerInputAssets(0, "POTCAR");
+    QCOMPARE(QString::fromStdString(assets.at("O")), QFileInfo(potcarFile.fileName()).absoluteFilePath());
   }
 }
 
@@ -1967,8 +1966,9 @@ void XtalOptUnitTest::startSearchPrechecksInputFiles()
 
     XtalOpt opt;
     QVERIFY(opt.loadInputFile(inputFile.fileName(), false));
-    opt.setOptimizerInputAsset(0, "POTCAR",
-      ("system=%fileContents:" + missingPotcar + "%").toStdString());
+    Search::OptimizerInputAssetMap assets;
+    assets["system"] = missingPotcar.toStdString();
+    opt.setOptimizerInputAssets(0, "POTCAR", assets);
 
     QSignalSpy errorDialogSpy(&opt, SIGNAL(errorDialogRequested(QString)));
     QVERIFY(!opt.startSearch());
@@ -2321,11 +2321,14 @@ void XtalOptUnitTest::stateSettingsReadAndWritePreservesMainFields()
   saved.setRemoteQueue(false);
   QVERIFY(saved.setSshMethod("auto"));
   saved.setSoftExit(true);
+
   if (saved.getNumOptSteps() == 0)
     saved.appendOptStep();
+
   saved.setQueueInterface(0, "none");
   saved.setOptimizer(0, "gulp");
   QVERIFY(saved.optimizer(0));
+
   saved.optimizer(0)->setDirectRunCommand("mpirun -np 3 gulp");
 
   QVERIFY(saved.saveSessionState(stateFile, false));
@@ -2383,9 +2386,9 @@ void XtalOptUnitTest::customIADCheckLimitsValidatesTable()
     opt.setUsingScaledIAD(false);
     opt.setUsingCustomIAD(true);
 
-    insertCustomIAD(opt, 1, 8, 1.0);
+    opt.pairCustomDistances().setPairDistance(1, 8, 1.0);
 
-    QVERIFY(!opt.checkLimits());
+    QVERIFY(!opt.verifyCustomIADValues());
   }
 
   // Read a complete IAD table.
@@ -2395,11 +2398,11 @@ void XtalOptUnitTest::customIADCheckLimitsValidatesTable()
     opt.setUsingScaledIAD(false);
     opt.setUsingCustomIAD(true);
 
-    insertCustomIAD(opt, 1, 1, 0.5);
-    insertCustomIAD(opt, 1, 8, 1.0);
-    insertCustomIAD(opt, 8, 8, 0.5);
+    opt.pairCustomDistances().setPairDistance(1, 1, 0.5);
+    opt.pairCustomDistances().setPairDistance(1, 8, 1.0);
+    opt.pairCustomDistances().setPairDistance(8, 8, 0.5);
 
-    QVERIFY(opt.checkLimits());
+    QVERIFY(opt.verifyCustomIADValues());
   }
 
   // Read molecule distance limits.
@@ -2408,13 +2411,14 @@ void XtalOptUnitTest::customIADCheckLimitsValidatesTable()
     QVERIFY(opt.processInputChemicalFormulas("C1K3"));
     opt.setUsingScaledIAD(false);
     opt.setUsingCustomIAD(true);
+
     QVERIFY(opt.processInputMoleculeUnit("C1K3 trigonal_pyramidal_c3v_center_shell"));
 
-    insertCustomIAD(opt, 6, 6, 0.5);
-    insertCustomIAD(opt, 6, 19, 100.0);
-    insertCustomIAD(opt, 19, 19, 0.5);
+    opt.pairCustomDistances().setPairDistance(6, 6, 0.5);
+    opt.pairCustomDistances().setPairDistance(6, 19, 100.0);
+    opt.pairCustomDistances().setPairDistance(19, 19, 0.5);
 
-    QVERIFY(opt.checkLimits());
+    QVERIFY(opt.verifyCustomIADValues());
   }
 }
 
@@ -2441,11 +2445,12 @@ void XtalOptUnitTest::generateRandomXtalHonorsConstraints()
     opt.setUsingScaledIAD(false);
     opt.setUsingCustomIAD(true);
 
-    insertCustomIAD(opt, 1, 1, 0.5);
-    insertCustomIAD(opt, 1, 8, 2.0);
-    insertCustomIAD(opt, 8, 8, 0.5);
+    opt.pairCustomDistances().setPairDistance(1, 1, 0.5);
+    opt.pairCustomDistances().setPairDistance(1, 8, 2.0);
+    opt.pairCustomDistances().setPairDistance(8, 8, 0.5);
 
     Xtal* xtal = opt.generateRandomXtal(1, 1, opt.compList().first());
+
     QVERIFY(xtal != nullptr);
     QCOMPARE(xtal->numAtoms(), static_cast<size_t>(2));
     QVERIFY(xtal->distance(0, 1) >= 2.0);
@@ -2472,6 +2477,7 @@ void XtalOptUnitTest::generateRandomXtalHonorsConstraints()
     opt.setVolMax(192.0);
 
     Xtal* xtal = opt.generateRandomXtal(1, 1, opt.compList().first());
+
     QVERIFY(xtal != nullptr);
     QCOMPARE(xtal->numAtoms(), static_cast<size_t>(1));
     QVERIFY(fabs(xtal->getA() - 4.0) < 1e-6);
@@ -2505,8 +2511,8 @@ void XtalOptUnitTest::generateRandomXtalWithMoleculeUnits()
 
     const std::vector<Atoms::Atom>& atoms = opt.moleculeUnits().front().atoms();
     const double distance = (atoms[0].pos() - atoms[1].pos()).norm();
-    const double minDistance = opt.eleMinRadii().getMinRadius(atoms[0].atomicNumber()) +
-      opt.eleMinRadii().getMinRadius(atoms[1].atomicNumber());
+    const double minDistance = opt.eleScaledRadii().getMinRadius(atoms[0].atomicNumber()) +
+                               opt.eleScaledRadii().getMinRadius(atoms[1].atomicNumber());
     QVERIFY(distance > 2.0 * minDistance);
   }
 
@@ -2608,8 +2614,6 @@ void XtalOptUnitTest::checkForDuplicatesTest()
   QCOMPARE(unique->getStatus(), Xtal::Optimized);
   QCOMPARE(similar->getSimilarityString(), QString("1x1"));
 
-  opt.reset();
-
   XtalOpt rdfOpt;
   rdfOpt.setTolRdf(0.99);
   rdfOpt.setTolRdfNbins(100);
@@ -2630,7 +2634,6 @@ void XtalOptUnitTest::checkForDuplicatesTest()
   QVERIFY(rdfSimilar->isSimilar());
   QCOMPARE(rdfSimilar->getSimilarityString(), QString("2x1"));
 
-  rdfOpt.reset();
 }
 
 void XtalOptUnitTest::stepwiseCheckForDuplicatesTest()
@@ -2660,7 +2663,6 @@ void XtalOptUnitTest::stepwiseCheckForDuplicatesTest()
   QCOMPARE(opt.queue()->getAllSimilarStructures().size(), 1);
   QCOMPARE(unique->getStatus(), Xtal::Optimized);
 
-  opt.reset();
 }
 }
 

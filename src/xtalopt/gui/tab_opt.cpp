@@ -90,6 +90,18 @@ void TabOpt::writeSchemeFile(const QString& filename)
   xtalopt->saveSchemeFile(filename);
 }
 
+void TabOpt::saveScheme()
+{
+  QString filename = QFileDialog::getSaveFileName(
+    nullptr, tr("Save Optimization Scheme as..."), QDir::homePath(), "*.scheme;;*.*", nullptr,
+    QFileDialog::DontUseNativeDialog);
+
+  if (filename.isEmpty())
+    return;
+
+  writeSchemeFile(filename);
+}
+
 void TabOpt::loadScheme()
 {
   if (m_configDialogsReadOnly)

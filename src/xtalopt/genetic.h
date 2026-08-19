@@ -18,8 +18,6 @@
 
 #include <xtalopt/types.h>
 
-#include <QHash>
-
 namespace XtalOpt {
 class Xtal;
 
@@ -29,10 +27,11 @@ class XtalOptGenetic
 {
 public:
   static Xtal* crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>& compa,
-                         const EleRadii& elrad, uint numCuts, double minContribution,
+                         const EleScaledRadii& elrad, uint numCuts, double minContribution,
                          double& percent1, double& percent2, int minatoms, int maxatoms,
-                         bool isVcSearch, bool verbose, bool useCustomIAD = false,
-                         const QHash<QPair<int, int>, IAD>* customIADs = nullptr);
+                         bool isVcSearch, bool verbose, bool useScaledIAD = true,
+                         bool useCustomIAD = false,
+                         const PairCustomDistances* customIADs = nullptr);
 
   static Xtal* stripple(Xtal* xtal, double sigma_lattice_min,
                         double sigma_lattice_max, double rho_min,
@@ -42,13 +41,15 @@ public:
   static Xtal* permustrain(Xtal* xtal, double sigma_lattice_max, uint exchanges,
                            double& sigma_lattice);
 
-  static Xtal* permutomic(Xtal* xtal, const CellComp& comp, const EleRadii& elrad, int minatoms,
-                          int maxatoms, bool verbose, bool useCustomIAD = false,
-                          const QHash<QPair<int, int>, IAD>* customIADs = nullptr);
+  static Xtal* permutomic(Xtal* xtal, const CellComp& comp, const EleScaledRadii& elrad, int minatoms,
+                          int maxatoms, bool verbose, bool useScaledIAD = true,
+                          bool useCustomIAD = false,
+                          const PairCustomDistances* customIADs = nullptr);
 
-  static Xtal* permucomp(Xtal* xtal, const CellComp& comp, const EleRadii& elrad, int minatoms,
-                         int maxatoms, bool verbose, bool useCustomIAD = false,
-                         const QHash<QPair<int, int>, IAD>* customIADs = nullptr);
+  static Xtal* permucomp(Xtal* xtal, const CellComp& comp, const EleScaledRadii& elrad, int minatoms,
+                         int maxatoms, bool verbose, bool useScaledIAD = true,
+                         bool useCustomIAD = false,
+                         const PairCustomDistances* customIADs = nullptr);
 };
 
 } // end namespace XtalOpt

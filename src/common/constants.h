@@ -46,5 +46,7 @@ static constexpr double STABLE_TOL = 1.0e-5;
 // Crystallography tolerances
 static constexpr double SPGLIB_TOL = 0.01;
 static constexpr double NIGGLI_TOL = 0.01;
+static constexpr double LATT_LEN_COMP_TOL = 0.01;
+static constexpr double LATT_ANG_COMP_TOL = 0.01;
 
 #endif // COMMON_CONSTANTS_H

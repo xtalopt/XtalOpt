@@ -51,7 +51,7 @@ struct MoleculeTemplate
   unsigned int orbitCount;
   unsigned int orbitSizes[3];
   double orbitSeeds[3][3];
-  unsigned int speciesCount;
+  unsigned int speciesCount; // zero means each orbit has its own species
   unsigned int orbitSpecies[3];
 };
 
@@ -60,13 +60,15 @@ const MoleculeTemplate moleculeTemplates[] = {
     "linear_2_pair", "D0h",
     "two equivalent atoms related by inversion",
     1, { 2, 0, 0 },
-    { { 0.0, 0.0, 1.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 1.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "trigonal_planar_d3h_shell", "D3h",
     "three equivalent trigonal-planar shell atoms",
     1, { 3, 0, 0 },
-    { { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "linear_d0h_homonuclear_center_shell", "D0h",
@@ -93,13 +95,15 @@ const MoleculeTemplate moleculeTemplates[] = {
     "tetrahedral_td_shell", "Td",
     "four equivalent tetrahedral shell atoms",
     1, { 4, 0, 0 },
-    { { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "square_planar_d4h_shell", "D4h",
     "four equivalent square-planar shell atoms",
     1, { 4, 0, 0 },
-    { { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "trigonal_pyramidal_c3v_homonuclear_center_shell", "C3v",
@@ -133,7 +137,8 @@ const MoleculeTemplate moleculeTemplates[] = {
     "pentagonal_planar_d5h_shell", "D5h",
     "five equivalent pentagonal-planar shell atoms",
     1, { 5, 0, 0 },
-    { { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "tetrahedral_td_homonuclear_center_shell", "Td",
@@ -174,13 +179,15 @@ const MoleculeTemplate moleculeTemplates[] = {
     "octahedral_oh_shell", "Oh",
     "six equivalent octahedral shell atoms",
     1, { 6, 0, 0 },
-    { { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "hexagonal_planar_d6h_shell", "D6h",
     "six equivalent hexagonal-planar shell atoms",
     1, { 6, 0, 0 },
-    { { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "pentagonal_pyramidal_c5v_homonuclear_center_shell", "C5v",
@@ -221,7 +228,8 @@ const MoleculeTemplate moleculeTemplates[] = {
     "cube_oh_shell", "Oh",
     "eight equivalent cube-corner shell atoms",
     1, { 8, 0, 0 },
-    { { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "cube_oh_homonuclear_center_shell", "Oh",
@@ -234,13 +242,15 @@ const MoleculeTemplate moleculeTemplates[] = {
     "pentagonal_prismatic_d5h_shell", "D5h",
     "ten equivalent pentagonal-prismatic shell atoms",
     1, { 10, 0, 0 },
-    { { 1.0, 0.0, 0.5 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 1.0, 0.0, 0.5 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "pentagonal_antiprismatic_d5d_shell", "D5d",
     "ten equivalent pentagonal-antiprismatic shell atoms",
     1, { 10, 0, 0 },
-    { { 0.9510565163, 0.3090169944, 0.5 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.9510565163, 0.3090169944, 0.5 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "pentagonal_prismatic_d5h_homonuclear_center_shell", "D5h",
@@ -260,13 +270,15 @@ const MoleculeTemplate moleculeTemplates[] = {
     "cuboctahedral_oh_shell", "Oh",
     "twelve equivalent cuboctahedral shell atoms",
     1, { 12, 0, 0 },
-    { { 1.0, 1.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 1.0, 1.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "icosahedral_ih_shell", "Ih",
     "twelve equivalent icosahedral shell atoms",
     1, { 12, 0, 0 },
-    { { 1.6180339887, 1.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 1.6180339887, 1.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "cuboctahedral_oh_homonuclear_center_shell", "Oh",
@@ -286,7 +298,8 @@ const MoleculeTemplate moleculeTemplates[] = {
     "dodecahedral_ih_shell", "Ih",
     "twenty equivalent dodecahedral shell atoms",
     1, { 20, 0, 0 },
-    { { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "dodecahedral_ih_homonuclear_center_shell", "Ih",
@@ -299,7 +312,8 @@ const MoleculeTemplate moleculeTemplates[] = {
     "icosidodecahedral_ih_shell", "Ih",
     "thirty equivalent icosidodecahedral shell atoms",
     1, { 30, 0, 0 },
-    { { 0.0, 0.0, 1.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 1.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "icosidodecahedral_ih_homonuclear_center_shell", "Ih",
@@ -312,19 +326,22 @@ const MoleculeTemplate moleculeTemplates[] = {
     "linear_2_hetero", "C2v",
     "two distinct atoms fixed on the principal axis",
     2, { 1, 1, 0 },
-    { { 0.0, 0.0, -1.0 }, { 0.0, 0.0, 1.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, -1.0 }, { 0.0, 0.0, 1.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "linear_d0h_center_shell", "D0h",
     "center + two equivalent linear shell atoms",
     2, { 1, 2, 0 },
-    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "bent_c2v_center_shell", "C2v",
     "center + two equivalent bent shell atoms",
     2, { 1, 2, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.5 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.5 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "t_shaped_c2v_shared_neighbors", "C2v",
@@ -337,31 +354,36 @@ const MoleculeTemplate moleculeTemplates[] = {
     "trigonal_pyramidal_c3v_center_shell", "C3v",
     "axial center + three trigonal-pyramidal shell atoms",
     2, { 1, 3, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, -0.5 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, -0.5 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "trigonal_planar_d3h_center_shell", "D3h",
     "center + three trigonal-planar shell atoms",
     2, { 1, 3, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "tetrahedral_td_center_shell", "Td",
     "center + four equivalent tetrahedral shell atoms",
     2, { 1, 4, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "square_pyramidal_c4v_center_shell", "C4v",
     "axial center + four square-pyramidal shell atoms",
     2, { 1, 4, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, -0.5 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, -0.5 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "square_planar_d4h_center_shell", "D4h",
     "center + four square-planar shell atoms",
     2, { 1, 4, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "trigonal_pyramidal_c3v_shared_neighbors", "C3v",
@@ -381,7 +403,8 @@ const MoleculeTemplate moleculeTemplates[] = {
     "pentagonal_pyramidal_c5v_center_shell", "C5v",
     "axial center + five pentagonal-pyramidal shell atoms",
     2, { 1, 5, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, -0.5 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, -0.5 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "square_pyramidal_c4v_shared_neighbors", "C4v",
@@ -401,13 +424,15 @@ const MoleculeTemplate moleculeTemplates[] = {
     "octahedral_oh_center_shell", "Oh",
     "center + six equivalent octahedral shell atoms",
     2, { 1, 6, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "hexagonal_pyramidal_c6v_center_shell", "C6v",
     "axial center + six hexagonal-pyramidal shell atoms",
     2, { 1, 6, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, -0.5 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, -0.5 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "pentagonal_pyramidal_c5v_shared_neighbors", "C5v",
@@ -441,7 +466,8 @@ const MoleculeTemplate moleculeTemplates[] = {
     "cube_oh_center_shell", "Oh",
     "center + eight cube-corner shell atoms",
     2, { 1, 8, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "hexagonal_bipyramidal_d6h_shared_neighbors", "D6h",
@@ -454,127 +480,148 @@ const MoleculeTemplate moleculeTemplates[] = {
     "pentagonal_prismatic_d5h_center_shell", "D5h",
     "center + ten pentagonal-prismatic shell atoms",
     2, { 1, 10, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.5 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.5 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "pentagonal_antiprismatic_d5d_center_shell", "D5d",
     "center + ten pentagonal-antiprismatic shell atoms",
     2, { 1, 10, 0 },
-    { { 0.0, 0.0, 0.0 }, { 0.9510565163, 0.3090169944, 0.5 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 0.9510565163, 0.3090169944, 0.5 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "cuboctahedral_oh_center_shell", "Oh",
     "center + twelve cuboctahedral shell atoms",
     2, { 1, 12, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "icosahedral_ih_center_shell", "Ih",
     "center + twelve icosahedral shell atoms",
     2, { 1, 12, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.6180339887, 1.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.6180339887, 1.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "dodecahedral_ih_center_shell", "Ih",
     "center + twenty dodecahedral shell atoms",
     2, { 1, 20, 0 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "icosidodecahedral_ih_center_shell", "Ih",
     "center + thirty icosidodecahedral shell atoms",
     2, { 1, 30, 0 },
-    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "see_saw_c2v_shell", "C2v",
     "two-species two-orbit see-saw shell atoms",
     2, { 2, 2, 0 },
-    { { 1.0, 0.0, 0.0 }, { 0.0, 0.8660254038, 0.5 }, { 0.0, 0.0, 0.0 } }
+    { { 1.0, 0.0, 0.0 }, { 0.0, 0.8660254038, 0.5 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "trigonal_bipyramidal_d3h_shell", "D3h",
     "two axial + three equatorial atoms",
     2, { 2, 3, 0 },
-    { { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "square_bipyramidal_d4h_shell", "D4h",
     "two axial + four equatorial atoms",
     2, { 2, 4, 0 },
-    { { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "pentagonal_bipyramidal_d5h_shell", "D5h",
     "two axial + five equatorial atoms",
     2, { 2, 5, 0 },
-    { { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "hexagonal_bipyramidal_d6h_shell", "D6h",
     "two axial + six equatorial atoms",
     2, { 2, 6, 0 },
-    { { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "t_shaped_c2v", "C2v",
     "center + one axial + two side atoms",
     3, { 1, 1, 2 },
-    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "trigonal_pyramidal_c3v", "C3v",
     "center + one axial + three equivalent basal atoms",
     3, { 1, 1, 3 },
-    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "square_pyramidal_c4v", "C4v",
     "center + one axial + four basal atoms",
     3, { 1, 1, 4 },
-    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "pentagonal_pyramidal_c5v", "C5v",
     "center + one axial + five basal atoms",
     3, { 1, 1, 5 },
-    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "hexagonal_pyramidal_c6v", "C6v",
     "center + one axial + six equivalent basal atoms",
     3, { 1, 1, 6 },
-    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "see_saw_c2v", "C2v",
     "center + two axial + two side atoms",
     3, { 1, 2, 2 },
-    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.8660254038, 0.5 } }
+    { { 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.8660254038, 0.5 } },
+    0, { 0, 0, 0 }
   },
   {
     "trigonal_bipyramidal_d3h", "D3h",
     "center + two axial + three equatorial atoms",
     3, { 1, 2, 3 },
-    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "square_bipyramidal_d4h", "D4h",
     "center + two axial + four equatorial atoms",
     3, { 1, 2, 4 },
-    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "pentagonal_bipyramidal_d5h", "D5h",
     "center + two axial + five equatorial atoms",
     3, { 1, 2, 5 },
-    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
   {
     "hexagonal_bipyramidal_d6h", "D6h",
     "center + two axial + six equatorial atoms",
     3, { 1, 2, 6 },
-    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } }
+    { { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0 }, { 1.0, 0.0, 0.0 } },
+    0, { 0, 0, 0 }
   },
 };
 

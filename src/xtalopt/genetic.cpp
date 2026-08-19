@@ -42,6 +42,124 @@ QString listToString(const QList<T>& values)
   return "[" + strings.join(", ") + "]";
 }
 
+bool transformCellAndCoordinates(Common::Matrix3& cell,
+                                 QList<Common::Vector3>& fractionalCoordinates,
+                                 bool standardOrientation = false)
+{
+  QList<int> axes;
+  axes.append(static_cast<int>(floor(Common::getRandDouble() * 3)));
+  if (axes.at(0) == 3)
+    axes[0] = 2;
+  switch (axes.at(0)) {
+    case 0:
+      if (Common::getRandDouble() > 0.5) {
+        axes.append(1);
+        axes.append(2);
+      } else {
+        axes.append(2);
+        axes.append(1);
+      }
+      break;
+    case 1:
+      if (Common::getRandDouble() > 0.5) {
+        axes.append(0);
+        axes.append(2);
+      } else {
+        axes.append(2);
+        axes.append(0);
+      }
+      break;
+    case 2:
+      if (Common::getRandDouble() > 0.5) {
+        axes.append(0);
+        axes.append(1);
+      } else {
+        axes.append(1);
+        axes.append(0);
+      }
+      break;
+  }
+
+  Common::Matrix3 transform = Common::Matrix3::Zero();
+  for (int i = 0; i < 3; ++i) {
+    const int sign = Common::getRandDouble() < 0.5 ? -1 : 1;
+    if (axes.at(i) == 0)
+      transform.setCol(i, Common::Vector3(sign, 0, 0));
+    else if (axes.at(i) == 1)
+      transform.setCol(i, Common::Vector3(0, sign, 0));
+    else
+      transform.setCol(i, Common::Vector3(0, 0, sign));
+  }
+
+  const Common::Matrix3 transpose = transform.transpose();
+  cell = transpose * cell;
+  for (auto& coordinates : fractionalCoordinates)
+    coordinates = transpose * coordinates;
+
+  if (!standardOrientation)
+    return true;
+
+  return Atoms::Geometry::rotateCellAndCoordsToStandardOrientation(cell, fractionalCoordinates, true);
+}
+
+bool averageCellComponents(const Common::Matrix3& cell1, const Common::Matrix3& cell2,
+                           double weight, Common::Matrix3& cell)
+{
+  Common::Matrix3 result;
+  for (uint row = 0; row < 3; ++row) {
+    for (uint column = 0; column < 3; ++column) {
+      result(row, column) =
+        cell1(row, column) * weight + cell2(row, column) * (1.0 - weight);
+      if (!std::isfinite(result(row, column)))
+        return false;
+    }
+  }
+
+  if (result.determinant() <= 0.0)
+    return false;
+
+  cell = result;
+  return true;
+}
+
+bool averageCellMetrics(const Common::Matrix3& cell1, const Common::Matrix3& cell2,
+                        double weight, Common::Matrix3& cell)
+{
+  const Common::Matrix3 metric1 = cell1 * cell1.transpose();
+  const Common::Matrix3 metric2 = cell2 * cell2.transpose();
+  const Common::Matrix3 metric = weight * metric1 + (1.0 - weight) * metric2;
+  Common::Matrix3 result = Common::Matrix3::Zero();
+  const double scale = std::max(metric(0, 0), std::max(metric(1, 1), metric(2, 2)));
+  if (!std::isfinite(scale) || scale <= 0.0)
+    return false;
+  const double tolerance = ZERO12 * scale;
+
+  double diagonal = metric(0, 0);
+  if (!std::isfinite(diagonal) || diagonal <= tolerance)
+    return false;
+  result(0, 0) = std::sqrt(diagonal);
+
+  result(1, 0) = metric(1, 0) / result(0, 0);
+  result(2, 0) = metric(2, 0) / result(0, 0);
+
+  diagonal = metric(1, 1) - result(1, 0) * result(1, 0);
+  if (!std::isfinite(diagonal) || diagonal <= tolerance)
+    return false;
+  result(1, 1) = std::sqrt(diagonal);
+
+  result(2, 1) =
+    (metric(2, 1) - result(2, 0) * result(1, 0)) / result(1, 1);
+
+  diagonal = metric(2, 2) - result(2, 0) * result(2, 0) -
+             result(2, 1) * result(2, 1);
+  if (!std::isfinite(diagonal) || diagonal <= tolerance)
+    return false;
+  result(2, 2) = std::sqrt(diagonal);
+
+  cell = result;
+  return true;
+}
+
 inline int findClosestComposition(const QList<uint>& counts, const QList<CellComp>& compa)
 {
   // A helper function to find the closest composition in the list
@@ -62,18 +180,6 @@ inline int findClosestComposition(const QList<uint>& counts, const QList<CellCom
   }
 
   return Common::findMinIndex(avglist);
-}
-
-bool addAtomRandomlyForPolicy(Xtal* xtal, unsigned int atomicnum, const EleRadii& elrad,
-                              bool useCustomIAD,
-                              const QHash<QPair<int, int>, IAD>* customIADs)
-{
-  // Add an atom using the same distance checks that final validation uses.
-  if (!useCustomIAD)
-    return xtal->addAtomRandomly(atomicnum, elrad);
-  if (customIADs == nullptr)
-    return false;
-  return xtal->addAtomRandomlyIAD(atomicnum, *customIADs);
 }
 
 // Change the counts to the desired total.
@@ -105,8 +211,8 @@ bool rebalanceCountsToTotal(QList<uint>& targetCounts, int desiredTotal)
 // Change the atom counts in the new crystal.
 void applyCompositionDeltas(Xtal* nxtal, QList<int>& deltas, QList<uint>& nxtalCounts,
                             const QList<QString>& refSymbols,
-                            const EleRadii& elrad, bool useCustomIAD,
-                            const QHash<QPair<int, int>, IAD>* customIADs,
+                            const EleScaledRadii& elrad, bool useScaledIAD, bool useCustomIAD,
+                            const PairCustomDistances* customIADs,
                             int maxAttempts, bool verbose,
                             const QString& tag, const char* context)
 {
@@ -133,7 +239,18 @@ void applyCompositionDeltas(Xtal* nxtal, QList<int>& deltas, QList<uint>& nxtalC
     int currentAttempt = 0;
     while (deltas[i] < 0 && currentAttempt < maxAttempts) {
       currentAttempt++;
-      if (addAtomRandomlyForPolicy(nxtal, atomicnum, elrad, useCustomIAD, customIADs)) {
+
+      // Add an atom using the same distance checks that final validation uses.
+      bool atomAdded = false;
+      if (useCustomIAD && customIADs != nullptr) {
+        atomAdded = nxtal->addAtomRandomlyCustomIAD(atomicnum, *customIADs);
+      } else if (useScaledIAD) {
+        atomAdded = nxtal->addAtomRandomlyScaledIAD(atomicnum, elrad);
+      } else {
+        atomAdded = nxtal->addAtomRandomly(atomicnum, -1.0);
+      }
+
+      if (atomAdded) {
         deltas[i]++;
         nxtalCounts[i]++;
       }
@@ -287,10 +404,11 @@ void exchange(Xtal* xtal, uint exchanges)
 } // namespace
 
 Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>& compa,
-                                const EleRadii& elrad, uint numCuts, double minContribution,
+                                const EleScaledRadii& elrad, uint numCuts, double minContribution,
                                 double& percent1, double& percent2, int minatoms, int maxatoms,
-                                bool isVcSearch, bool verbose, bool useCustomIAD,
-                                const QHash<QPair<int, int>, IAD>* customIADs)
+                                bool isVcSearch, bool verbose, bool useScaledIAD,
+                                bool useCustomIAD,
+                                const PairCustomDistances* customIADs)
 {
   // Save the reference chemical system (i.e., full list of symbols)
   QList<QString> refSymbols = compa[0].getCompositionSymbols();
@@ -308,123 +426,6 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>&
   s_2_2 = Common::getRandDouble();
   s_1_3 = Common::getRandDouble();
   s_2_3 = Common::getRandDouble();
-  //
-  // Transformation matrices
-  //
-  //  We will rotate and reflect the cell and coords randomly prior
-  //  to slicing the cell. This will be done via transformation
-  //  matrices.
-  //
-  //  First, generate a list of the numbers 0-2, using each number
-  //  only once. Then construct the matrix via:
-  //
-  //  0: +/-(1 0 0)
-  //  1: +/-(0 1 0)
-  //  2: +/-(0 0 1)
-  //
-  // Column vectors are actually used instead of row vectors so that
-  // both the cell matrix and coordinates can be transformed by
-  //
-  // new = old * xform
-  //
-  // provided that both new and old are (or are composed of) row
-  // vectors. For column vecs/matrices:
-  //
-  // new = (old.transpose() * xform).transpose()
-  //
-  // should do the trick.
-  //
-  QList<int> list1;
-  list1.append(static_cast<int>(floor(Common::getRandDouble() * 3)));
-  if (list1.at(0) == 3)
-    list1[0] = 2;
-  switch (list1.at(0)) {
-    case 0:
-      if (Common::getRandDouble() > 0.5) {
-        list1.append(1);
-        list1.append(2);
-      } else {
-        list1.append(2);
-        list1.append(1);
-      }
-      break;
-    case 1:
-      if (Common::getRandDouble() > 0.5) {
-        list1.append(0);
-        list1.append(2);
-      } else {
-        list1.append(2);
-        list1.append(0);
-      }
-      break;
-    case 2:
-      if (Common::getRandDouble() > 0.5) {
-        list1.append(0);
-        list1.append(1);
-      } else {
-        list1.append(1);
-        list1.append(0);
-      }
-      break;
-  }
-
-  QList<int> list2;
-  list2.append(static_cast<int>(floor(Common::getRandDouble() * 3)));
-  if (list2.at(0) == 3)
-    list2[0] = 2;
-  switch (list2.at(0)) {
-    case 0:
-      if (Common::getRandDouble() > 0.5) {
-        list2.append(1);
-        list2.append(2);
-      } else {
-        list2.append(2);
-        list2.append(1);
-      }
-      break;
-    case 1:
-      if (Common::getRandDouble() > 0.5) {
-        list2.append(0);
-        list2.append(2);
-      } else {
-        list2.append(2);
-        list2.append(0);
-      }
-      break;
-    case 2:
-      if (Common::getRandDouble() > 0.5) {
-        list2.append(0);
-        list2.append(1);
-      } else {
-        list2.append(1);
-        list2.append(0);
-      }
-      break;
-  }
-  //
-  //  Now populate the matrices:
-  //
-  Common::Matrix3 xform1 = Common::Matrix3::Zero();
-  Common::Matrix3 xform2 = Common::Matrix3::Zero();
-  for (int i = 0; i < 3; i++) {
-    double r1 = Common::getRandDouble() - 0.5;
-    double r2 = Common::getRandDouble() - 0.5;
-    int s1 = (r1 < 0.0) ? -1 : 1;
-    int s2 = (r2 < 0.0) ? -1 : 1;
-    if (list1.at(i) == 0)
-      xform1.setCol(i, Common::Vector3(s1, 0, 0));
-    else if (list1.at(i) == 1)
-      xform1.setCol(i, Common::Vector3(0, s1, 0));
-    else if (list1.at(i) == 2)
-      xform1.setCol(i, Common::Vector3(0, 0, s1));
-    if (list2.at(i) == 0)
-      xform2.setCol(i, Common::Vector3(s2, 0, 0));
-    else if (list2.at(i) == 1)
-      xform2.setCol(i, Common::Vector3(0, s2, 0));
-    else if (list2.at(i) == 2)
-      xform2.setCol(i, Common::Vector3(0, 0, s2));
-  }
-
   // Get parents info: cells, lists of atoms, and fractional coordinates
   Common::Matrix3 cell1;
   QList<uint> xtalCounts1;
@@ -471,14 +472,9 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>&
   }
 
   // Transform cells and atoms (reflect / rot)
-  cell1 *= xform1;
-  cell2 *= xform2;
-  const Common::Matrix3 xform1Transpose = xform1.transpose();
-  const Common::Matrix3 xform2Transpose = xform2.transpose();
-  for (auto& fc : fracCoordsList1)
-    fc = xform1Transpose * fc;
-  for (auto& fc : fracCoordsList2)
-    fc = xform2Transpose * fc;
+  if (!transformCellAndCoordinates(cell1, fracCoordsList1, true) ||
+      !transformCellAndCoordinates(cell2, fracCoordsList2, true))
+    return nullptr;
 
   // Shift coordinates:
   for (auto& fc : fracCoordsList1) {
@@ -509,15 +505,15 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>&
   // Build new xtal
   //
 
-  // Average cell matrices by a weight
+  // Average cell metrics by a weight
+  //
+  //Q_UNUSED(averageCellComponents);
+  Q_UNUSED(averageCellMetrics);
+  //
   double weight = Common::getRandDouble();
   Common::Matrix3 dims;
-  for (uint row = 0; row < 3; row++) {
-    for (uint col = 0; col < 3; col++) {
-      dims(row, col) =
-        cell1(row, col) * weight + cell2(row, col) * (1 - weight);
-    }
-  }
+  if (!averageCellComponents(cell1, cell2, weight, dims))
+    return nullptr;
 
   Xtal* nxtal = new Xtal();
   QWriteLocker nxtalLocker(&nxtal->lock());
@@ -702,7 +698,7 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>&
       targetCounts = xtalCounts2;
     } else {
       // Select a target composition from list and use its counts
-      chosenComp = findClosestComposition(nxtalCounts, compa); // Common::getRandInt(0, compa.size() - 1);
+      chosenComp = findClosestComposition(nxtalCounts, compa);
       // Sanity check: this can't happen!
       if (chosenComp < 0) {
         Common::error("Could not select from composition list in crossover!");
@@ -741,41 +737,15 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>&
                          tag2));
   }
 
-  // Main loop to correct for differences by inserting atoms (from
-  // discarded portions of parents) or removing random atoms.
-
-  // We will be able to remove atoms, anyways. However, for adding,
-  //   we might fail, e.g., sub-system parents might not have
-  //   enough atoms of desired type at all!
-  // So, we limit the number of attempts and will try to add any
-  //   remaining number of required atoms randomly afterwards.
+  // First try to add missing atoms from discarded portions of the parents.
   int maxAttempts = 1000;
-  int currentAttempt;
 
   for (int i = 0; i < deltas.size(); i++) {
-    uint atomicnum = Atoms::ElementInfo::getAtomicNum(refSymbols[i].toStdString());
-    // Nothing to do for zero deltas
-    if (deltas[i] == 0)
+    if (deltas[i] >= 0)
       continue;
-    // Remove extra atoms
-    while (deltas[i] > 0) {
-      // Randomly delete atoms from nxtal;
-      const std::vector<Atoms::Atom>& atomList = nxtal->atoms();
-      double odds = 0.5;
-      for (int j = 0; j < static_cast<int>(atomList.size()); j++) {
-        if (Common::getRandDouble() < odds &&
-            atomList[j].atomicNumber() == atomicnum) {
-          // If the atom type and odds are right, delete the atom and break loop to
-          //   recheck condition. removeAtom(Atom*) takes care of deleting pointer.
-          nxtal->removeAtom(atomList.at(j));
-          deltas[i]--;
-          nxtalCounts[i]--;
-          break;
-        }
-      }
-    }
-    // Try to add atoms from discarded parts of the parent cells
-    currentAttempt = 0;
+
+    uint atomicnum = Atoms::ElementInfo::getAtomicNum(refSymbols[i].toStdString());
+    int currentAttempt = 0;
     while (deltas[i] < 0 && currentAttempt < maxAttempts) {
       //
       currentAttempt++;
@@ -835,24 +805,12 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>&
         }
       }
     }
-    // Try to add atoms randomly
-    currentAttempt = 0;
-    while (deltas[i] < 0 && currentAttempt < maxAttempts) {
-      currentAttempt++;
-      if (addAtomRandomlyForPolicy(nxtal, atomicnum, elrad, useCustomIAD, customIADs)) {
-        deltas[i]++;
-        nxtalCounts[i]++;
-      }
-    }
-    // Just see if we could fix the atom counts for this type
-    if (deltas[i] != 0) {
-      if (verbose) {
-        Common::message(
-          QString("   %1: failed to adjust remaining %2 atoms for %3 (%4)")
-            .arg(__func__).arg(deltas[i]).arg(refSymbols[i]).arg(nxtal->getTag()));
-      }
-    }
   }
+
+  // Remove extra atoms and add any remaining missing atoms randomly.
+  applyCompositionDeltas(nxtal, deltas, nxtalCounts, refSymbols, elrad,
+                         useScaledIAD, useCustomIAD, customIADs, maxAttempts, verbose,
+                         tag1 + "+" + tag2, __func__);
 
   // Done!
   nxtal->wrapAtomsToCell();
@@ -944,9 +902,10 @@ Xtal* XtalOptGenetic::permustrain(Xtal* xtal, double sigma_lattice_max,
   return nxtal;
 }
 
-Xtal* XtalOptGenetic::permutomic(Xtal* xtal, const CellComp& comp, const EleRadii& elrad,
-                                 int minatoms, int maxatoms, bool verbose, bool useCustomIAD,
-                                 const QHash<QPair<int, int>, IAD>* customIADs)
+Xtal* XtalOptGenetic::permutomic(Xtal* xtal, const CellComp& comp, const EleScaledRadii& elrad,
+                                 int minatoms, int maxatoms, bool verbose, bool useScaledIAD,
+                                 bool useCustomIAD,
+                                 const PairCustomDistances* customIADs)
 {
   // Save the reference chemical system (i.e., full list of symbols)
   QList<QString> refSymbols = comp.getCompositionSymbols();
@@ -1041,6 +1000,7 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal, const CellComp& comp, const EleRadi
   // If we weren't able to change the initial count up to this point,
   //   that's it! We just return the distorted lattice.
   if (!changedComp) {
+    nxtal->setStatus(Xtal::WaitingForOptimization);
     return nxtal;
   }
 
@@ -1085,7 +1045,8 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal, const CellComp& comp, const EleRadi
   // For adding atoms, we will limit the attempts, as the radii limits might
   //   prevent us from being able to add them.
   applyCompositionDeltas(nxtal, deltas, nxtalCounts, refSymbols, elrad,
-                         useCustomIAD, customIADs, maxAttempts, verbose, parentTag, __func__);
+                         useScaledIAD, useCustomIAD, customIADs, maxAttempts,
+                         verbose, parentTag, __func__);
 
   // We're done!
   nxtal->wrapAtomsToCell();
@@ -1093,9 +1054,10 @@ Xtal* XtalOptGenetic::permutomic(Xtal* xtal, const CellComp& comp, const EleRadi
   return nxtal;
 }
 
-Xtal* XtalOptGenetic::permucomp(Xtal* xtal, const CellComp& comp, const EleRadii& elrad,
-                                int minatoms, int maxatoms, bool verbose, bool useCustomIAD,
-                                const QHash<QPair<int, int>, IAD>* customIADs)
+Xtal* XtalOptGenetic::permucomp(Xtal* xtal, const CellComp& comp, const EleScaledRadii& elrad,
+                                int minatoms, int maxatoms, bool verbose, bool useScaledIAD,
+                                bool useCustomIAD,
+                                const PairCustomDistances* customIADs)
 {
   // Save the reference chemical system (i.e., full list of symbols)
   QList<QString> refSymbols = comp.getCompositionSymbols();
@@ -1191,7 +1153,8 @@ Xtal* XtalOptGenetic::permucomp(Xtal* xtal, const CellComp& comp, const EleRadii
   // If we reach the limit, we just leave it alone and move on
   //   with whatever count that we have been able to produce.
   applyCompositionDeltas(nxtal, deltas, nxtalCounts, refSymbols, elrad,
-                         useCustomIAD, customIADs, 1000, verbose, parentTag, __func__);
+                         useScaledIAD, useCustomIAD, customIADs, 1000,
+                         verbose, parentTag, __func__);
 
   // We're done!
   nxtal->wrapAtomsToCell();

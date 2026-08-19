@@ -299,6 +299,7 @@ void XtalTest::niggliReduceTest()
   const double maxLength = 30.0;
   const double minAngle = 45.0;
   const double maxAngle = 135.0;
+
   // Test randomly generated cells.
   for (unsigned int i = 0; i < 200; i++) {
     const double a = Common::getRandDouble() * (maxLength - minLength) + minLength;
@@ -307,6 +308,7 @@ void XtalTest::niggliReduceTest()
     const double alpha = Common::getRandDouble() * (maxAngle - minAngle) + minAngle;
     const double beta = Common::getRandDouble() * (maxAngle - minAngle) + minAngle;
     const double gamma = Common::getRandDouble() * (maxAngle - minAngle) + minAngle;
+
     // is the cell valid?
     Atoms::UnitCell tmp(alpha, beta, gamma, a, b, c);
     if (tmp.cellMatrix().determinant() <= 0 ||
@@ -314,6 +316,7 @@ void XtalTest::niggliReduceTest()
       i--;
       continue;
     }
+
     ASSIGN_PARAMS(a, b, c, alpha, beta, gamma);
     QVERIFY2(xtal->niggliReduce(),
              QString("Unable to reduce cell. Params: %1 %2 %3 %4 %5 %6")
@@ -365,7 +368,9 @@ void XtalTest::fixAnglesTest()
   const double maxLength = 30.0;
   const double minAngle = 45.0;
   const double maxAngle = 135.0;
+
   QList<CellParam> badParams;
+
   // Test random rotated cells.
   for (unsigned int iter = 0; iter < 30; iter++) {
     const double a = Common::getRandDouble() * (maxLength - minLength) + minLength;
@@ -374,6 +379,7 @@ void XtalTest::fixAnglesTest()
     const double alpha = Common::getRandDouble() * (maxAngle - minAngle) + minAngle;
     const double beta = Common::getRandDouble() * (maxAngle - minAngle) + minAngle;
     const double gamma = Common::getRandDouble() * (maxAngle - minAngle) + minAngle;
+
     // is the cell valid?
     Atoms::UnitCell tmp(alpha, beta, gamma, a, b, c);
     if (tmp.cellMatrix().determinant() <= 0 ||
@@ -463,6 +469,7 @@ void XtalTest::getRandomRepresentationTest()
     //
     std::vector<double> lengths(3);
     lengths[0] = Common::getRandDouble();
+
     if (Common::getRandDouble() < 0.3333333)
       lengths[1] = lengths[0];
     else
@@ -471,6 +478,7 @@ void XtalTest::getRandomRepresentationTest()
       lengths[2] = lengths[1];
     else
       lengths[2] = Common::getRandDouble();
+
     //
     // Adjust each length to be between 5->25 angstrom
     //
@@ -489,6 +497,7 @@ void XtalTest::getRandomRepresentationTest()
     double rand;
     std::vector<double> angles(3);
     angles[0] = Common::getRandDouble();
+
     rand = Common::getRandDouble();
     if (rand < 0.33333333)
       angles[1] = angles[0];
@@ -496,6 +505,7 @@ void XtalTest::getRandomRepresentationTest()
       angles[1] = 0.5; // will convert to 90
     else
       angles[1] = Common::getRandDouble(); // degrees later
+
     rand = Common::getRandDouble();
     if (rand < 0.33333333)
       angles[2] = angles[1];
@@ -525,6 +535,7 @@ void XtalTest::getRandomRepresentationTest()
     //
     unsigned int failedAtomAdds = 0;
     unsigned int failedAtomAddsMax = 10;
+
     for (int j = 0; j < numAtoms; ++j) {
       unsigned short atomicNum = Common::getRandUInt() % 5 + 1;
       if (!xtal.addAtomRandomly(atomicNum, 0.5)) {
@@ -536,6 +547,7 @@ void XtalTest::getRandomRepresentationTest()
         continue;
       }
     }
+
     if (failedAtomAdds > failedAtomAddsMax) {
       --i;
       continue;
@@ -593,11 +605,11 @@ void XtalTest::getRandomRepresentationTest()
 
 void XtalTest::checkInteratomicDistancesTest()
 {
-  using ::XtalOpt::EleRadii;
+  using ::XtalOpt::EleScaledRadii;
 
   // O-O minimum pair distance = 0.66 + 0.66 = 1.32 A
-  EleRadii limits;
-  limits.setElementRadius(8, 0.66); // O
+  EleScaledRadii limits;
+  limits.setMinRadius(8, 0.66); // O
 
   int atom1 = -1, atom2 = -1;
   double iad = 0.0;
@@ -611,7 +623,7 @@ void XtalTest::checkInteratomicDistancesTest()
     Atoms::Atom& b = xtal.addAtom();
     b.setAtomicNumber(8);
     b.setPos(Common::Vector3(2.0, 0.0, 0.0)); // 2.0 A > 1.32 A
-    QVERIFY(xtal.checkInteratomicDistances(limits, &atom1, &atom2, &iad));
+    QVERIFY(xtal.checkInterAtomicDistancesScaled(limits, &atom1, &atom2, &iad));
     QVERIFY(atom1 == -1 && atom2 == -1);
   }
 
@@ -624,7 +636,7 @@ void XtalTest::checkInteratomicDistancesTest()
     Atoms::Atom& b = xtal.addAtom();
     b.setAtomicNumber(8);
     b.setPos(Common::Vector3(1.0, 0.0, 0.0)); // 1.0 A < 1.32 A
-    QVERIFY(!xtal.checkInteratomicDistances(limits, &atom1, &atom2, &iad));
+    QVERIFY(!xtal.checkInterAtomicDistancesScaled(limits, &atom1, &atom2, &iad));
     QVERIFY(atom1 >= 0 && atom2 >= 0 && atom1 != atom2);
     QVERIFY(iad < 1.32);
   }
@@ -640,7 +652,7 @@ void XtalTest::checkInteratomicDistancesTest()
     Atoms::Atom& b = xtal.addAtom();
     b.setAtomicNumber(8);
     b.setPos(Common::Vector3(2.8, 0.0, 0.0)); // image distance = 3.0-2.6 = 0.4 A
-    QVERIFY(!xtal.checkInteratomicDistances(limits, &atom1, &atom2, &iad));
+    QVERIFY(!xtal.checkInterAtomicDistancesScaled(limits, &atom1, &atom2, &iad));
     QVERIFY(iad < 1.32);
   }
 
@@ -650,16 +662,16 @@ void XtalTest::checkInteratomicDistancesTest()
     Atoms::Atom& a = xtal.addAtom();
     a.setAtomicNumber(8);
     a.setPos(Common::Vector3(0.0, 0.0, 0.0));
-    QVERIFY(xtal.checkInteratomicDistances(limits, &atom1, &atom2, &iad));
+    QVERIFY(xtal.checkInterAtomicDistancesScaled(limits, &atom1, &atom2, &iad));
   }
 }
 
 void XtalTest::moveAtomRandomlyChecksDistancesAgainstEachAtom()
 {
-  using ::XtalOpt::EleRadii;
+  using ::XtalOpt::EleScaledRadii;
 
-  EleRadii limits;
-  limits.setElementRadius(8, 1.0);
+  EleScaledRadii limits;
+  limits.setMinRadius(8, 1.0);
 
   Xtal xtal(1.0, 1.0, 1.0, 90.0, 90.0, 90.0);
   Atoms::Atom& movingAtom = xtal.addAtom();
@@ -671,7 +683,7 @@ void XtalTest::moveAtomRandomlyChecksDistancesAgainstEachAtom()
   fixedAtom.setPos(Common::Vector3(0.5, 0.5, 0.5));
 
   // Check a short periodic cell (moving atom 0 must fail!).
-  QVERIFY(!xtal.moveAtomRandomly(8, limits, 4, &xtal.atom(0)));
+  QVERIFY(!xtal.moveAtomRandomlyScaledIAD(8, limits, 4, &xtal.atom(0)));
 }
 
 void XtalTest::writeReadSettingsPreservesCompositionValidity()

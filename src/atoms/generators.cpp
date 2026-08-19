@@ -86,12 +86,20 @@ bool randomLatticeIsAcceptable(const Geometry& structure,
     }
   }
 
-  return structure.getA() >= options.aMin && structure.getA() <= options.aMax &&
-         structure.getB() >= options.bMin && structure.getB() <= options.bMax &&
-         structure.getC() >= options.cMin && structure.getC() <= options.cMax &&
-         structure.getAlpha() >= options.alphaMin && structure.getAlpha() <= options.alphaMax &&
-         structure.getBeta() >= options.betaMin && structure.getBeta() <= options.betaMax &&
-         structure.getGamma() >= options.gammaMin && structure.getGamma() <= options.gammaMax;
+  // clang-format off
+  return !Common::lt(structure.getA(),     options.aMin,     LATT_LEN_COMP_TOL) &&
+         !Common::gt(structure.getA(),     options.aMax,     LATT_LEN_COMP_TOL) &&
+         !Common::lt(structure.getB(),     options.bMin,     LATT_LEN_COMP_TOL) &&
+         !Common::gt(structure.getB(),     options.bMax,     LATT_LEN_COMP_TOL) &&
+         !Common::lt(structure.getC(),     options.cMin,     LATT_LEN_COMP_TOL) &&
+         !Common::gt(structure.getC(),     options.cMax,     LATT_LEN_COMP_TOL) &&
+         !Common::lt(structure.getAlpha(), options.alphaMin, LATT_ANG_COMP_TOL)  &&
+         !Common::gt(structure.getAlpha(), options.alphaMax, LATT_ANG_COMP_TOL)  &&
+         !Common::lt(structure.getBeta(),  options.betaMin,  LATT_ANG_COMP_TOL)  &&
+         !Common::gt(structure.getBeta(),  options.betaMax,  LATT_ANG_COMP_TOL)  &&
+         !Common::lt(structure.getGamma(), options.gammaMin, LATT_ANG_COMP_TOL)  &&
+         !Common::gt(structure.getGamma(), options.gammaMax, LATT_ANG_COMP_TOL);
+  // clang-format on
 }
 
 double maxRequiredDistance(const Generators::CrystalGenerationOptions& options,
@@ -217,14 +225,12 @@ Generators::CrystalGenerationOptions::CrystalGenerationOptions()
 {
 }
 
-bool Generators::canGenerateRandSpg(unsigned int spaceGroup,
-  const std::vector<unsigned int>& atomicNumbers)
+bool Generators::canGenerateRandSpg(unsigned int spaceGroup, const std::vector<unsigned int>& atomicNumbers)
 {
   return RandSpg::isSpgPossible(spaceGroup, atomicNumbers);
 }
 
-std::unique_ptr<Geometry> Generators::generateRandSpg(
-  const Generators::CrystalGenerationOptions& options)
+std::unique_ptr<Geometry> Generators::generateRandSpg(const Generators::CrystalGenerationOptions& options)
 {
   latticeStruct latticeMins(options.aMin, options.bMin, options.cMin,
                             options.alphaMin, options.betaMin, options.gammaMin);
@@ -233,6 +239,8 @@ std::unique_ptr<Geometry> Generators::generateRandSpg(
   randSpgInput input(options.spaceGroup, options.atomicNumbers, latticeMins, latticeMaxes);
   input.minRadius = options.minRadius;
   input.IADScalingFactor = options.iadScalingFactor;
+  for (const auto& radius : options.atomicRadii)
+    input.manualAtomicRadii.push_back(radius);
   input.minVolume = options.minVolume;
   input.maxVolume = options.maxVolume;
   input.maxAttempts = options.maxAttempts;

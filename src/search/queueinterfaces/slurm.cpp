@@ -24,24 +24,6 @@
 #include <QRegularExpression>
 
 namespace Search {
-namespace {
-
-bool isRunningStatus(const QString& status)
-{
-  return status == "R" || status == "S" || status == "ST" || status == "CG" ||
-         status == "RS" || status == "SI" || status == "SO" ||
-         status == "BF" || status == "CA" || status == "CD" ||
-         status == "DL" || status == "F" || status == "NF" ||
-         status == "OOM" || status == "PR" || status == "RV" || status == "TO";
-}
-
-bool isQueuedStatus(const QString& status)
-{
-  return status == "CF" || status == "PD" || status == "RD" ||
-         status == "RF" || status == "RH" || status == "RQ" || status == "SE";
-}
-
-} // namespace
 
 const QueueDefaults& SlurmQueueInterface::defaults()
 {
@@ -91,9 +73,17 @@ QueueInterface::QueueStatus SlurmQueueInterface::parseQueueStatus(
       const QString status = entryList.at(1).trimmed();
       if (rawStatus)
         *rawStatus = status.isEmpty() ? line : status;
-      if (isRunningStatus(status))
+      if (status == "R"  || status == "S"  || status == "ST" ||
+          status == "CG" || status == "RS" || status == "SI" ||
+          status == "SO" ||
+          status == "BF" || status == "CA" || status == "CD" ||
+          status == "DL" || status == "F"  || status == "NF" ||
+          status == "OOM"|| status == "PR" || status == "RV" ||
+          status == "TO")
         return QueueInterface::Running;
-      if (isQueuedStatus(status))
+      if (status == "CF" || status == "PD" || status == "RD" ||
+          status == "RF" || status == "RH" || status == "RQ" ||
+          status == "SE")
         return QueueInterface::Queued;
       return QueueInterface::Unknown;
     }

@@ -88,6 +88,7 @@ bool extractQuotedValue(const std::string& line, const std::string& key, std::st
     const bool leftIsClear = keyPos == 0 ||
       (!std::isalnum(static_cast<unsigned char>(line[keyPos - 1])) &&
        line[keyPos - 1] != '_');
+
     std::string::size_type pos = keyPos + key.size();
     while (pos < line.size() && std::isspace(static_cast<unsigned char>(line[pos])))
       ++pos;
@@ -103,6 +104,7 @@ bool extractQuotedValue(const std::string& line, const std::string& key, std::st
         return true;
       }
     }
+
     start = keyPos + key.size();
   }
 
@@ -149,13 +151,14 @@ LatticeInfo parseLatticeFromXYZComment(const std::string& line)
 
 } // namespace
 
-bool XyzFormat::read(Atoms::Geometry* s, const QString& filename)
+bool XyzFormat::read(Atoms::Geometry& s, const QString& filename)
 {
   std::string text;
   if (!Common::readFileToString(filename, &text)) {
     Common::error(QString("XYZ file, %1, could not be opened!").arg(filename));
     return false;
   }
+
   std::istringstream ifs(text);
 
   std::string line;
@@ -218,8 +221,9 @@ bool XyzFormat::read(Atoms::Geometry* s, const QString& filename)
 
       // If it is a number, it is the atomic number. Otherwise, a symbol
       int atomicNum = 0;
+      int maxAtomicNum = static_cast<int>(ElementInfo::getNumberOfElements());
       if (Common::parseIntString(lineSplit[0], atomicNum)) {
-        if (atomicNum < 1 || atomicNum > 117) {
+        if (atomicNum < 1 || atomicNum > maxAtomicNum) {
           Common::error("XYZ reader: invalid atomic number entered.");
           Common::error(QString("Problem line: %1")
                        .arg(line.c_str()));
@@ -227,7 +231,7 @@ bool XyzFormat::read(Atoms::Geometry* s, const QString& filename)
         }
       } else {
         atomicNum = Atoms::ElementInfo::getAtomicNum(lineSplit[0]);
-        if (atomicNum < 1 || atomicNum > 117) {
+        if (atomicNum < 1 || atomicNum > maxAtomicNum) {
           Common::error("XYZ reader: invalid atomic symbol entered.");
           Common::error(QString("Problem line: %1")
                        .arg(line.c_str()));
@@ -276,7 +280,7 @@ bool XyzFormat::read(Atoms::Geometry* s, const QString& filename)
 
   parsed.setAtoms(atoms);
   parsed.perceiveBonds();
-  *s = parsed;
+  s = parsed;
 
   return true;
 }

@@ -20,13 +20,13 @@
 #include <common/output.h>
 #include <atoms/eleminfo.h>
 
-#include <search/optimizer.h>
 #include <xtalopt/legacy/legacy_helpers.h>
 #include <xtalopt/legacy/queue_command_compat.h>
 
 #include <QDir>
 #include <QFile>
 #include <QHash>
+#include <QMap>
 #include <QSettings>
 #include <QStringList>
 #include <QTemporaryFile>
@@ -518,7 +518,9 @@ bool legacyPotcarAssetMap(const QString& potcarTemplate, const QStringList& symb
       error = "legacy VASP POTCAR entries could not be parsed";
       return false;
     }
-    entries.append(trimmed);
+    QString file = trimmed.mid(QString("%fileContents:").size());
+    file.chop(1);
+    entries.append(file.trimmed());
   }
   if (entries.isEmpty()) {
     error = "legacy VASP POTCAR does not contain any file entries";
@@ -600,18 +602,26 @@ void normalizeSiestaPsfAssets(QSettings& settings, QStringList& notes)
     if (files.isEmpty())
       continue;
 
-    QHash<QString, QString> assets;
+    QMap<QString, QString> assets;
     for (auto it = files.constBegin(); it != files.constEnd(); ++it) {
-      const QString filename = it.value().toString().trimmed();
+      QString filename = it.value().toString().trimmed();
       if (!filename.isEmpty()) {
-        assets.insert(it.key(), Search::Optimizer::inputAssetValueForSave(filename));
+        if (filename.startsWith("%fileContents:", Qt::CaseInsensitive) && filename.endsWith("%")) {
+          filename = filename.mid(QString("%fileContents:").size());
+          filename.chop(1);
+          filename = filename.trimmed();
+        }
+        assets.insert(it.key(), filename);
       }
     }
     if (assets.isEmpty())
       continue;
 
     const QString newKey = QString("xtalopt/optscheme/optimizer/%1/assets/siesta/PSF").arg(i);
-    settings.setValue(newKey, Search::Optimizer::inputAssetFilesToText(assets));
+    QStringList entries;
+    for (auto it = assets.constBegin(); it != assets.constEnd(); ++it)
+      entries.append(it.key() + "=" + it.value());
+    settings.setValue(newKey, entries.join("; "));
     appendNote(notes, QString("converted legacy SIESTA PSF assets for optimization step %1").arg(i + 1));
   }
 }

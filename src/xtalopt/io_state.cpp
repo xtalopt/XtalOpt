@@ -59,6 +59,8 @@
 
 #include <algorithm>
 
+#include <map>
+
 using namespace Search;
 
 namespace XtalOpt {
@@ -66,6 +68,46 @@ namespace XtalOpt {
 namespace {
 
 typedef bool (*SaveSuccessCheck)(const QString& filename);
+
+QString optimizerInputAssetsToStateText(const OptimizerInputAssetMap& assets)
+{
+  QStringList entries;
+  for (const auto& asset : assets) {
+    entries.append(QString::fromStdString(asset.first) + "=" +
+                   QString::fromStdString(asset.second).trimmed());
+  }
+  return entries.join("; ");
+}
+
+bool stateTextToOptimizerInputAssets(const QString& text,
+                                     OptimizerInputAssetMap& assets)
+{
+  assets.clear();
+  const QString trimmed = text.trimmed();
+  if (trimmed.isEmpty())
+    return true;
+
+  const QStringList entries = trimmed.split(';');
+  for (const auto& entry : entries) {
+    const QString trimmedEntry = entry.trimmed();
+    const int equalsIndex = trimmedEntry.indexOf('=');
+    if (equalsIndex <= 0)
+      return false;
+
+    const QString id = trimmedEntry.left(equalsIndex).trimmed();
+    QString file = trimmedEntry.mid(equalsIndex + 1).trimmed();
+    if (file.startsWith("%fileContents:", Qt::CaseInsensitive) && file.endsWith("%")) {
+      file = file.mid(QString("%fileContents:").size());
+      file.chop(1);
+      file = file.trimmed();
+    }
+    if (id.isEmpty() || file.isEmpty() || file.contains('#'))
+      return false;
+
+    assets[id.toStdString()] = file.toStdString();
+  }
+  return true;
+}
 
 QString sharedTemporaryStateFilePath(const QString& filename)
 {
@@ -96,6 +138,7 @@ bool sharedReplaceStateFileWithTemp(const QString& tempFilename, const QString& 
 
   const QString replacedFilename = filename + ".replaced";
   const bool replacingExistingFile = QFile::exists(filename);
+
   if (replacingExistingFile) {
     if (!sharedRemoveExistingStateFile(replacedFilename, caller))
       return false;
@@ -116,6 +159,7 @@ bool sharedReplaceStateFileWithTemp(const QString& tempFilename, const QString& 
 
   Common::error(QString("%1: could not replace %2 with temporary state file %3.")
                   .arg(caller).arg(filename).arg(tempFilename));
+
   if (replacingExistingFile && !QFile::rename(replacedFilename, filename)) {
     Common::error(QString("%1: could not restore preserved state file %2.")
                     .arg(caller).arg(filename));
@@ -149,6 +193,7 @@ QString sharedScratchStateFilePath()
     return QString();
   }
   const QString name = tempFile.fileName();
+
   tempFile.close();
   return name;
 }
@@ -167,7 +212,7 @@ bool sharedFinalizeStateFileWrite(const QString& freshFilename, const QString& f
   }
 
   // Only a complete existing file is backed up (won't overwrite the .old
-  //    with a not correctly written file). 
+  //    with a not correctly written file).
   if (QFile::exists(filename) && saveSuccessful(filename)) {
     const QString backupFilename = filename + ".old";
     const QString tempBackupFilename = sharedTemporaryStateFilePath(backupFilename);
@@ -198,10 +243,12 @@ void writeStateEntryArray(QSettings& settings, const QString& arrayName,
 {
   settings.remove(arrayName);
   settings.beginWriteArray(arrayName);
+
   for (int i = 0; i < entries.size(); ++i) {
     settings.setArrayIndex(i);
     settings.setValue("entry", entries.at(i));
   }
+
   settings.endArray();
 }
 
@@ -211,12 +258,14 @@ void writeStateEntryArray(QSettings& settings, const QString& arrayName,
 bool writeStateInputGroup(QSettings& settings, XtalOpt& xtalopt)
 {
   settings.beginGroup("xtalopt/input");
+
   for (const QString& keyword : Settings::allSettingKeywords()) {
     if (Settings::hasScalarSettingBinding(keyword))
       settings.setValue(keyword, Settings::scalarSettingValue(xtalopt, keyword));
     else if (Settings::hasRepeatedSettingBinding(keyword))
       writeStateEntryArray(settings, keyword, Settings::repeatedSettingEntries(xtalopt, keyword));
   }
+
   settings.endGroup();
   return true;
 }
@@ -282,7 +331,8 @@ void writeStateSchemeOptimizer(XtalOpt& xtalopt, size_t optStep,
   QStringList assetNames = optim->getOptimizerInputAssetNames();
   for (const auto& assetName : assetNames) {
     settings->setValue(assetName,
-      xtalopt.getOptimizerInputAsset(optStep, assetName.toStdString()).c_str());
+      optimizerInputAssetsToStateText(
+        xtalopt.getOptimizerInputAssets(optStep, assetName.toStdString())));
   }
   settings->endGroup();
 }
@@ -445,7 +495,13 @@ void readStateSchemeOptimizer(XtalOpt& xtalopt, size_t optStep,
   QStringList assetNames = optim->getOptimizerInputAssetNames();
   for (const auto& assetName : assetNames) {
     const QString value = settings->value(assetName).toString();
-    xtalopt.setOptimizerInputAsset(optStep, assetName.toStdString(), value.toStdString());
+    OptimizerInputAssetMap assets;
+    if (!stateTextToOptimizerInputAssets(value, assets)) {
+      Common::error(QString("%1: invalid optimizer input asset %2 at opt step %3.")
+                    .arg(__func__).arg(assetName).arg(optStep + 1));
+      continue;
+    }
+    xtalopt.setOptimizerInputAssets(optStep, assetName.toStdString(), assets);
   }
   settings->endGroup();
 }
@@ -499,8 +555,7 @@ bool readStateScheme(XtalOpt& xtalopt, const QString& filename)
 
     readStateSchemeQueue(xtalopt, i, filename);
     if (auto* batch = qobject_cast<BatchQueueInterface*>(xtalopt.queueInterface(i))) {
-      QSETTINGS_FILE(filename);
-      settings->beginGroup("xtalopt/optscheme/queue/" + QString::number(i) +
+      settings->beginGroup("queue/" + QString::number(i) +
                            "/commands/" + batch->getIDString().toLower());
       batch->setSubmitCommand(settings->value("submit", batch->submitCommand()).toString());
       batch->setStatusCommand(settings->value("status", batch->statusCommand()).toString());
@@ -763,12 +818,9 @@ bool readStructureStateWorkflow(Xtal& xtal, const QString& filename)
   settings->endGroup();
 
   // Crystal-specific extras in the same group.
-  {
-    QSETTINGS_FILE(filename);
-    settings->beginGroup("structure");
-    xtal.setCompositionValidity(settings->value("hasValidComposition", true).toBool());
-    settings->endGroup();
-  }
+  settings->beginGroup("structure");
+  xtal.setCompositionValidity(settings->value("hasValidComposition", true).toBool());
+  settings->endGroup();
 
   return true;
 }
@@ -786,7 +838,7 @@ bool readStructureStateGeometry(Xtal& xtal, const QString& filename)
     settings->setArrayIndex(i);
     bool ok = false;
     const unsigned int atomicNum = settings->value("value").toUInt(&ok);
-    if (!ok || atomicNum == 0 || atomicNum > 117)
+    if (!ok || atomicNum == 0 || atomicNum > Atoms::ElementInfo::getNumberOfElements())
       atomsAreValid = false;
     atomicNums.append(atomicNum);
   }
@@ -824,7 +876,7 @@ bool readStructureStateGeometry(Xtal& xtal, const QString& filename)
   }
 
   const bool hasEnthalpy = settings->value("hasEnthalpy", false).toBool();
-  bool enthalpyOk = !hasEnthalpy;
+  bool enthalpyOk = false;
   bool energyOk = false;
   bool pvOk = false;
   const double enthalpy = settings->value("enthalpy", 0).toDouble(&enthalpyOk);
@@ -1054,6 +1106,7 @@ bool XtalOpt::savePendingStateFiles(const QString& filename, bool saveAll, bool 
     x_structuresNeedingSave.unite(failedStructures);
     x_settingsStateNeedsSave = x_settingsStateNeedsSave || settingsFailed;
   }
+
   (void)QMetaObject::invokeMethod(x_saveRetryTimer, "start", Qt::QueuedConnection);
   return false;
 }
@@ -1146,6 +1199,7 @@ bool XtalOpt::saveRequestedOutputFiles(bool saveAll, bool showProgress)
     x_hullFileNeedsSave = x_hullFileNeedsSave || hullFailed;
     x_pendingHullSnapshots = failedSnapshots + x_pendingHullSnapshots;
   }
+
   (void)QMetaObject::invokeMethod(x_saveRetryTimer, "start", Qt::QueuedConnection);
   return false;
 }
@@ -1185,6 +1239,7 @@ QSet<Structure*> XtalOpt::saveStructureStateFiles(const QList<Search::Structure*
 
   for (int i = 0; i < structures.size(); ++i) {
     Structure* structure = structures.at(i);
+
     if (!structuresToSave.contains(structure))
       continue;
 
@@ -1509,7 +1564,7 @@ void writeStructureStateFile(Xtal& xtal, const QString& filename)
   settings->setValue("hasValidComposition", xtal.hasValidComposition());
   settings->endGroup();
 
-  // The success status comes last, and that is only if everything before it were written correctly. 
+  // The success status comes last, and that is only if everything before it were written correctly.
   settings->sync();
   if (settings->status() != QSettings::NoError)
     return;
@@ -1777,13 +1832,15 @@ bool XtalOpt::readStateFile(const QString& filename, bool fullState,
   Settings::validateSettings(*this, Settings::InvalidSettingAction::ResetToDefault);
   rebuildDerivedSettings();
 
-  if (fullState && getUsingCustomIAD() && !checkCustomIADs(false)) {
+  if (fullState && getUsingCustomIAD() && !verifyCustomIADValues(false)) {
     setUsingCustomIAD(false);
     setUsingScaledIAD(true);
     clearCustomIADs();
     Common::warning("Saved custom IAD settings are incomplete. "
                     "Resetting to scaled interatomic distances.");
   }
+
+  warnVolumeLimitConflicts();
 
   // In resume, we always assume that the work directory is the state file's
   //   directory, regardless of what was stored in the state file. We do this

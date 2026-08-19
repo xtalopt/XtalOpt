@@ -78,6 +78,7 @@ void checkState(StateCheck check, MemberStateCheck memberCheck,
   for (Structure::State state : allStructureStates()) {
     Structure structure;
     structure.setStatus(state);
+
     const bool expected = expectedStates.contains(state);
     QCOMPARE(check(state), expected);
     QCOMPARE((structure.*memberCheck)(), expected);
@@ -94,11 +95,13 @@ void checkCopiedState(Structure& structure)
   QCOMPARE(structure.getPV(), 0.5);
 
   QCOMPARE(structure.sizeOfHistory(), 1u);
+
   QList<unsigned int> atomicNums;
   QList<Common::Vector3> coords;
   double energy = 0.0;
   double enthalpy = 0.0;
   Common::Matrix3 cell;
+
   structure.retrieveHistoryEntry(0, &atomicNums, &coords, &energy, &enthalpy,&cell);
   QCOMPARE(atomicNums, QList<unsigned int>() << 8u << 14u);
   QCOMPARE(coords.size(), 2);
@@ -106,6 +109,7 @@ void checkCopiedState(Structure& structure)
   QVERIFY(coords.at(1) == Common::Vector3(1.0, 2.0, 3.0));
   QCOMPARE(energy, -3.5);
   QCOMPARE(enthalpy, -3.0);
+
   Common::Matrix3 expectedCell;
   expectedCell << 4.0, 0.0, 0.0,
                   0.0, 5.0, 0.0,
@@ -274,6 +278,7 @@ void StructureTest::generateRandomStructure()
   options.atomicRadii[8] = 0.6;
 
   std::unique_ptr<Atoms::Geometry> structure = Atoms::Generators::generateRandom(options);
+
   QVERIFY(structure != nullptr);
   QCOMPARE(structure->numAtoms(), static_cast<size_t>(3));
   QVERIFY(structure->getVolume() >= options.minVolume);
@@ -391,6 +396,7 @@ void StructureTest::workflowStateCycle()
   saved->setOptTimerStart(QDateTime::fromString("2026-01-02T03:04:05", Qt::ISODate));
   saved->setOptTimerEnd(QDateTime::fromString("2026-01-02T04:04:05", Qt::ISODate));
   saved->appendCopyFile("extra.dat");
+
   const double objectiveValue = 2.500000123456789;
   const double constraintValue = 0.12345678901234566;
   const Common::Vector3 position(1.2345678901234567, -2.3456789012345678, 3.4567890123456789);
@@ -401,6 +407,7 @@ void StructureTest::workflowStateCycle()
   saved->setStrucConstraintValues(constraintValue);
   saved->setStrucConstraintState(Structure::Cs_Dismiss);
   saved->setStrucConstraintRedoCount(1);
+
   QVERIFY(producer.tracker()->append(saved));
   QVERIFY(producer.saveSessionState(stateFile, false));
 
@@ -408,6 +415,7 @@ void StructureTest::workflowStateCycle()
   restored.setRunMode(XtalOpt::XtalOpt::RunModeReadOnly);
   QVERIFY(restored.resumeSearch(stateFile));
   QCOMPARE(restored.tracker()->size(), 1);
+
   XtalOpt::Xtal* loaded = static_cast<XtalOpt::Xtal*>(restored.tracker()->at(0));
   QVERIFY(loaded);
 

@@ -823,12 +823,6 @@ public slots:
   //
 
   /**
-   * Deletes all structures from m_tracker and calls
-   * m_tracker->reset() and m_queue->reset().
-   */
-  virtual void reset();
-
-  /**
    * Creates ssh connections to the remote cluster.
    */
   virtual bool createSSHConnections();
@@ -950,14 +944,15 @@ public slots:
   }
 
   /**
-   * Get an optimizer input asset value for a particular opt step.
+   * Get optimizer input asset paths for a particular opt step.
    *
    * Input assets are extra optimizer input files, such as VASP POTCAR or
    * SIESTA PSF files. They are not interpreted as user templates.
    */
-  std::string getOptimizerInputAsset(size_t optStep, const std::string& name) const
+  OptimizerInputAssetMap getOptimizerInputAssets(size_t optStep,
+                                                 const std::string& name) const
   {
-    return m_optSteps.optimizerInputAsset(optStep, name);
+    return m_optSteps.optimizerInputAssets(optStep, name);
   }
   /**
    * Set the optimizer template for a particular opt step and
@@ -974,11 +969,12 @@ public slots:
   }
 
   /**
-   * Set an optimizer input asset value for a particular opt step.
+   * Set optimizer input asset paths for a particular opt step.
    */
-  void setOptimizerInputAsset(size_t optStep, const std::string& name, const std::string& value)
+  void setOptimizerInputAssets(size_t optStep, const std::string& name,
+                               const OptimizerInputAssetMap& assets)
   {
-    m_optSteps.setOptimizerInputAsset(optStep, name, value);
+    m_optSteps.setOptimizerInputAssets(optStep, name, assets);
   }
 
   //

@@ -27,7 +27,7 @@
 
 namespace Atoms {
 
-bool GulpFormat::readOutput(Atoms::Geometry* s, const QString& filename)
+bool GulpFormat::readOutput(Atoms::Geometry& s, const QString& filename)
 {
   std::string text;
   if (!Common::readFileToString(filename, &text)) {
@@ -137,9 +137,9 @@ bool GulpFormat::readOutput(Atoms::Geometry* s, const QString& filename)
     atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
   }
 
-  s->clear();
-  s->setUnitCell(uc);
-  s->setAtoms(atoms);
+  s.clear();
+  s.setUnitCell(uc);
+  s.setAtoms(atoms);
   return true;
 }
 } // namespace Atoms

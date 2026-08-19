@@ -141,11 +141,12 @@ static const std::vector<std::string> _atomicSymbols = {
   "Ds",  // 110
   "Rg",  // 111
   "Cn",  // 112
-  "Uut", // 113
+  "Nh",  // 113
   "Fl",  // 114
-  "Uup", // 115
+  "Mc",  // 115
   "Lv",  // 116
-  "Uus", // 117
+  "Ts",  // 117
+  "Og",  // 118
 };
 
 // Atomic Masses
@@ -268,6 +269,7 @@ static const std::vector<double> _masses = {
   288.19,  // 115
   293,     // 116
   294,     // 117
+  294,     // 118
 };
 
 // The following values were obtained from latest version of OpenBabel on
@@ -392,6 +394,7 @@ static const std::vector<double> _covalentRadii = {
   1.6,  // 115
   1.6,  // 116
   1.6,  // 117
+  1.6,  // 118
 };
 
 // The following values were obtained from latest version of OpenBabel on
@@ -516,6 +519,7 @@ static const std::vector<double> _vdwRadii = {
   2,    // 115
   2,    // 116
   2,    // 117
+  2,    // 118
 };
 } // namespace ElementInfoDatabase
 } // namespace Atoms

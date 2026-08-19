@@ -32,6 +32,7 @@
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QFontDatabase>
 #include <QLineEdit>
 #include <QListWidget>
@@ -41,10 +42,28 @@
 #include <QTextEdit>
 #include <QWidget>
 
+#include <map>
 
 namespace Search {
 
 namespace {
+bool parseInputAssetLine(const QString& line, QString& id, QString& file)
+{
+  const QString trimmed = line.trimmed();
+  const int space = trimmed.indexOf(' ');
+  if (space <= 0)
+    return false;
+
+  id = trimmed.left(space).trimmed();
+  file = trimmed.mid(space + 1).trimmed();
+  if (file.startsWith("%fileContents:", Qt::CaseInsensitive) && file.endsWith("%")) {
+    file = file.mid(QString("%fileContents:").size());
+    file.chop(1);
+    file = file.trimmed();
+  }
+  return !id.isEmpty() && !file.isEmpty() && !file.contains(';') && !file.contains('#');
+}
+
 void makeConfigurationDialogReadOnly(QDialog* dialog, bool allowRuntimeEdits)
 {
   for (auto* edit : dialog->findChildren<QLineEdit*>())
@@ -507,11 +526,18 @@ void AbstractOptTab::updateEditWidget()
   QString text;
   if (optimizerInputAsset) {
     // Input asset files are stored as a map; show on "<id> <file>" per line.
-    text = Optimizer::inputAssetTextToFiles(QString::fromStdString(
-      m_search->getOptimizerInputAsset(optStepIndex, templateName.toStdString())));
+    const OptimizerInputAssetMap assets =
+      m_search->getOptimizerInputAssets(optStepIndex, templateName.toStdString());
+    QStringList lines;
+    for (const auto& asset : assets) {
+      lines.append(QString::fromStdString(asset.first) + " " +
+                   QString::fromStdString(asset.second));
+    }
+    text = lines.join("\n");
     ui_edit_opt->setToolTip(tr("Input asset: one entry per line as '<element or system> <file>'. "
          "The file is a path or a %fileContents:/path% entry; assets are "
-         "references only, with no keyword interpretation."));
+         "references only, with no keyword interpretation. File paths cannot "
+         "contain ';' or '#'."));
   } else if (queueTemplate && !optimizerTemplate) {
     text = m_search->getQueueInterfaceTemplate(optStepIndex, templateName.toStdString()).c_str();
     ui_edit_opt->setToolTip(tr("Template: paste the file content, or use %fileContents:/path% / "
@@ -526,7 +552,7 @@ void AbstractOptTab::updateEditWidget()
   }
 
   ui_edit_opt->blockSignals(true);
-  ui_edit_opt->setText(text);
+  ui_edit_opt->setPlainText(text);
   ui_edit_opt->blockSignals(false);
 }
 
@@ -560,20 +586,21 @@ void AbstractOptTab::saveCurrentTemplate()
 
   if (optimizerInputAsset) {
     // Convert asset inputs from "<id> <file>" to a map.
-    QHash<QString, QString> assetFiles;
+    OptimizerInputAssetMap assetFiles;
     const QStringList lines = text.split('\n');
     for (const auto& line : lines) {
       if (line.trimmed().isEmpty())
         continue;
       QString id, fileEntry;
-      if (!Optimizer::parseAssetIdFileLine(line, id, fileEntry)) {
-        m_search->setOptimizerInputAsset(optStepIndex, templateName.toStdString(), "");
+      // A line that cannot be read yet (the user is still typing it) leaves
+      //   the saved entries as they were, like the other settings do.
+      if (!parseInputAssetLine(line, id, fileEntry))
         return;
-      }
-      assetFiles.insert(id, Optimizer::inputAssetValueForSave(fileEntry));
+      // Keep an absolute path, so the entry does not depend on where the
+      //   program is started the next time.
+      assetFiles[id.toStdString()] = QFileInfo(fileEntry).absoluteFilePath().toStdString();
     }
-    m_search->setOptimizerInputAsset(optStepIndex, templateName.toStdString(),
-      Optimizer::inputAssetFilesToText(assetFiles).toStdString());
+    m_search->setOptimizerInputAssets(optStepIndex, templateName.toStdString(), assetFiles);
   } else if (queueTemplate && !optimizerTemplate) {
     m_search->setQueueInterfaceTemplate(
       optStepIndex, templateName.toStdString(), text.toStdString());
@@ -672,7 +699,7 @@ void AbstractOptTab::saveScheme()
 {
   QString filename = QFileDialog::getSaveFileName(
     nullptr, tr("Save Optimization Scheme as..."), QDir::homePath(),
-    "*.scheme;;*.state;;*.*", nullptr, QFileDialog::DontUseNativeDialog);
+    "*.*", nullptr, QFileDialog::DontUseNativeDialog);
 
   // User canceled
   if (filename.isEmpty())
@@ -688,7 +715,7 @@ void AbstractOptTab::loadScheme()
 
   QString filename = QFileDialog::getOpenFileName(
     nullptr, tr("Select Optimization Scheme to load..."), QDir::homePath(),
-    "*.scheme;;*.state;;*.*", 0, QFileDialog::DontUseNativeDialog);
+    "*.*", 0, QFileDialog::DontUseNativeDialog);
 
   // User canceled
   if (filename.isEmpty())

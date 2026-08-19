@@ -18,7 +18,6 @@
 #include <common/output.h>
 #include <common/timing.h>
 
-#include <common/compatibility/platform_defs.h>
 #include <common/compatibility/qt_compat.h>
 #include <search/optimizer.h>
 #include <search/search.h>
@@ -117,12 +116,7 @@ DirectRunProcess* DirectRunProcessHost::startProcess(
   if (!stderrFile.isEmpty())
     proc->setStandardErrorFile(stderrFile);
 
-#if GS_WINDOWS
-  proc->setNativeArguments("/S /C \"" + command + "\"");
-  proc->start("cmd.exe");
-#else
   QtCompat::processStartCommand(*proc, command);
-#endif
 
   if (!proc->waitForStarted(startTimeoutMs)) {
     Common::error(QObject::tr("%1: failed to start direct run in %2: %3")
@@ -439,9 +433,11 @@ QueueInterface::QueueStatus DirectRunInterface::getStatus(Structure* s) const
   QString processErrorString;
   QString stdoutText;
   QString stderrText;
+
   if (statusValue == static_cast<int>(DirectRunProcess::Finished)) {
     exitCode = directRunProcessInt(proc.data(), "exitCodeValue", -1);
   }
+
   // Collect details for both kinds of failure: a crash, or a non-zero exit.
   if (statusValue == static_cast<int>(DirectRunProcess::Error) ||
       (statusValue == static_cast<int>(DirectRunProcess::Finished) && exitCode != 0)) {
@@ -519,9 +515,11 @@ QueueInterface::CommandResult DirectRunInterface::runACommand(
   CommandResult result;
 
   QProcess proc;
+
   if (!workdir.isEmpty()) {
     proc.setWorkingDirectory(workdir);
   }
+
   QtCompat::processStartCommand(proc, command);
   if (!proc.waitForStarted(PROCESS_START_TIMEOUT)) {
     result.stderrText = proc.errorString();
@@ -529,8 +527,10 @@ QueueInterface::CommandResult DirectRunInterface::runACommand(
         .arg(command).arg(workdir).arg(result.stderrText));
     return result;
   }
+
   QElapsedTimer timer;
   timer.start();
+
   bool finished = false;
   while (!finished && !m_search->isShuttingDown()) {
     const qint64 remaining = timeoutMs < 0 ? 100 : static_cast<qint64>(timeoutMs) - timer.elapsed();
@@ -538,6 +538,7 @@ QueueInterface::CommandResult DirectRunInterface::runACommand(
       break;
     finished = proc.waitForFinished(static_cast<int>(qMin<qint64>(remaining, 100)));
   }
+
   const bool stopped = !finished;
   if (stopped) {
     proc.terminate();

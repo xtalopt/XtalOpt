@@ -94,8 +94,8 @@ QueueInterface::QueueStatus PbsQueueInterface::parseQueueStatus(
     if (rawStatus)
       *rawStatus = status;
     if (status == "B" || status == "E" || status == "R" || status == "S" ||
-        status == "U" || status == "M" || status == "C" || status == "F" ||
-        status == "X")
+        status == "U" || status == "M" ||
+        status == "C" || status == "F" || status == "X")
       return QueueInterface::Running;
     if (status == "Q" || status == "H" || status == "T" || status == "W")
       return QueueInterface::Queued;

@@ -16,6 +16,7 @@ Build system: C++11; Qt5.4 up to Qt6; Qwt 6.1 or newer
 Made system ssh/scp always available, with libssh (minimum 0.6.0) as an additional build option
 Improved installation and independent-package handling on macOS, Windows and Linux
 Added macOS code-signing, CPack on all platforms and third-party licenses
+Cleaned redundant helpers, settings readers and warning-prone implicit initializers
 
 ===== Application settings, input and saved data
 
@@ -26,13 +27,13 @@ Added a command-line option to convert old input and state files
 Added command-line summaries for template keywords and all xtalopt.in settings/defaults
 Unified xtalopt settings in one registry table (accessors, defaults, properties, validation)
 Revised command-line options and added stricter input checking
+Required exact fields in current-format objective and constraint entries
 Improved runtime setting updates and rewriting of cli-runtime-options.txt
 Made the RDF similarity cutoff, bins and sigma adjustable during a run
 Added/revised settings: sshMethod, directRunCommand, forcedSpgs, IAD checks and RDF tolerance
 Added/revised settings for Pareto zero-weight filtering, external script timeouts and debug output
 Renamed localQueue to remoteQueue and the local queue interface to none
-Standardized potcar/psf input syntax: <id> <file>
-Defined optimizer asset-file groups
+Added optimizer asset-file groups using <id> <file> entries and safe plain-text GUI editing
 Updated GUI settings import/export to use the current xtalopt.in format
 Improved state save/resume and old-format conversion for batch schemes, custom IADs and transient states
 Allowed GUI state files to be opened only to initialize entries; besides a normal resume
@@ -43,33 +44,36 @@ Shortened the final save at exit by writing only pending structure files
 Improved template placeholders, including literal percent characters, and empty keyword values
 Improved handling of the extra input files copied into a structure directory
 Consistent legacy state-file conversion on Windows and other platforms
+Prevented new searches from silently reusing leftover structure directories
 
 ===== Structure handling, geometry, and formats
 
 Expanded seed structure reading to all supported formats regardless of optimizer
-Added xtalopt structure tools for analysis and molecular unit/crystal generation
-Added CIF; revised CML, XYZ, MTP, POSCAR, PWSCF, CASTEP, and SIESTA structure readers
+Added xtalopt structure tools with shared format import and export
+Added CIF; revised CML, XYZ, MTP, POSCAR, PWSCF, CASTEP and SIESTA readers/detection
 Read the last geometry from multi-entry files (XYZ, CML, MTP, GULP); CIF stays single-block
 Validated optimizer geometry through a shared structure-update path
-Rejected invalid cells and missing VASP energies without partial updates
-Fixed cell rescaling and fractional wrapping
+Rejected invalid/non-finite structures and missing VASP energies without partial updates
+Fixed cell rescaling, lattice validation, coordinate transforms and fractional wrapping
 Accepted equal volume scale factors as a fixed scaled-volume target
 Fixed skewed-cell neighbor/bond handling
-Fixed custom-IAD atom moves being tested against the moved atom's own position
+Applied scaled, custom and no-IAD policies consistently in generation, validation and repair
+Adjusted random-cell and crossover generation, lattice tolerances and cell handedness
+Added warning for volume limits conflict with fixed cells or IAD limits
 Kept geometry neighbor data current after coordinate changes
 Fixed small-molecule SIESTA Z-matrices and supercell generation
-Random replacement of an structure with unsupported composition uses one from the input list
+Random replacement of a structure with unsupported composition uses one from the input list
 
 ===== Fitness, objectives, and parent selection
 
 Separated min/max objectives from pass/fail constraints
 Added distance above hull as a built-in objective with automatically calculated weight
-Reworked objective/constraint script execution and monitoring
+Redesigned objective/constraint script execution, path quoting, result parsing and monitoring
 Added output-wait time limits and correct resume handling
 Updated Basic/Pareto parent selection after runtime setting changes
 Fixed objective precision, Basic weight normalization and zero-weight handling
 Reduced search overhead for fast local optimizers
-Clearing hull, front and objective values when a structure leaves the optimized set
+Cleared hull, front and objective values when a structure leaves the optimized set
 Improved similarity checks, incremental parent-pool updates and selection-data caching
 Fixed a bug in xtalcomp similarity: ignored updated spg tolerance
 Set the default RDF tolerance to 0.98
@@ -78,14 +82,16 @@ Set the default RDF tolerance to 0.98
 
 Removed the generic optimizer; retained only gulp, vasp, pwscf, castep, siesta and mtp
 Revised direct/batch queue interfaces and unified SSH use for remote queues
+Made local optimizer, objective/constraint, and scheduler commands work consistently on Windows, including .exe, .bat and .cmd files
 Improved queue manager workflow and background save coordination
-Made queue states safe across overlapping submissions, updates, kills and restarts
-Restart a job at a chosen optimization step only after its running job is cancelled
-Improved scheduler job-ID parsing and status handling
+Made queue and tracker state safe across generation, submissions, updates, kills and restarts
+Restarted jobs only after cancellation and resumed IAD-repaired structures from the requested step
+Improved scheduler job-ID parsing and status handling, including forwarded LSF jobs
+Fixed continuous-structure limit arithmetic and concurrent error-state reads
 Made command timeouts and failed cancellations safe
 Kept unconfirmed submissions pending for manual resolution instead of resubmission
 Improved remote path handling and CLI/libssh directory listing consistency
-Write generated input and job files with plain newlines on all platforms
+Wrote generated input and job files with plain newlines on all platforms
 Improved transfer failure reporting and job cleanup
 
 ===== GUI
@@ -94,14 +100,14 @@ Added a built-in structure viewer to replace the external Avogadro viewer
 Removed the shared structure highlighting between the Plot and Progress tabs
 Reworked the simulated XRD viewer using xraylib; added image and data export
 Improved Plot-tab axis ranges and margins
-Added Plot-tab image export option
+Added Plot-tab image and data export
 Added optional Plot-tab legend and automatic label placement
 Added space group number as a Plot-tab axis choice
-Update Plot-tab labels for min/max of objectives, default filters, coloring
+Updated Plot-tab labels for min/max of objectives, default filters, coloring
 Refined GUI tab layouts and runtime refresh behavior
 Set a minimum of 1 second for refresh period in the Progress tab
 Improved composition, atom-limit, molecule-unit and custom-IAD updates
-Refresh the Spacegroup Options dialog from current settings when reopened
+Refreshed the Spacegroup Options dialog from current settings when reopened
 Initialized custom IAD values from covalent radii after a changed formula
 Fixed tab cleanup during session reset and shutdown
 Improved cross-platform plot text sizing and table row sizing
@@ -111,7 +117,8 @@ Improved cross-platform plot text sizing and table row sizing
 Made text, results, state and hull writes report failures
 Added profiling option: periodic and final timing summaries in the run output
 Preserved significant digits and .old output backups
-Exclude killed, restarting and replaced structures from the hull output
+Excluded killed, restarting and replaced structures from the hull output
+Updated element names/data through oganesson in XtalOpt and RandSpg without hard-coded limits
 Expanded and updated the test suite
 Updated schemes, scripts and test/sample data for the new formats
 

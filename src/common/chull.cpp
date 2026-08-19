@@ -124,6 +124,7 @@ bool distAboveHull(const std::vector<double>& input_data_ref, int input_num, int
   Qhull qhull;
   qhull.setErrorStream(&quiet);
   qhull.setOutputStream(&quiet);
+
   try {
     qhull.runQhull("i", hll_ndim, hll_npnt, hll_inpt.data(), "Qt");
   } catch(QhullError &e) {
@@ -230,6 +231,7 @@ bool convexHullPlanes(const std::vector<double>& points, int numPoints, int dim,
 
   normals.reserve(static_cast<size_t>(facets.size()) * dim);
   offsets.reserve(facets.size());
+
   for (const QhullFacet& facet : facets) {
     QhullHyperplane hp = facet.hyperplane();
     const double* coordinates = hp.coordinates();

@@ -81,9 +81,12 @@ const OptimizerDefaults& PWSCFOptimizer::defaults()
   static const char* const templates[] = { "xtal.in", nullptr };
   static const char* const assets[] = { nullptr };
   static const char* const outputs[] = { "xtal.out", nullptr };
+  // clang-format off
   static const OptimizerDefaults s{
-    "PWscf", templates, assets, "xtal.out", "JOB DONE", outputs,
+    "PWscf", templates, assets,
+    "xtal.out", "JOB DONE", outputs,
     "pw.x", "xtal.in", "xtal.out", "xtal.err" };
+  // clang-format on
   return s;
 }
 
@@ -100,7 +103,7 @@ PWSCFOptimizer::~PWSCFOptimizer()
 bool PWSCFOptimizer::readOutput(Structure* s, const QString& filename) const
 {
   Atoms::Geometry structure = *s;
-  if (!Atoms::PwscfFormat::readOutput(&structure, filename))
+  if (!Atoms::PwscfFormat::readOutput(structure, filename))
     return false;
 
   double energy = 0.0;

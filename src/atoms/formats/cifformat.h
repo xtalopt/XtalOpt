@@ -31,7 +31,7 @@ class Geometry;
 class CifFormat
 {
 public:
-  static bool read(Geometry* s, const QString& filename);
+  static bool read(Geometry& s, const QString& filename);
 
   // symprec is the symmetry tolerance for the space-group information.
   static bool write(const Geometry& s, std::ostream& out, double symprec = SPGLIB_TOL);

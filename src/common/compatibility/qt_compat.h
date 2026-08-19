@@ -77,10 +77,14 @@ inline void connectProcessError(QProcess* proc, Receiver* receiver, Slot slot)
 #endif
 }
 
-// Start a process from one command string. Qt 5.15 changed this call.
+// Start a process from one command string. Windows uses cmd.exe for its
+// command and batch-file support. Qt 5.15 changed the other calls.
 inline void processStartCommand(QProcess& proc, const QString& command)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if defined(Q_OS_WIN)
+  proc.setNativeArguments("/S /C \"" + command + "\"");
+  proc.start("cmd.exe", QStringList());
+#elif QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
   proc.startCommand(command);
 #elif QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
   // Split the command first.

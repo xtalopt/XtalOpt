@@ -20,6 +20,7 @@
 #include <search/structure.h>
 #include <search/optimizer.h>
 #include <search/tracker.h>
+#include <common/compatibility/platform_defs.h>
 #include <common/fileutils.h>
 #include <atoms/gui/structureviewdialog.h>
 #include <generatexrd/gui/xrdviewdialog.h>

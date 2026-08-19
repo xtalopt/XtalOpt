@@ -79,10 +79,12 @@ const OptimizerDefaults& CASTEPOptimizer::defaults()
   static const char* const templates[] = { "xtal.param", "xtal.cell", nullptr };
   static const char* const assets[] = { nullptr };
   static const char* const outputs[] = { "xtal.castep", nullptr };
+  // clang-format off
   static const OptimizerDefaults s{
-    "CASTEP", templates, assets, "xtal.castep",
-    "Geometry optimization completed successfully.", outputs,
+    "CASTEP", templates, assets,
+    "xtal.castep", "Geometry optimization completed successfully.", outputs,
     "castep xtal", "", "", "" };
+  // clang-format on
   return s;
 }
 
@@ -99,7 +101,7 @@ CASTEPOptimizer::~CASTEPOptimizer()
 bool CASTEPOptimizer::readOutput(Structure* s, const QString& filename) const
 {
   Atoms::Geometry structure;
-  if (!Atoms::CastepFormat::readOutput(&structure, filename))
+  if (!Atoms::CastepFormat::readOutput(structure, filename))
     return false;
 
   double energy = 0.0;

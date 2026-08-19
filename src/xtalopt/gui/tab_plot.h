@@ -117,6 +117,7 @@ public slots:
   void disablePlotUpdate() { m_enablePlotUpdate = false; };
   void releaseStructureReferences();
   void refreshPlot();
+  void savePlotData();
   void savePlotImage();
   void updatePlot();
   void updatePlotLayout();

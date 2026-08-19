@@ -29,7 +29,7 @@
 #include <memory>
 
 using ::XtalOpt::CellComp;
-using ::XtalOpt::EleRadii;
+using ::XtalOpt::EleScaledRadii;
 using ::XtalOpt::Xtal;
 using ::XtalOpt::XtalOptGenetic;
 
@@ -303,9 +303,9 @@ void GeneticTest::crossover()
   compa.append(comp);
 
   // Use small radii for this test so we can always find a valid composition.
-  EleRadii elrad;
-  elrad.setElementRadius(8,  0.3);
-  elrad.setElementRadius(22, 0.3);
+  EleScaledRadii elrad;
+  elrad.setMinRadius(8,  0.3);
+  elrad.setMinRadius(22, 0.3);
 
   // Verify loadRutile successfully populated both parent structures
   QCOMPARE(static_cast<int>(xtal1.numAtoms()), 6);

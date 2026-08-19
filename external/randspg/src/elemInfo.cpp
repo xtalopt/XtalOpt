@@ -26,7 +26,7 @@ vector<double> ElemInfo::vdwRadii      = ElemInfoDatabase::_vdwRadii;
 
 std::string ElemInfo::getAtomicSymbol(uint atomicNum)
 {
-  if (atomicNum == 0 || atomicNum > 117) {
+  if (atomicNum == 0 || atomicNum >= atomicSymbols.size()) {
     std::cout << "Error: Invalid atomicNum, " << atomicNum << ", was entered in "
          << __FUNCTION__ << "!\n";
     return 0;
@@ -112,7 +112,7 @@ bool ElemInfo::readComposition(string comp, vector<uint>& atoms)
 
 double ElemInfo::getVdwRadius(uint atomicNum)
 {
-  if (atomicNum == 0 || atomicNum > 117) {
+  if (atomicNum == 0 || atomicNum >= vdwRadii.size()) {
     std::cout << "Error: Invalid atomicNum, " << atomicNum << ", was entered in "
          << __FUNCTION__ << "!\n";
     return 0;
@@ -122,7 +122,7 @@ double ElemInfo::getVdwRadius(uint atomicNum)
 
 double ElemInfo::getCovalentRadius(uint atomicNum)
 {
-  if (atomicNum == 0 || atomicNum > 117) {
+  if (atomicNum == 0 || atomicNum >= covalentRadii.size()) {
     std::cout << "Error: Invalid atomicNum, " << atomicNum << ", was entered in "
          << __FUNCTION__ << "!\n";
     return 0;
@@ -132,7 +132,7 @@ double ElemInfo::getCovalentRadius(uint atomicNum)
 
 void ElemInfo::applyScalingFactor(double sf)
 {
-  for (int i = 1; i < 118; i++) {
+  for (size_t i = 1; i < covalentRadii.size(); i++) {
     covalentRadii[i] = ElemInfoDatabase::_covalentRadii[i] * sf;
     vdwRadii[i] = ElemInfoDatabase::_vdwRadii[i] * sf;
   }
@@ -143,7 +143,7 @@ void ElemInfo::applyScalingFactor(double sf)
 // them, but we don't know which...
 void ElemInfo::setRadius(uint atomicNum, double newRadius)
 {
-  if (atomicNum == 0 || atomicNum > 117) {
+  if (atomicNum == 0 || atomicNum >= covalentRadii.size()) {
     std::cout << "Error: Invalid atomicNum, " << atomicNum << ", was entered in "
          << __FUNCTION__ << "!\n";
     return;

@@ -25,9 +25,10 @@
 #include <atoms/formats/pwscfformat.h>
 #include <atoms/formats/siestaformat.h>
 #include <atoms/formats/xyzformat.h>
+#include <atoms/eleminfo.h>
 
 #include <common/compatibility/qt_compat.h>
-#include <common/fileutils.h>
+#include <common/stringutils.h>
 #include <common/output.h>
 
 #include <QFile>
@@ -35,8 +36,6 @@
 #include <QString>
 #include <QStringList>
 #include <QTextStream>
-
-#include <sstream>
 
 namespace Atoms {
 
@@ -63,15 +62,14 @@ struct DetectedFormat
 
 bool isNumber(const QString& text)
 {
-  bool ok = false;
-  text.toDouble(&ok);
-  return ok;
+  double value = 0.0;
+  return Common::parseDoubleString(text.trimmed().toStdString(), value);
 }
 
 bool lineHasNumbers(const QString& line, int count)
 {
-  const QStringList fields = line.split(" ", QtCompat::SkipEmptyParts);
-  if (fields.size() < count)
+  const QStringList fields = line.simplified().split(" ", QtCompat::SkipEmptyParts);
+  if (fields.size() != count)
     return false;
   for (int i = 0; i < count; ++i) {
     if (!isNumber(fields.at(i)))
@@ -84,7 +82,9 @@ bool looksLikePoscar(const QStringList& lines)
 {
   if (lines.size() < 7)
     return false;
-  if (!isNumber(lines.at(1).trimmed()))
+  const QStringList scale = lines.at(1).simplified().split(" ", QtCompat::SkipEmptyParts);
+  if ((scale.size() != 1 && scale.size() != 3) ||
+      !lineHasNumbers(lines.at(1), scale.size()))
     return false;
   return lineHasNumbers(lines.at(2), 3) && lineHasNumbers(lines.at(3), 3) &&
          lineHasNumbers(lines.at(4), 3);
@@ -92,17 +92,38 @@ bool looksLikePoscar(const QStringList& lines)
 
 bool looksLikeXyz(const QStringList& lines)
 {
-  if (lines.size() < 3)
-    return false;
-  bool ok = false;
-  const int atoms = lines.first().trimmed().toInt(&ok);
-  if (!ok || atoms <= 0 || lines.size() < atoms + 2)
+  // For XYZ files; we accept initial empty lines
+  int firstLine = 0;
+  while (firstLine < lines.size() && lines.at(firstLine).isEmpty())
+    ++firstLine;
+
+  if (lines.size() - firstLine < 3)
     return false;
 
-  for (int i = 2; i < lines.size() && i < atoms + 2; ++i) {
-    const QStringList fields = lines.at(i).split(" ", QtCompat::SkipEmptyParts);
-    if (fields.size() < 4 || !fields.at(0).at(0).isLetter())
+  bool ok = false;
+  const int atoms = lines.at(firstLine).trimmed().toInt(&ok);
+  if (!ok || atoms <= 0)
+    return false;
+
+  int maxAtomicNum = static_cast<int>(ElementInfo::getNumberOfElements());
+  // We will check only a few atoms to match the xyz format.
+  const int firstAtomLine = firstLine + 2;
+  const int checkLimit = qMin(atoms, 5);
+  if (lines.size() < firstAtomLine + checkLimit)
+    return false;
+  for (int i = 0; i < checkLimit; ++i) {
+    const QStringList fields =
+      lines.at(firstAtomLine + i).simplified().split(" ", QtCompat::SkipEmptyParts);
+    if (fields.size() < 4)
       return false;
+    // The XYZ reader takes either an atomic number or an element symbol.
+    int atomicNum = 0;
+    if (Common::parseIntString(fields.at(0).toStdString(), atomicNum)) {
+      if (atomicNum < 1 || atomicNum > maxAtomicNum)
+        return false;
+    } else if (Atoms::ElementInfo::getAtomicNum(fields.at(0).toStdString()) == 0) {
+      return false;
+    }
     if (!isNumber(fields.at(1)) || !isNumber(fields.at(2)) || !isNumber(fields.at(3)))
       return false;
   }
@@ -121,8 +142,7 @@ DetectedFormat detectFormatFromContents(const QString& filename)
   const int maxLines = 300;
   for (int i = 0; i < maxLines && !in.atEnd(); ++i) {
     const QString line = in.readLine();
-    if (!line.trimmed().isEmpty())
-      lines.append(line.trimmed());
+    lines.append(line.trimmed());
     text += line + "\n";
   }
 
@@ -229,76 +249,45 @@ DetectedFormat detectFormat(const QString& filename)
   DetectedFormat detected = detectFormatFromContents(filename);
   if (detected.isValid())
     return detected;
+
   return detectFormatFromFilename(filename);
 }
 
-bool readInputText(const QString& filename, const QString& format, std::string& text)
+// Read the file with the given format. Formats that are only produced by an
+//   optimizer ignore the read kind.
+bool readWithFormat(Atoms::Geometry& s, const QString& filename,
+                    const DetectedFormat& detected)
 {
-  if (Common::readFileToString(filename, &text))
-    return true;
-  Common::error(QString("Failed to open %1 file: %2").arg(format).arg(filename));
-  return false;
-}
-
-} // namespace
-
-
-
-bool Formats::read(Atoms::Geometry* s, const QString& filename)
-{
-  if (!s) {
-    Common::error("Cannot read structure into a null Geometry pointer.");
-    return false;
-  }
-
-  const DetectedFormat detected = detectFormat(filename);
-  if (!detected.isValid()) {
-    Common::error(QString("Failed to detect structure format for: %1!")
-                 .arg(filename));
-    return false;
-  }
-
   Atoms::Geometry parsed;
   bool ok = false;
 
   if (detected.format == "CASTEP") {
     if (detected.kind == ReadOptimizerOutput)
-      ok = CastepFormat::readOutput(&parsed, filename);
+      ok = CastepFormat::readOutput(parsed, filename);
     else
-      ok = CastepFormat::read(&parsed, filename);
+      ok = CastepFormat::read(parsed, filename);
   } else if (detected.format == "CIF") {
-    ok = CifFormat::read(&parsed, filename);
+    ok = CifFormat::read(parsed, filename);
   } else if (detected.format == "CML") {
-    std::string text;
-    if (!readInputText(filename, detected.format, text))
-      return false;
-    std::istringstream in(text);
-    ok = CmlFormat::read(parsed, in);
+    ok = CmlFormat::read(parsed, filename);
   } else if (detected.format == "GULP") {
-    ok = GulpFormat::readOutput(&parsed, filename);
+    ok = GulpFormat::readOutput(parsed, filename);
   } else if (detected.format == "MTP") {
-    if (detected.kind == ReadOptimizerOutput)
-      ok = MtpFormat::readOutput(&parsed, filename);
-    else
-      ok = MtpFormat::read(&parsed, filename);
+    ok = MtpFormat::read(parsed, filename);
   } else if (detected.format == "POSCAR") {
-    std::string text;
-    if (!readInputText(filename, detected.format, text))
-      return false;
-    std::istringstream in(text);
-    ok = PoscarFormat::read(parsed, in);
+    ok = PoscarFormat::read(parsed, filename);
   } else if (detected.format == "PWSCF") {
     if (detected.kind == ReadOptimizerOutput)
-      ok = PwscfFormat::readOutput(&parsed, filename);
+      ok = PwscfFormat::readOutput(parsed, filename);
     else
-      ok = PwscfFormat::read(&parsed, filename);
+      ok = PwscfFormat::read(parsed, filename);
   } else if (detected.format == "SIESTA") {
     if (detected.kind == ReadOptimizerOutput)
-      ok = SiestaFormat::readOutput(&parsed, filename);
+      ok = SiestaFormat::readOutput(parsed, filename);
     else
-      ok = SiestaFormat::read(&parsed, filename);
+      ok = SiestaFormat::read(parsed, filename);
   } else if (detected.format == "XYZ") {
-    ok = XyzFormat::read(&parsed, filename);
+    ok = XyzFormat::read(parsed, filename);
   } else {
     Common::error(QString("Unsupported structure format: %1 for file: %2")
                  .arg(detected.format).arg(filename));
@@ -307,13 +296,66 @@ bool Formats::read(Atoms::Geometry* s, const QString& filename)
 
   if (!ok)
     return false;
+
   if (parsed.is3D() && !Atoms::Geometry::isCellMatrixUsable(parsed.unitCell().cellMatrix())) {
     Common::error(QString("The cell read from %1 is invalid.").arg(filename));
     return false;
   }
 
-  *s = parsed;
+  s = parsed;
+
   return true;
+}
+
+} // namespace
+
+bool Formats::read(Atoms::Geometry& s, const QString& filename)
+{
+  const DetectedFormat detected = detectFormat(filename);
+  if (!detected.isValid()) {
+    Common::error(QString("Failed to detect structure format for: %1!")
+                 .arg(filename));
+    return false;
+  }
+
+  return readWithFormat(s, filename, detected);
+}
+
+bool Formats::read(Atoms::Geometry& s, const QString& filename, const QString& format)
+{
+  return readWithFormat(s, filename,
+                        DetectedFormat(normalizedFormatName(format), ReadStructure));
+}
+
+bool Formats::write(const Atoms::Geometry& s, std::ostream& out, const QString& format,
+                    double symprec)
+{
+  const QString normalized = normalizedFormatName(format);
+  if (normalized == "POSCAR")
+    return PoscarFormat::write(s, out);
+  if (normalized == "CML")
+    return CmlFormat::write(s, out);
+  if (normalized == "CIF")
+    return CifFormat::write(s, out, symprec);
+  if (normalized == "XYZ")
+    return XyzFormat::write(s, out);
+  if (normalized == "MTP")
+    return MtpFormat::write(s, out);
+
+  Common::error(QString("Unsupported output format: %1. Currently supported formats are:\n"
+                        "  POSCAR/VASP, CML, CIF, XYZ, and MTP.")
+                        .arg(format));
+  return false;
+}
+
+QString Formats::normalizedFormatName(const QString& format)
+{
+  const QString upper = format.toUpper();
+  if (upper == "VASP")
+    return "POSCAR";
+  if (upper == "CFG")
+    return "MTP";
+  return upper;
 }
 
 } // namespace Atoms

@@ -92,21 +92,21 @@ struct RefEnergy
   double   energy;
 };
 
-// Minimum radii of elements: an instance of this class is created once the
+// Scaled minimum radii of elements: an instance of this class is created once the
 //   user's input formula are processed, by assigning the values for all
 //   elements in the search space.
 // Note: this information is separate to simplify it's runtime update by
 //   eliminating the need to update all composition objects every time
 //   radii-related stuff are being updated.
-class EleRadii
+class EleScaledRadii
 {
 public:
-  void clearElementRadii() {m_data.clear();}
+  void clearMinRadii() {m_data.clear();}
   // Set an element's entry with atomic number and minimum radius
-  void setElementRadius(const uint& atomcn, const double& minradius)
+  void setMinRadius(const uint& atomcn, const double& minradius)
     {m_data[atomcn] = minradius;}
   // Access the list of elements stored in the object
-  QList<uint> getRadiusAtomicNumbers() const
+  QList<uint> getRadiiAtomicNumbers() const
     {return m_data.keys();}
   // Access the min radius for an atomic number (if element is not there, return 1e300)
   double getMinRadius(uint a) const
@@ -114,6 +114,43 @@ public:
 private:
   QMap<uint, double> m_data;
 };
+
+
+// Custom (pair) interatomic distances: an instance of this class is
+//   created and populated with user's input if provided.
+class PairCustomDistances
+{
+public:
+  void clearCustomDistances() { m_data.clear(); }
+  // Set the distance for a pair (auto-ordered in function)
+  void setPairDistance(uint atomcn1, uint atomcn2, double dist)
+    {m_data[normalizedKey(atomcn1, atomcn2)] = dist;}
+  // Access the distance for pair (order does not matter)
+  double getPairDistance(uint a, uint b) const
+  {
+    QMap<QPair<uint, uint>, double>::const_iterator it = m_data.constFind(normalizedKey(a, b));
+    if (it != m_data.constEnd())
+      return it.value();
+    return PINF;
+  }
+  QList<QPair<uint, uint> > getPairs() const {return m_data.keys();}
+  double getMaxDistanceForAtom(uint atomicNum) const
+  {
+    double maxDist = 0.0;
+    for (auto it = m_data.constBegin(); it != m_data.constEnd(); ++it) {
+      if (it.key().first == atomicNum || it.key().second == atomicNum)
+        if (it.value() > maxDist)
+          maxDist = it.value();
+    }
+
+    return maxDist;
+  }
+private:
+  static inline QPair<uint, uint> normalizedKey(uint a, uint b)
+    {return (a <= b) ? QPair<uint, uint>(a, b) : QPair<uint, uint>(b, a);}
+  QMap<QPair<uint, uint>, double> m_data;
+};
+
 
 // Elemental volume object (as of XtalOpt v14): user can provide a list of min/max
 //   values for elemental volumes; besides the absolute and scaled volume limit
@@ -136,35 +173,6 @@ public:
     {if (m_data.contains(a)) return m_data.value(a).second; return 0.0;}
 private:
   QMap<uint, QPair<double, double> > m_data;
-};
-
-struct IAD
-{
-  double minIAD;
-};
-
-// A simple minIADs class that uses unordered atomic numbers for
-// the key and a double for the value. In order to set a value,
-// you must use set() and not ().
-class minIADs
-{
-public:
-  // Set a specific atomic number pair to have a specific IAD
-  void setMinIAD(short i, short j, double d) { m_data[std::minmax(i, j)] = d; }
-
-  void clearMinIADs() { m_data.clear(); }
-
-  // Get the IAD value for a specific atomic number pair, or
-  // 1e300 if the value does not exist.
-  double operator()(short i, short j) const
-  {
-    if (m_data.count(std::minmax(i, j)) != 1)
-      return PINF;
-    return m_data.at(std::minmax(i, j));
-  }
-
-private:
-  std::map<std::pair<short, short>, double> m_data;
 };
 
 } // end namespace XtalOpt

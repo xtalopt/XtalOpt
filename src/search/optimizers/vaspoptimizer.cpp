@@ -103,9 +103,12 @@ const OptimizerDefaults& VASPOptimizer::defaults()
   static const char* const templates[] = { "INCAR", "KPOINTS", nullptr };
   static const char* const assets[] = { "POTCAR", nullptr };
   static const char* const outputs[] = { "CONTCAR", "POSCAR", nullptr };
+  // clang-format off
   static const OptimizerDefaults s{
-    "VASP", templates, assets, "OUTCAR", "Total CPU time", outputs,
+    "VASP", templates, assets,
+    "OUTCAR", "Total CPU time", outputs,
     "vasp", "", "", "" };
+  // clang-format on
   return s;
 }
 
@@ -126,33 +129,27 @@ bool VASPOptimizer::addOptimizerInputFiles(Structure* s, int optStep,
   if (Atoms::PoscarFormat::write(*s, poscar, s->getLocpath()))
     files.insert("POSCAR", QString::fromStdString(poscar.str()));
 
-  const QString rawPotcarAsset =
-    QString::fromStdString(m_search->getOptimizerInputAsset(optStep, "POTCAR"));
-  const QHash<QString, QString> potcarAssets = inputAssetTextToMap(rawPotcarAsset);
-  if (!rawPotcarAsset.trimmed().isEmpty() && potcarAssets.isEmpty()) {
-    Common::error(QString("Could not read the saved POTCAR input asset for %1.")
-                    .arg(s->getTag()));
-    return false;
-  }
-  const QString systemPotcarAsset = potcarAssets.value("system");
-  if (!systemPotcarAsset.isEmpty()) {
+  const OptimizerInputAssetMap potcarAssets =
+    m_search->getOptimizerInputAssets(optStep, "POTCAR");
+  const auto systemIt = potcarAssets.find("system");
+  if (systemIt != potcarAssets.end() && !systemIt->second.empty()) {
     QString potcar;
-    if (!readSavedInputAssetValue(systemPotcarAsset, potcar))
+    if (!readInputAssetFile(QString::fromStdString(systemIt->second), potcar))
       return false;
     files.insert("POTCAR", potcar);
-  } else if (!potcarAssets.isEmpty()) {
+  } else if (!potcarAssets.empty()) {
     QString potcar;
     const QStringList symbols = s->getSymbols();
     for (const auto& symbol : symbols) {
-      const QString speciesAsset = potcarAssets.value(symbol);
-      if (speciesAsset.isEmpty()) {
+      const auto speciesIt = potcarAssets.find(symbol.toStdString());
+      if (speciesIt == potcarAssets.end() || speciesIt->second.empty()) {
         Common::error(QString("No POTCAR input asset for species %1 in %2.")
                         .arg(symbol)
                         .arg(s->getTag()));
         return false;
       }
       QString speciesPotcar;
-      if (!readSavedInputAssetValue(speciesAsset, speciesPotcar))
+      if (!readInputAssetFile(QString::fromStdString(speciesIt->second), speciesPotcar))
         return false;
       potcar += speciesPotcar;
       if (!potcar.endsWith('\n'))

@@ -35,23 +35,6 @@ using namespace Search;
 namespace XtalOpt {
 namespace {
 
-bool customMinIAD(const QHash<QPair<int, int>, IAD>& limitsIAD, unsigned int atomicNum1,
-                  unsigned int atomicNum2, double* minIAD)
-{
-  const QPair<int, int> key(static_cast<int>(atomicNum1), static_cast<int>(atomicNum2));
-  auto it = limitsIAD.constFind(key);
-  if (it == limitsIAD.constEnd()) {
-    const QPair<int, int> reverseKey(key.second, key.first);
-    it = limitsIAD.constFind(reverseKey);
-  }
-
-  if (it == limitsIAD.constEnd())
-    return false;
-
-  *minIAD = it.value().minIAD;
-  return true;
-}
-
 QString fixedWidthDecimal(double value, int width, int maxPrecision)
 {
   QString text;
@@ -240,7 +223,7 @@ bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, int maxAttempts)
   return true;
 }
 
-bool Xtal::addAtomRandomly(unsigned int atomicNumber, const EleRadii& limits, int maxAttempts)
+bool Xtal::addAtomRandomlyScaledIAD(unsigned int atomicNumber, const EleScaledRadii& limits, int maxAttempts)
 {
   Common::Vector3 cartCoords;
   bool success;
@@ -258,7 +241,7 @@ bool Xtal::addAtomRandomly(unsigned int atomicNumber, const EleRadii& limits, in
     // Compute a cut off distance -- atoms farther away than this value
     // will abort the check early.
     double maxCheckDistance = 0.0;
-    for (const auto& atmn : limits.getRadiusAtomicNumbers()) {
+    for (const auto& atmn : limits.getRadiiAtomicNumbers()) {
       if (limits.getMinRadius(atmn) > maxCheckDistance) {
         maxCheckDistance = limits.getMinRadius(atmn);
       }
@@ -311,10 +294,8 @@ bool Xtal::addAtomRandomly(unsigned int atomicNumber, const EleRadii& limits, in
   return true;
 }
 
-bool Xtal::moveAtomRandomly(
-  unsigned int atomicNumber,
-  const EleRadii& limits, int maxAttempts,
-  Atoms::Atom* atom)
+bool Xtal::moveAtomRandomlyScaledIAD(unsigned int atomicNumber,
+  const EleScaledRadii& limits, int maxAttempts, Atoms::Atom* atom)
 {
   Q_UNUSED(atomicNumber);
   if (!atom)
@@ -394,8 +375,8 @@ bool Xtal::moveAtomRandomly(
   }
 }
 
-bool Xtal::addAtomRandomlyIAD(unsigned int atomicNumber,
-  const QHash<QPair<int, int>, IAD>& limitsIAD, int maxAttempts)
+bool Xtal::addAtomRandomlyCustomIAD(unsigned int atomicNumber,
+  const PairCustomDistances& limitsIAD, int maxAttempts)
 {
   Common::Vector3 cartCoords;
   bool success;
@@ -425,8 +406,9 @@ bool Xtal::addAtomRandomlyIAD(unsigned int atomicNumber,
 
       for (int dist_ind = 0; dist_ind < squaredDists.size(); ++dist_ind) {
         double& curDistSquared = squaredDists[dist_ind];
-        double minDist = 0.0;
-        if (!customMinIAD(limitsIAD, atomicNumber, this->atom(dist_ind).atomicNumber(), &minDist)) {
+        const double minDist =
+          limitsIAD.getPairDistance(atomicNumber, this->atom(dist_ind).atomicNumber());
+        if (minDist == PINF) {
           Common::error(QString("%1: missing custom interatomic distance "
                                 "for atomic numbers %2 and %3.")
                        .arg(__func__)
@@ -457,8 +439,8 @@ bool Xtal::addAtomRandomlyIAD(unsigned int atomicNumber,
   return true;
 }
 
-bool Xtal::moveAtomRandomlyIAD(unsigned int atomicNumber,
-  const QHash<QPair<int, int>, IAD>& limitsIAD, int maxAttempts, Atoms::Atom* atom)
+bool Xtal::moveAtomRandomlyCustomIAD(unsigned int atomicNumber,
+  const PairCustomDistances& limitsIAD, int maxAttempts, Atoms::Atom* atom)
 {
   if (!atom)
     return false;
@@ -509,8 +491,9 @@ bool Xtal::moveAtomRandomlyIAD(unsigned int atomicNumber,
         }
 
         double& curDistSquared = squaredDists[dist_ind];
-        double minDist = 0.0;
-        if (!customMinIAD(limitsIAD, atomicNumber, this->atom(dist_ind).atomicNumber(), &minDist)) {
+        const double minDist =
+          limitsIAD.getPairDistance(atomicNumber, this->atom(dist_ind).atomicNumber());
+        if (minDist == PINF) {
           Common::error(QString("%1: missing custom interatomic distance "
                                 "for atomic numbers %2 and %3.")
                        .arg(__func__)
@@ -541,8 +524,8 @@ bool Xtal::moveAtomRandomlyIAD(unsigned int atomicNumber,
   }
 }
 
-bool Xtal::checkMinIAD(const QHash<QPair<int, int>, IAD>& limitsIAD, int* atom1,
-                       int* atom2, double* IAD)
+bool Xtal::checkInterAtomicDistancesCustom(const PairCustomDistances& limitsIAD, int* atom1,
+                                           int* atom2, double* IAD)
 {
   // Check the custom IAD values (fails if any pairs of atoms are missing).
   // Iterate through all of the atoms in the geometry for "a1"
@@ -570,8 +553,9 @@ bool Xtal::checkMinIAD(const QHash<QPair<int, int>, IAD>& limitsIAD, int* atom1,
       const double& curDistSquared = squaredDists[i];
 
       // Calculate the minimum distance for the atom pair
-      double minDist = 0.0;
-      if (!customMinIAD(limitsIAD, a1->atomicNumber(), a2.atomicNumber(), &minDist)) {
+      const double minDist =
+        limitsIAD.getPairDistance(a1->atomicNumber(), a2.atomicNumber());
+      if (minDist == PINF) {
         if (atom1 != nullptr && atom2 != nullptr) {
           *atom1 = a1Index;
           *atom2 = i;
@@ -614,14 +598,13 @@ bool Xtal::checkMinIAD(const QHash<QPair<int, int>, IAD>& limitsIAD, int* atom1,
   return true;
 }
 
-bool Xtal::checkInteratomicDistances(
-  const EleRadii& limits, int* atom1,
-  int* atom2, double* IAD)
+bool Xtal::checkInterAtomicDistancesScaled(const EleScaledRadii& limits, int* atom1,
+                                           int* atom2, double* IAD)
 {
   // Compute a cut off distance -- atoms farther away than this value
   // will abort the check early.
   double maxCheckDistance = 0.0;
-  for (const auto& atmn : limits.getRadiusAtomicNumbers()) {
+  for (const auto& atmn : limits.getRadiiAtomicNumbers()) {
     if (limits.getMinRadius(atmn) > maxCheckDistance)
       maxCheckDistance = limits.getMinRadius(atmn);
   }

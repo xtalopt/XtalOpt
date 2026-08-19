@@ -70,31 +70,31 @@ public:
   bool hasValidComposition() const { return m_hasValidComposition; };
   void setCompositionValidity(bool value) { m_hasValidComposition = value; };
 
+  // A generic atom addition: applying minimum distance is optional (negative value)
   bool addAtomRandomly(uint atomicNumber, double minIAD = 0.0,
                        int maxAttempts = 100) override;
-  // Uses the minRadius constraints in @a limits to restrict atom placement
-  bool addAtomRandomly(unsigned int atomicNumber,
-                       const EleRadii& limits,
-                       int maxAttempts = 100.0);
-  bool moveAtomRandomly(unsigned int atomicNumber, const EleRadii& limits,
-    int maxAttempts = 100.0, Atoms::Atom* atom = nullptr);
 
-  bool addAtomRandomlyIAD(unsigned int atomicNumber,
-    const QHash<QPair<int, int>, IAD>& limitsIAD, int maxAttempts = 100.0);
-  bool moveAtomRandomlyIAD(unsigned int atomicNumber,
-    const QHash<QPair<int, int>, IAD>& limitsIAD, int maxAttempts = 100.0,
-    Atoms::Atom* atom = nullptr);
-  bool checkMinIAD(const QHash<QPair<int, int>, IAD>& limitsIAD,
-                   int* atom1 = nullptr, int* atom2 = nullptr,
-                   double* IAD = nullptr);
+  // Uses the scaled/custom distance limits in @a in adding or moving an atom
+  // If successful, the atom pointer returns the moved atom in xtal.
+  bool addAtomRandomlyScaledIAD(unsigned int atomicNumber,
+                                const EleScaledRadii& limits, int maxAttempts = 100.0);
+  bool addAtomRandomlyCustomIAD(unsigned int atomicNumber,
+                                const PairCustomDistances& limitsIAD, int maxAttempts = 100.0);
+  bool moveAtomRandomlyScaledIAD(unsigned int atomicNumber, const EleScaledRadii& limits,
+                                 int maxAttempts = 100.0, Atoms::Atom* atom = nullptr);
+  bool moveAtomRandomlyCustomIAD(unsigned int atomicNumber,
+                                 const PairCustomDistances& limitsIAD,
+                                 int maxAttempts = 100.0, Atoms::Atom* atom = nullptr);
 
-  // Use the minRadius constraints in @a limits to check the interatomic
+  // Use the scaled/custom distance limits in @a to check the interatomic
   // distances in the xtal. atom1 and atom2 are overwritten with the indexes
   // of the first set of offending atom, if any, that are found. The bad IAD
   // is written to IAD if a double pointer is provided.
-  bool checkInteratomicDistances(
-    const EleRadii& limits,
-    int* atom1 = nullptr, int* atom2 = nullptr, double* IAD = nullptr);
+  bool checkInterAtomicDistancesCustom(const PairCustomDistances& limitsIAD,
+                   int* atom1 = nullptr, int* atom2 = nullptr, double* IAD = nullptr);
+  bool checkInterAtomicDistancesScaled(const EleScaledRadii& limits,
+                   int* atom1 = nullptr, int* atom2 = nullptr, double* IAD = nullptr);
+
   virtual QString getResultsEntry(int objectives_num, int optstep, int objective_offset = 0,
                                   int constraints_num = 0) const override;
   virtual QString getResultsHeader(int objectives_num, int objective_offset = 0,

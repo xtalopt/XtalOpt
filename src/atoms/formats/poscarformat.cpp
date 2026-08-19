@@ -15,6 +15,7 @@
 #include <atoms/formats/poscarformat.h>
 
 #include <atoms/eleminfo.h>
+#include <common/fileutils.h>
 #include <common/output.h>
 #include <common/stringutils.h>
 #include <atoms/geometry.h>
@@ -33,6 +34,23 @@ using std::string;
 using std::vector;
 
 namespace Atoms {
+
+bool PoscarFormat::read(Atoms::Geometry& s, const QString& filename)
+{
+  std::string text;
+  if (!Common::readFileToString(filename, &text)) {
+    Common::error(QString("Failed to open POSCAR file: %1").arg(filename));
+    return false;
+  }
+
+  std::istringstream in(text);
+  Atoms::Geometry parsed;
+  if (!read(parsed, in))
+    return false;
+
+  s = parsed;
+  return true;
+}
 
 // This is for reading a POSCAR
 bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
@@ -61,6 +79,7 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
   // First line is comment line
   getline(in, line);
   line = Common::trim(line);
+
   string title = " ";
   if (!line.empty())
     title = line;
@@ -71,11 +90,13 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
   double scalingFactors[3];
   stringSplit = Common::split(Common::reduce(line), ' ');
   const size_t scalingFactorCount = stringSplit.size();
+
   if ((stringSplit.size() != 1 && stringSplit.size() != 3) ||
       !Common::parseDoubleString(stringSplit[0], scalingFactor)) {
     Common::error("Could not read scaling factor in POSCAR");
     return false;
   }
+
   scalingFactors[0] = scalingFactor;
   scalingFactors[1] = scalingFactor;
   scalingFactors[2] = scalingFactor;
@@ -127,6 +148,7 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
     scalingFactors[1] = scalingFactor;
     scalingFactors[2] = scalingFactor;
   }
+
   for (size_t i = 0; i < 3; ++i)
     for (size_t j = 0; j < 3; ++j)
       cellMat(i, j) *= scalingFactors[j];
@@ -156,6 +178,7 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
       string sptype = symbolsList[i].substr(0, symbolsList[i].find("/"));
       atomicNumbers.push_back(Atoms::ElementInfo::getAtomicNum(sptype));
     }
+
     // This next one should be atom types
     getline(in, line);
   }
@@ -183,6 +206,7 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
 
   stringSplit = Common::split(Common::reduce(line), ' ');
   vector<unsigned int> atomCounts;
+
   for (size_t i = 0; i < stringSplit.size(); ++i) {
     int count;
     if (!Common::parseIntString(stringSplit.at(i), count) || count < 0) {

@@ -574,6 +574,17 @@ bool XtalOpt::similarityKeywordInUse(const QString& keyword) const
          keyword == "xtalcompToleranceAngle" || keyword == "spglibTolerance";
 }
 
+bool XtalOpt::spacegroupKeywordInUse(const QString& keyword) const
+{
+  return keyword == "spglibTolerance";
+}
+
+bool XtalOpt::selectionKeywordInUse(const QString& keyword) const
+{
+  return keyword == "objectivePrecision" || keyword == "optimizationType" ||
+         keyword == "crowdingDistance"   || keyword == "paretoFilterZeroWeights";
+}
+
 Xtal* XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, const QList<QString>& bSymbols)
 {
   // Timed per screen-passing pair: the call count tracks how many pairs

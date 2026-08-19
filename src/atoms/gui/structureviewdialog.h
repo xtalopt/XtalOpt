@@ -15,6 +15,7 @@
 #ifndef ATOMS_STRUCTUREVIEWDIALOG_H
 #define ATOMS_STRUCTUREVIEWDIALOG_H
 
+#include <atoms/geometry.h>
 #include <common/matrix.h>
 #include <common/vector.h>
 
@@ -36,8 +37,6 @@ class StructureViewDialog;
 }
 
 namespace Atoms {
-
-class Geometry;
 
 struct StructureViewAtom
 {
@@ -128,7 +127,7 @@ public slots:
 
 private:
   std::unique_ptr<Ui::StructureViewDialog> ui;
-  QString m_poscarText;
+  Geometry m_structure;
 };
 
 } // namespace Atoms

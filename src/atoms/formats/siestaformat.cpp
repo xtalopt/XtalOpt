@@ -341,7 +341,7 @@ void reorderAtomsToMatchZMatrix(Atoms::Geometry& s)
 } // namespace
 
 
-bool SiestaFormat::read(Atoms::Geometry* s, const QString& filename)
+bool SiestaFormat::read(Atoms::Geometry& s, const QString& filename)
 {
   QFile file(filename);
   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -493,13 +493,13 @@ bool SiestaFormat::read(Atoms::Geometry* s, const QString& filename)
   for (int i = 0; i < coords.size(); ++i)
     atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
 
-  s->clear();
-  s->setUnitCell(uc);
-  s->setAtoms(atoms);
+  s.clear();
+  s.setUnitCell(uc);
+  s.setAtoms(atoms);
   return true;
 }
 
-bool SiestaFormat::readOutput(Atoms::Geometry* s, const QString& filename)
+bool SiestaFormat::readOutput(Atoms::Geometry& s, const QString& filename)
 {
   std::string text;
   if (!Common::readFileToString(filename, &text)) {
@@ -630,9 +630,9 @@ bool SiestaFormat::readOutput(Atoms::Geometry* s, const QString& filename)
     atoms.push_back(Atoms::Atom(static_cast<unsigned short>(atomicNums.at(i)), coords.at(i)));
   }
 
-  s->clear();
-  s->setUnitCell(uc);
-  s->setAtoms(atoms);
+  s.clear();
+  s.setUnitCell(uc);
+  s.setAtoms(atoms);
   return true;
 }
 

@@ -16,17 +16,26 @@
 #ifndef ATOMS_FORMATS_H
 #define ATOMS_FORMATS_H
 
+#include <common/constants.h>
+
+#include <iosfwd>
+
 class QString;
 
 namespace Atoms {
 
 class Geometry;
 
-// Detect the format from the filename and read the geometry with it.
+// Read and write geometry in supported formats.
 class Formats
 {
 public:
-  static bool read(Atoms::Geometry* s, const QString& filename);
+  static bool read(Atoms::Geometry& s, const QString& filename);
+  static bool read(Atoms::Geometry& s, const QString& filename, const QString& format);
+  static bool write(const Atoms::Geometry& s, std::ostream& out, const QString& format,
+                    double symprec = SPGLIB_TOL);
+  // The names a user may type for a format, mapped to the ones used here.
+  static QString normalizedFormatName(const QString& format);
 };
 
 } // namespace Atoms

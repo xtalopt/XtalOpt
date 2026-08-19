@@ -34,6 +34,7 @@
 #include <QComboBox>
 #include <QCursor>
 #include <QDir>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QImage>
@@ -45,6 +46,7 @@
 #include <QReadWriteLock>
 #include <QSettings>
 #include <QSignalBlocker>
+#include <QTextStream>
 
 #include <qwt_plot_canvas.h>
 #include <qwt_plot_renderer.h>
@@ -77,7 +79,7 @@ enum PlotStatusCategory
   Psc_Dismissed,
   Psc_Similar,
   Psc_Failed,
-  Psc_Incomplete
+  Psc_Inprogress
 };
 
 PlotStatusCategory plotStatusCategory(const Xtal* xtal)
@@ -92,7 +94,7 @@ PlotStatusCategory plotStatusCategory(const Xtal* xtal)
   if (xtal->isStoppedFinalState())
     return Psc_Failed;
 
-  return Psc_Incomplete;
+  return Psc_Inprogress;
 }
 
 QRectF plotTextLabelRect(XtalOptPlot* plot, const QwtPlotTextLabel* label)
@@ -231,7 +233,7 @@ TabPlot::TabPlot(Search::AbstractDialog* parent, XtalOpt* p)
   guideText = guideText.arg(tr("Complete"))
                        .arg(tr("Similar"))
                        .arg(tr("Dismissed"))
-                       .arg(tr("Incomplete"))
+                       .arg(tr("Inprogress"))
                        .arg(tr("Failed"));
   QwtText guide(guideText, QwtText::RichText);
   guide.setRenderFlags(Qt::AlignHCenter | Qt::AlignTop);
@@ -246,6 +248,7 @@ TabPlot::TabPlot(Search::AbstractDialog* parent, XtalOpt* p)
 
   // Plot connections
   connect(ui.push_refresh, &QPushButton::clicked, this, &TabPlot::refreshPlot);
+  connect(ui.push_saveData, &QPushButton::clicked, this, &TabPlot::savePlotData);
   connect(ui.push_savePlot, &QPushButton::clicked, this, &TabPlot::savePlotImage);
   connect(ui.combo_xAxis, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
           this, &TabPlot::refreshPlot);
@@ -260,7 +263,7 @@ TabPlot::TabPlot(Search::AbstractDialog* parent, XtalOpt* p)
   connect(ui.cb_showComplete,     &QCheckBox::toggled, this, &TabPlot::updatePlot);
   connect(ui.cb_showSimilarities, &QCheckBox::toggled, this, &TabPlot::updatePlot);
   connect(ui.cb_showDismissed,    &QCheckBox::toggled, this, &TabPlot::updatePlot);
-  connect(ui.cb_showIncompletes,  &QCheckBox::toggled, this, &TabPlot::updatePlot);
+  connect(ui.cb_showInprogress,   &QCheckBox::toggled, this, &TabPlot::updatePlot);
   connect(ui.cb_showFailures,     &QCheckBox::toggled, this, &TabPlot::updatePlot);
   connect(ui.plot, &XtalOptPlot::plotResized, this, &TabPlot::updatePlotLayout);
   ui.plot->canvas()->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -303,7 +306,7 @@ void TabPlot::disconnectGUI()
   ui.cb_showComplete->disconnect();
   ui.cb_showSimilarities->disconnect();
   ui.cb_showDismissed->disconnect();
-  ui.cb_showIncompletes->disconnect();
+  ui.cb_showInprogress->disconnect();
   ui.cb_showFailures->disconnect();
   this->disconnect();
   disconnect(m_dialog, 0, this, 0);
@@ -418,6 +421,44 @@ void TabPlot::savePlotImage()
   }
 }
 
+void TabPlot::savePlotData()
+{
+  QString filename = QFileDialog::getSaveFileName(m_tab_widget, tr("Save Plot Data"),
+     QDir(defaultSaveDir()).filePath("xtalopt-plot.dat"),
+    tr("Data files (*.dat);;Text files (*.txt)"), nullptr,
+    QFileDialog::DontUseNativeDialog);
+  if (filename.isEmpty())
+    return;
+  if (QFileInfo(filename).suffix().isEmpty())
+    filename += ".dat";
+
+  QFile file(filename);
+  if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    QMessageBox::warning(m_tab_widget,
+                         tr("Save Plot Data"),
+                         tr("Could not write data file:\n%1")
+                           .arg(filename));
+    return;
+  }
+
+  QTextStream stream(&file);
+  stream << "# \"" << ui.combo_xAxis->currentText() << "\""
+         << "    \"" << ui.combo_yAxis->currentText() << "\"\n";
+
+  const std::vector<std::unique_ptr<QwtPlotMarker>>& markers = ui.plot->plotMarkers();
+  for (size_t i = 0; i < markers.size(); ++i) {
+    QwtPlotMarker* marker = markers[i].get();
+    const Xtal* xtal = m_marker_xtal_map.value(marker, nullptr);
+    if (!xtal)
+      continue;
+
+    stream << QString("%1 %2   # %3\n")
+                  .arg(marker->xValue(), 24, 'f', 6)
+                  .arg(marker->yValue(), 24, 'f', 6)
+                  .arg(xtal->getTag());
+  }
+}
+
 void TabPlot::updatePlotFonts()
 {
   const QFont baseFont = ui.plot->font();
@@ -461,8 +502,11 @@ void TabPlot::updatePlot()
     return;
 
   // Make sure we have structures!
-  if (m_search->tracker()->size() == 0)
-    return;
+  {
+    QReadLocker trackerLocker(m_search->tracker()->rwLock());
+    if (m_search->tracker()->size() == 0)
+      return;
+  }
 
   // Lock plot mutex
   QWriteLocker plotLocker(m_plot_mutex);
@@ -536,7 +580,7 @@ void TabPlot::plotTrends()
   bool showComplete = ui.cb_showComplete->isChecked();
   bool showSimilarities = ui.cb_showSimilarities->isChecked();
   bool showDismissed = ui.cb_showDismissed->isChecked();
-  bool showIncompletes = ui.cb_showIncompletes->isChecked();
+  bool showInprogress = ui.cb_showInprogress->isChecked();
   bool showFailures = ui.cb_showFailures->isChecked();
   LabelTypes labelType = LabelTypes(ui.combo_labelType->currentIndex());
   PlotAxes xAxis = PlotAxes(ui.combo_xAxis->currentIndex());
@@ -582,7 +626,7 @@ void TabPlot::plotTrends()
       continue;
     }
 
-    if (statusCategory == Psc_Incomplete && !showIncompletes) {
+    if (statusCategory == Psc_Inprogress && !showInprogress) {
       continue;
     }
 
@@ -1122,7 +1166,7 @@ QwtPlotMarker* TabPlot::addXtalToPlot(Xtal* xtal, double x, double y)
     const QColor dismissedColor(90, 170, 216);
     pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Diamond, QBrush(dismissedColor),
                                QPen(dismissedColor));
-  } else if (statusCategory == Psc_Incomplete) {
+  } else if (statusCategory == Psc_Inprogress) {
     QColor orange(255, 140, 0, 255);
     pm = ui.plot->addPlotPoint(x, y, QwtSymbol::Triangle, QBrush(orange), QPen(orange));
   } else {

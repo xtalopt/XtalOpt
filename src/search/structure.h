@@ -61,7 +61,7 @@ public:
   {
     Os_NotCalculated = 0,
     Os_Retain,
-    Os_Dismiss, // kept only for old state files
+    Os_Dismiss, // currently not in use
     Os_Fail
   };
 
