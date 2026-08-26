@@ -167,7 +167,8 @@ bool XyzFormat::read(Atoms::Geometry& s, const QString& filename)
   LatticeInfo lattice;
   bool frameFound = false;
 
-  // An XYZ file may hold a series of frames; the last complete frame is read.
+  // An XYZ file may hold a series of frames; the last frame is read; and
+  //   the read is considered ok only if that last frame is complete.
   for (;;) {
     // Find the next frame's atom-count line; the series ends at the file end.
     lineSplit.clear();

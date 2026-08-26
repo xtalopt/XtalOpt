@@ -3,14 +3,13 @@ add_library(atoms_core STATIC
   generators.cpp
   molecule.cpp
   geometry.cpp
-  basis/unitcell.cpp
   formats/castepformat.cpp
   formats/cifformat.cpp
   formats/cmlformat.cpp
   formats/formats.cpp
   formats/gulpformat.cpp
   formats/mtpformat.cpp
-  formats/poscarformat.cpp
+  formats/vaspformat.cpp
   formats/pwscfformat.cpp
   formats/siestaformat.cpp
   formats/xyzformat.cpp)

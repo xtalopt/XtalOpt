@@ -87,7 +87,7 @@ QueueInterface::QueueInterface(SearchBase* parent, const QString& settingFile)
 QueueInterface::~QueueInterface() = default;
 
 bool QueueInterface::registerQueueInterface(const QString& name,
-  std::function<std::unique_ptr<QueueInterface>(SearchBase*)> creator)
+                                            std::function<std::unique_ptr<QueueInterface>(SearchBase*)> creator)
 {
   return RegisteredQueueInterfaces::shared().registerCreator(name, creator);
 }
@@ -105,17 +105,14 @@ QStringList QueueInterface::availableBuiltInQueueInterfaces()
   return names;
 }
 
-std::unique_ptr<QueueInterface> QueueInterface::createRegisteredQueueInterface(
-  const QString& name, SearchBase* parent)
+std::unique_ptr<QueueInterface> QueueInterface::createRegisteredQueueInterface(const QString& name, SearchBase* parent)
 {
   const QString key = normalizedBuiltInQueueInterfaceName(name);
   std::unique_ptr<QueueInterface> queue = RegisteredQueueInterfaces::shared().create(key, parent);
   if (queue)
     return queue;
   if (parent) {
-    Common::error(QString("%1: unknown interface: %2")
-                   .arg(__func__)
-                   .arg(name));
+    Common::error(QString("%1: unknown interface: %2").arg(__func__).arg(name));
   }
   return std::unique_ptr<QueueInterface>();
 }
@@ -132,9 +129,7 @@ bool QueueInterface::registerBuiltInQueueInterface(const QString& name)
   if (definition)
     return registerQueueInterface(definition->queueInterfaceName, definition->queueInterfaceCreator);
 
-  Common::error(QString("%1: unknown built-in queue interface: %2")
-                  .arg(__func__)
-                  .arg(name));
+  Common::error(QString("%1: unknown built-in queue interface: %2").arg(__func__).arg(name));
   return false;
 }
 
@@ -156,8 +151,9 @@ bool QueueInterface::localWorkingDirectoryReady(QString* err) const
   if (!workingdir.exists()) {
     writable = workingdir.mkpath(workDir);
   } else {
-    const QString filename = Common::localPath(workDir, QString("queuetest-") +
-                          QString::number(Common::getRandUInt()));
+    const QString filename = Common::localPath(workDir,
+                                               QString("queuetest-") +
+                                               QString::number(Common::getRandUInt()));
     QFile file(filename);
     writable = file.open(QFile::ReadWrite);
     file.remove();
@@ -168,7 +164,7 @@ bool QueueInterface::localWorkingDirectoryReady(QString* err) const
       *err = tr("Cannot write to working directory '%1'.\n\nPlease "
                 "change the permissions on this directory or specify "
                 "a different one in the Queue configuration.")
-               .arg(workDir);
+                .arg(workDir);
     }
     return false;
   }
@@ -186,12 +182,13 @@ bool QueueInterface::safeRelativeFilename(const QString& filename)
   QString normalized = filename;
   normalized.replace('\\', '/');
   const QString clean = QDir::cleanPath(normalized);
+
   return !clean.isEmpty() && clean != "." && !QFileInfo(clean).isAbsolute() &&
          clean != ".." && !clean.startsWith("../") && !clean.contains("/../");
 }
 
 bool QueueInterface::writeHashToLocalDir(Structure* s,
-                                          const QHash<QString, QString>& fileHash) const
+                                         const QHash<QString, QString>& fileHash) const
 {
   for (auto it = fileHash.constBegin(), itEnd = fileHash.constEnd(); it != itEnd; ++it) {
     if (!safeRelativeFilename(it.key())) {
@@ -204,8 +201,8 @@ bool QueueInterface::writeHashToLocalDir(Structure* s,
     QFile file(Common::localPath(s->getLocpath(), it.key()));
     if (!file.open(QIODevice::WriteOnly)) {
       Common::error(tr("Cannot write input file %1 (file writing failure)",
-                        "1 is a file path")
-                     .arg(file.fileName()));
+                       "1 is a file path")
+                       .arg(file.fileName()));
       return false;
     }
 
@@ -244,7 +241,7 @@ bool QueueInterface::removeAFile(Structure* s, const QString& filename)
 }
 
 bool QueueInterface::checkIfFileExists(Structure* s, const QString& filename,
-                                        bool* exists)
+                                       bool* exists)
 {
   if (!exists || !safeRelativeFilename(filename))
     return false;
@@ -253,7 +250,7 @@ bool QueueInterface::checkIfFileExists(Structure* s, const QString& filename,
 }
 
 bool QueueInterface::checkIfFilesExist(Structure* s, const QStringList& filenames,
-                                        QHash<QString, bool>* exists)
+                                       QHash<QString, bool>* exists)
 {
   if (!exists)
     return false;
@@ -277,9 +274,9 @@ bool QueueInterface::fetchFile(Structure* s, const QString& filename, QString* c
 }
 
 bool QueueInterface::grepFile(Structure* s, const QString& matchText,
-                               const QString& filename, QStringList* matches,
-                               int* exitcode,
-                               const bool caseSensitive) const
+                              const QString& filename, QStringList* matches,
+                              int* exitcode,
+                              const bool caseSensitive) const
 {
   if (exitcode)
     *exitcode = 1;
@@ -333,7 +330,7 @@ bool QueueInterface::writeCopyFilesToLocalDir(Structure* s, QStringList& extraFi
 
     if (extraFilenames.contains(filename, Qt::CaseInsensitive)) {
       Common::error(tr("Cannot copy file %1: the name %2 is already used by another input file.")
-                      .arg(infile.fileName()).arg(filename));
+                       .arg(infile.fileName()).arg(filename));
       return false;
     }
 
@@ -352,8 +349,8 @@ bool QueueInterface::writeCopyFilesToLocalDir(Structure* s, QStringList& extraFi
 
     if (!infile.copy(outfile.fileName())) {
       Common::error(tr("Failed to copy file %1 to %2")
-                     .arg(infile.fileName())
-                     .arg(outfile.fileName()));
+                       .arg(infile.fileName())
+                       .arg(outfile.fileName()));
       return false;
     }
     extraFilenames.append(filename);
@@ -370,7 +367,7 @@ bool QueueInterface::writeInputFiles(Structure* s) const
   Optimizer* optimizer = m_search->optimizer(s->getCurrentOptStep());
   if (!optimizer) {
     Common::error(tr("No optimizer is available for structure %1 at opt step %2.")
-                    .arg(s->getTag()).arg(s->getCurrentOptStep() + 1));
+                     .arg(s->getTag()).arg(s->getCurrentOptStep() + 1));
     return false;
   }
 
@@ -378,9 +375,9 @@ bool QueueInterface::writeInputFiles(Structure* s) const
   const QHash<QString, QString> files = optimizer->getInputFiles(s);
   if (files.isEmpty()) {
     Common::error(tr("No input files to write for structure %1 in opt step %2;"
-                    " check the optimizer templates and input assets.")
-                    .arg(s->getTag())
-                    .arg(s->getCurrentOptStep() + 1));
+                     " check the optimizer templates and input assets.")
+                     .arg(s->getTag())
+                     .arg(s->getCurrentOptStep() + 1));
     return false;
   }
   return writeFiles(s, files);

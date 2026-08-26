@@ -53,21 +53,18 @@ while [ ${#all[@]} -gt 0 ]; do
     gen=$(echo $str|sed 's/x/   /'|awk '{printf "%05d",$1}')
     id=$(echo $str|sed 's/x/   /'|awk '{printf "%05d",$2}')
     fll=$gen"x"$id
-    tmp=$(grep parents= $dir/$fll/structure.state| sed 's|parents=||')
-    # polish the parent string
-    tmp=$(echo "$tmp" | sed 's|\"||g' | sed 's|:| |')
-    tmp=$(echo "$tmp" | sed 's|\[||g' | sed 's|\]-||g' | sed 's|Supercell|sc|g')
-    # make the parent string an array
-    tmp=($tmp)
-    # collect the information in output string
-    # output the operation
-    out="${tmp[0]}"
-    # find, collect, and output the parents
-    for((j=1; j < ${#tmp[@]}; j++)); do
-      if [[ ${tmp[$j]} == *"x"* ]] && [[ ${tmp[$j]} != *"exch"* ]]; then
-        out=$out"_"${tmp[$j]}
-        npr=$npr" ${tmp[$j]}"
-      fi
+    tmp=$(grep parents= $dir/$fll/structure.state| sed 's|parents=||' | sed 's|\"||g')
+    # the operation is what comes before the first ":" or "(" of the string;
+    #   a structure tag is not a part of the operation
+    out=$(echo "$tmp" | sed 's|[:(].*||' | sed 's|[0-9][0-9]*x[0-9][0-9]*||g')
+    # the operation is always written as a single word in the output
+    out=$(echo "$out" | sed 's| *$||' | sed 's|  *|_|g')
+    # shorten the supercell prefix, e.g., "Supercell[2]-Stripple" to "sc2Stripple"
+    out=$(echo "$out" | sed 's|Supercell\[|sc|' | sed 's|\]-||')
+    # the parents are the "[generation]x[id]" tags that appear in the string
+    for prt in $(echo "$tmp" | grep -owE '[0-9]+x[0-9]+'); do
+      out=$out"_"$prt
+      npr=$npr" $prt"
     done
     printf " %-22s" "$out"
     ((lns=$lns+1))

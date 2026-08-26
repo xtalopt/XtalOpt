@@ -43,7 +43,7 @@ bool readableTemplateFile(const QString& filename, QString* error)
   if (!Common::isReadableFile(filename)) {
     if (error) {
       *error = QString("Template file is not readable: %1")
-                 .arg(filename);
+                       .arg(filename);
     }
     return false;
   }
@@ -158,7 +158,8 @@ QString SearchBase::interpretTemplate(const QString& str, Structure* structure)
 
 void SearchBase::interpretKeyword_base(QString& line, Structure* structure)
 {
-  // Prefix-match keywords (cannot live in the exact-match hash)
+  // Prefix-match keywords don't have "replacement": filecontents inserts
+  //   text into the template, while copyfile records a separate input file.
   if (line.startsWith("filecontents:", Qt::CaseInsensitive)) {
     QString filename = line;
     filename.remove(0, QString("filecontents:").size());
@@ -196,7 +197,7 @@ void SearchBase::interpretKeyword_base(QString& line, Structure* structure)
     return;
   }
 
-  // Find the keyword by exact match.
+  // All remaining keywords have exact replacements.
   auto it = m_keywordMap.constFind(line);
   if (it == m_keywordMap.constEnd())
     return;
@@ -208,6 +209,7 @@ void SearchBase::interpretKeyword_base(QString& line, Structure* structure)
 
 QString SearchBase::getTemplateKeywordHelp_base()
 {
+  // Build the keywords' help table in the registration order.
   QList<KeywordHelpRow> rows;
   int keywordWidth = QString("Keyword").size();
 
@@ -226,13 +228,13 @@ QString SearchBase::getTemplateKeywordHelp_base()
 
   out << "\nThe following keywords should be used instead of the indicated variable data:\n\n";
   out << QString("%1  %2\n")
-           .arg(QString("Keyword"), -keywordWidth)
-           .arg(QString("Description"));
+                 .arg(QString("Keyword"), -keywordWidth)
+                 .arg(QString("Description"));
   out << QString(keywordWidth, QChar('-')) << "  -----------\n";
   for (const auto& row : rows) {
     out << QString("%1  %2\n")
-             .arg(row.keyword, -keywordWidth)
-             .arg(row.description);
+                   .arg(row.keyword, -keywordWidth)
+                   .arg(row.description);
   }
 
   return text;

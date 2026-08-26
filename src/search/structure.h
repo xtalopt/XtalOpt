@@ -78,6 +78,12 @@ public:
    * Structure's status during the search. Saved as integers in structure.state, so
    * do not renumber existing values without converting old state files. Empty
    * is a placeholder, not a runnable queue state.
+   *
+   * The general run path/lifecycle is:
+   *   Empty -> WaitingForOptimization -> Submitted -> InProcess -> Updating -> StepOptimized.
+   * A completed last step enters ScriptCalculation, where constraints and objectives
+   * are handled before the structure reaches its final state. QueueManager advances
+   * running states.
    * @sa getStatus
    */
   enum State
@@ -98,16 +104,16 @@ public:
     Error = 6,
     /** Submitted but not yet visible in the queue */
     Submitted = 7,
-    /** Killed before finishing all steps */
-    Killed = 8,
-    /** Killed after finishing all steps */
+    /** Failed optimization (or stopped before finishing all steps in GUI) */
+    Failed = 8,
+    /** Removed (as if failed) after finishing all steps */
     Removed = 9,
     /** About to restart the current step */
     Restart = 10,
+    /** Running script calculations (post-optimization) before finalization */
+    ScriptCalculation = 11,
     /** Running objective calculations */
-    ObjectiveCalculation = 11,
-    /** Running post-optimization processing before finalization */
-    Postprocessing = 12,
+    ObjectiveCalculation = 12,
     /** Running constrained-search calculations */
     ConstraintCalculation = 13,
     /** Dismissed by constraint calculations */
@@ -145,15 +151,18 @@ public:
   {
     return m_strucConstraintValues.at(i);
   }
+
   void setStrucConstraintValues(double v) { m_strucConstraintValues.push_back(v); }
   void setStrucConstraintValuesVec(QList<double> v)
   {
     m_strucConstraintValues = v;
   }
+
   QList<double> getStrucConstraintValuesVec() const
   {
     return m_strucConstraintValues;
   }
+
   void resetStrucConstraint()
   {
     m_strucConstraintValues.clear();
@@ -202,6 +211,7 @@ public:
   {
     return m_hasEnthalpy ? m_enthalpy : m_energy;
   }
+
   /** Return the enthalpy per atom value of the structure.
    *
    * @note If the enthalpy is not set but the energy is set, this
@@ -221,6 +231,18 @@ public:
   {
     return getEnthalpy() / static_cast<double>(numAtoms());
   }
+
+  /** Return the energy per atom value of the structure in eV.
+   *
+   * @return The energy per atom of the structure in eV.
+   * @sa getEnergy
+   * @sa getEnthalpyPerAtom
+   */
+  double getEnergyPerAtom() const
+  {
+    return getEnergy() / static_cast<double>(numAtoms());
+  }
+
   /** Returns the value PV term from an enthalpy calculation (H = U
    * + PV) in eV.
    *
@@ -249,6 +271,7 @@ public:
     m_hasEnthalpy = true;
     m_enthalpy = enthalpy;
   }
+
   /** Set the PV term of the Structure's enthalpy (see getPV()).
    * @param pv The PV term
    * @sa getPV
@@ -275,6 +298,7 @@ public:
     m_PV = 0.0;
     m_hasEnthalpy = false;
   }
+
   /** Return whether or not this structure has a parent structure saved.
    * @return Returns true if a parent structure is saved, and false if
    * a parent structure is not saved.
@@ -383,6 +407,13 @@ public:
    */
   State getStatus() const { return m_status; };
 
+  // What the queue last said about this structure's job status as a text string.
+  // This is being set by queuemanager when there is something to report; so
+  //   anything showing the status (interface, output files) can use to resolve
+  //   the in process status details; without asking the queue on its own.
+  QString getQueueStatusText() const { return m_queueStatusText; };
+  void setQueueStatusText(const QString& text) { m_queueStatusText = text; };
+
   // Check groups of related structure states.
   static bool isQueueTerminalState(State state);
   bool isQueueTerminalState() const;
@@ -390,20 +421,20 @@ public:
   static bool isQueueInProgressState(State state);
   bool isQueueInProgressState() const;
 
-  static bool isPostOptimizationCalculationState(State state);
-  bool isPostOptimizationCalculationState() const;
+  static bool isScriptCalculationState(State state);
+  bool isScriptCalculationState() const;
 
   static bool isOptimizedState(State state);
   bool isOptimizedState() const;
 
-  static bool isFailedFinalState(State state);
-  bool isFailedFinalState() const;
+  static bool isScriptFailedState(State state);
+  bool isScriptFailedState() const;
 
-  static bool isDismissedFinalState(State state);
-  bool isDismissedFinalState() const;
+  static bool isScriptDismissedState(State state);
+  bool isScriptDismissedState() const;
 
-  static bool isKilledOrRemovedState(State state);
-  bool isKilledOrRemovedState() const;
+  static bool isFailedOrRemovedState(State state);
+  bool isFailedOrRemovedState() const;
 
   static bool isStoppedFinalState(State state);
   bool isStoppedFinalState() const;
@@ -619,6 +650,7 @@ public:
   {
     m_preoptBonds = v;
   }
+
   /**
    * Get the vector of preoptimization bonding information. This will be
    * used to assign bonds to be the same as that before optimization. Note
@@ -727,6 +759,14 @@ public slots:
    */
   virtual unsigned int sizeOfHistory() { return m_histEnergies.size(); };
 
+  /** @return Optimization step a history entry came from, or -1 if it is
+   * not known (an entry read from a file written before it was recorded). */
+  int getHistoryOptStep(unsigned int index) const
+  {
+    return index < static_cast<unsigned int>(m_histOptSteps.size())
+             ? m_histOptSteps.at(index) : -1;
+  }
+
   /** Clear all history without changing the current structure. */
   void clearHistory()
   {
@@ -735,19 +775,39 @@ public slots:
     m_histEnergies.clear();
     m_histEnthalpies.clear();
     m_histCells.clear();
+    m_histOptSteps.clear();
   }
 
-  /** Append one history entry without changing the current structure. */
+  /** Append one history entry without changing the current structure.
+   * The default optimization step of -1 means "not known". */
   void appendHistoryEntry(const QList<unsigned int>& atomicNums,
                           const QList<Common::Vector3>& coords, double energy, double enthalpy,
-                          const Common::Matrix3& cell)
+                          const Common::Matrix3& cell, int optStep = -1)
   {
     m_histAtomicNums.append(atomicNums);
     m_histCoords.append(coords);
     m_histEnergies.append(energy);
     m_histEnthalpies.append(enthalpy);
     m_histCells.append(cell);
+    m_histOptSteps.append(optStep);
   }
+
+  /** Save the current atoms and cell as the structure's initial geometry.
+   * The workflow overwrites geometry between optimization steps, so this
+   * is to keep track of the original geometry of a structure. */
+  void recordInitialGeometry();
+
+  /** Set the initial geometry that was read from a state file. */
+  void setInitialGeometry(const QList<unsigned int>& atomicNums,
+                          const QList<Common::Vector3>& coords,
+                          const Common::Matrix3& cell);
+
+  /** @return Whether the initial geometry was recorded. Eg, not saved for
+   * a structure read from a state file written before it was saved. */
+  bool hasInitialGeometry() const { return !m_initialCoords.isEmpty(); }
+  const QList<unsigned int>& getInitialAtomicNums() const { return m_initialAtomicNums; }
+  const QList<Common::Vector3>& getInitialCoords() const { return m_initialCoords; }
+  const Common::Matrix3& getInitialCell() const { return m_initialCell; }
 
   /** Set the number of times the structures has
    * had the atoms moved to pass the
@@ -974,7 +1034,7 @@ protected:
   std::atomic_bool m_updatedSinceSimChecked;
   uint m_generation, m_id, m_rank, m_jobID, m_currentOptStep, m_failCount,
     m_fixCount;
-  QString m_parents, m_simString, m_rempath, m_locpath;
+  QString m_parents, m_simString, m_rempath, m_locpath, m_queueStatusText;
   int m_paretoFrontIndex, m_restartOptStep;
   std::atomic<State> m_status;
   QDateTime m_optStart, m_optEnd;
@@ -987,6 +1047,12 @@ protected:
   QList<double> m_histEnergies;
   QList<QList<Common::Vector3>> m_histCoords;
   QList<Common::Matrix3> m_histCells;
+  QList<int> m_histOptSteps;
+
+  // The structure's geometry as it was generated (before any optimization).
+  QList<unsigned int> m_initialAtomicNums;
+  QList<Common::Vector3> m_initialCoords;
+  Common::Matrix3 m_initialCell;
 
   // Pointer to parent structure if one is saved.
   Structure* m_parentStructure;

@@ -33,9 +33,6 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="toolTip">
-      <string>Command used to submit jobs to the PBS queue. Usually qsub.</string>
-     </property>
      <property name="text">
       <string>Path to llsubmit:</string>
      </property>
@@ -47,7 +44,7 @@
    <item row="5" column="1" colspan="2">
     <widget class="QLineEdit" name="edit_llsubmit">
      <property name="toolTip">
-      <string>Command used to submit jobs to the PBS queue. Usually qsub.</string>
+      <string>Command used to submit jobs to the queue. Usually llsubmit.</string>
      </property>
      <property name="text">
       <string>llsubmit</string>
@@ -62,9 +59,6 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="toolTip">
-      <string>Command used to delete jobs from the queue. Usually qdel.</string>
-     </property>
      <property name="text">
       <string>Path to llcancel:</string>
      </property>
@@ -76,7 +70,7 @@
    <item row="7" column="1" colspan="2">
     <widget class="QLineEdit" name="edit_llq">
      <property name="toolTip">
-      <string>Command used to check the PBS queue. Use qstat.</string>
+      <string>Command used to check the queue. Usually llq.</string>
      </property>
      <property name="text">
       <string>llq</string>
@@ -91,9 +85,6 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="toolTip">
-      <string>Command used to check the PBS queue. Use qstat.</string>
-     </property>
      <property name="text">
       <string>Path to llq:</string>
      </property>
@@ -105,7 +96,7 @@
    <item row="6" column="1" colspan="2">
     <widget class="QLineEdit" name="edit_llcancel">
      <property name="toolTip">
-      <string>Command used to delete jobs from the queue. Usually qdel.</string>
+      <string>Command used to delete jobs from the queue. Usually llcancel.</string>
      </property>
      <property name="text">
       <string>llcancel</string>

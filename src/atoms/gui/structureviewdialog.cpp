@@ -557,6 +557,7 @@ void StructureViewDialog::displayStructure(const Geometry& structure, const QStr
 {
   m_structure = structure;
 
+  // Build the complete view data before giving it to the drawing widget.
   StructureViewSnapshot snapshot;
   snapshot.label = label;
   snapshot.formula = structure.getChemicalFormula();
@@ -579,6 +580,7 @@ void StructureViewDialog::displayStructure(const Geometry& structure, const QStr
     centroid += atom.pos();
   }
 
+  // Assign species colors.
   std::map<unsigned short, int> species;
   for (const auto& atom : snapshot.atoms)
     species[atom.atomicNumber] += 1;
@@ -593,6 +595,7 @@ void StructureViewDialog::displayStructure(const Geometry& structure, const QStr
   if (!snapshot.hasCell && !snapshot.atoms.empty())
     snapshot.center = centroid / static_cast<double>(snapshot.atoms.size());
 
+  // Keep all bonds; the view applies the chosen subset according to user min/max.
   for (size_t first = 0; first < snapshot.atoms.size(); ++first) {
     for (size_t second = first + 1; second < snapshot.atoms.size(); ++second) {
       const double length =
@@ -603,15 +606,17 @@ void StructureViewDialog::displayStructure(const Geometry& structure, const QStr
     }
   }
 
+  // Produce the view before updating the rest of dialog.
   ui->viewWidget->setStructureSnapshot(snapshot);
   ui->infoLabel->setText(
     tr("%1%2%3")
       .arg(snapshot.label.isEmpty() ? QString() : snapshot.label)
       .arg(snapshot.label.isEmpty() || snapshot.formula.isEmpty() ? QString() : "  -  ")
       .arg(snapshot.formula));
-  setWindowTitle(snapshot.label.isEmpty() ? tr("Structure Viewer")
-                   : tr("Structure Viewer - %1").arg(snapshot.label));
+  setWindowTitle(snapshot.label.isEmpty() ? tr("Structure")
+                   : tr("Structure - %1").arg(snapshot.label));
 
+  // Don't reopen the dialog: bring its new structure forward.
   if (!isVisible())
     show();
   raise();
@@ -625,7 +630,7 @@ void StructureViewDialog::saveImage() const
                                 : ui->viewWidget->structureSnapshot().label +
                                     QStringLiteral("-structure-view.png");
   QString filename = QFileDialog::getSaveFileName(
-    const_cast<StructureViewDialog*>(this), tr("Save Structure Image"),
+    const_cast<StructureViewDialog*>(this), tr("Save Structure View"),
     QDir(defaultSaveDir()).filePath(defaultName),
     tr("PNG Image (*.png);;JPEG Image (*.jpg);;BMP Image (*.bmp)"),
     nullptr, QFileDialog::DontUseNativeDialog);
@@ -649,7 +654,7 @@ void StructureViewDialog::saveData() const
     return;
   }
 
-  const QString poscarFilter = tr("VASP POSCAR (*.vasp)");
+  const QString poscarFilter = tr("VASP (*.vasp)");
   const QString cifFilter = tr("CIF (*.cif)");
   const QString cmlFilter = tr("CML (*.cml)");
   const QString xyzFilter = tr("XYZ (*.xyz)");
@@ -666,7 +671,7 @@ void StructureViewDialog::saveData() const
   if (filename.isEmpty())
     return;
 
-  QString format = "POSCAR";
+  QString format = "VASP";
   if (selectedFilter == cifFilter)
     format = "CIF";
   else if (selectedFilter == cmlFilter)

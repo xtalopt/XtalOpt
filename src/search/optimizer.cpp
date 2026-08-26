@@ -94,11 +94,12 @@ bool Optimizer::readInputAssetFile(const QString& filename, QString& contents)
   }
   if (contents.endsWith('\n'))
     contents.chop(1);
+
   return true;
 }
 
 bool Optimizer::registerOptimizer(const QString& name,
-  std::function<std::unique_ptr<Optimizer>(SearchBase*)> creator)
+                                  std::function<std::unique_ptr<Optimizer>(SearchBase*)> creator)
 {
   return RegisteredOptimizers::shared().registerCreator(name, creator);
 }
@@ -113,20 +114,19 @@ QStringList Optimizer::availableBuiltInOptimizers()
   QStringList names;
   for (const auto& definition : builtInOptimizerDefinitions)
     names.append(definition.optimizerName);
+
   return names;
 }
 
-std::unique_ptr<Optimizer> Optimizer::createRegisteredOptimizer(
-  const QString& name, SearchBase* parent)
+std::unique_ptr<Optimizer> Optimizer::createRegisteredOptimizer(const QString& name, SearchBase* parent)
 {
   std::unique_ptr<Optimizer> optimizer = RegisteredOptimizers::shared().create(name, parent);
   if (optimizer)
     return optimizer;
   if (parent) {
-    Common::error(QString("%1: unknown optimizer: %2")
-                   .arg(__func__)
-                   .arg(name));
+    Common::error(QString("%1: unknown optimizer: %2").arg(__func__).arg(name));
   }
+
   return std::unique_ptr<Optimizer>();
 }
 
@@ -141,9 +141,8 @@ bool Optimizer::registerBuiltInOptimizer(const QString& name)
   if (definition)
     return registerOptimizer(definition->optimizerName, definition->optimizerCreator);
 
-  Common::error(QString("%1: unknown built-in optimizer: %2")
-                  .arg(__func__)
-                  .arg(name));
+  Common::error(QString("%1: unknown built-in optimizer: %2").arg(__func__).arg(name));
+
   return false;
 }
 
@@ -216,6 +215,7 @@ bool Optimizer::checkIfOutputFileExists(Structure* s, bool* exists)
 
   const QString completionFilename =
     m_optimizerDefaults ? QString::fromLatin1(m_optimizerDefaults->completionFilename) : QString();
+
   return queue->checkIfFileExists(s, completionFilename, exists);
 }
 
@@ -230,6 +230,7 @@ bool Optimizer::checkForSuccessfulOutput(Structure* s, bool* success)
     QReadLocker locker(&s->lock());
     optStep = s->getCurrentOptStep();
   }
+
   QueueInterface* queue = m_search->queueInterface(optStep);
   if (!queue)
     return false;
@@ -241,12 +242,12 @@ bool Optimizer::checkForSuccessfulOutput(Structure* s, bool* success)
     Common::debug(
       QString("Could not check the completion string in the output (%1)"
               " of opt step %2")
-        .arg(s->getTag())
-        .arg(optStep + 1));
+              .arg(s->getTag()).arg(optStep + 1));
     return false;
   }
   if (ec == 0)
     *success = true;
+
   return true;
 }
 
@@ -294,6 +295,7 @@ bool Optimizer::update(Structure* structure)
 
   structure->setJobID(0);
   locker.unlock();
+
   return true;
 }
 

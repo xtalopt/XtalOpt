@@ -17,6 +17,8 @@ Made system ssh/scp always available, with libssh (minimum 0.6.0) as an addition
 Improved installation and independent-package handling on macOS, Windows and Linux
 Added macOS code-signing, CPack on all platforms and third-party licenses
 Cleaned redundant helpers, settings readers and warning-prone implicit initializers
+Cleaned up tooltips from redundant defaults and obsolete content
+Updated included scripts and schemes for compatibility with current code
 
 ===== Application settings, input and saved data
 
@@ -37,6 +39,7 @@ Added optimizer asset-file groups using <id> <file> entries and safe plain-text 
 Updated GUI settings import/export to use the current xtalopt.in format
 Improved state save/resume and old-format conversion for batch schemes, custom IADs and transient states
 Allowed GUI state files to be opened only to initialize entries; besides a normal resume
+Added 'initial' entry and 'optstep in history' to structure state files
 Rebuilt similarity, hull, Pareto-front and space-group information after loading a search
 Preserved structure order and parent links on resume
 Allowed copied session directories to be resumed from their new location
@@ -45,6 +48,7 @@ Improved template placeholders, including literal percent characters, and empty 
 Improved handling of the extra input files copied into a structure directory
 Consistent legacy state-file conversion on Windows and other platforms
 Prevented new searches from silently reusing leftover structure directories
+Updated and revised the output status text in results.txt and GUI
 
 ===== Structure handling, geometry, and formats
 
@@ -66,6 +70,7 @@ Random replacement of a structure with unsupported composition uses one from the
 
 ===== Fitness, objectives, and parent selection
 
+Revised default weights for genetic operations
 Separated min/max objectives from pass/fail constraints
 Added distance above hull as a built-in objective with automatically calculated weight
 Redesigned objective/constraint script execution, path quoting, result parsing and monitoring
@@ -82,7 +87,7 @@ Set the default RDF tolerance to 0.98
 
 Removed the generic optimizer; retained only gulp, vasp, pwscf, castep, siesta and mtp
 Revised direct/batch queue interfaces and unified SSH use for remote queues
-Made local optimizer, objective/constraint, and scheduler commands work consistently on Windows, including .exe, .bat and .cmd files
+Made local optimizer, objective/constraint, and scheduler commands work consistently on Windows for .exe,.bat,.cmd
 Improved queue manager workflow and background save coordination
 Made queue and tracker state safe across generation, submissions, updates, kills and restarts
 Restarted jobs only after cancellation and resumed IAD-repaired structures from the requested step
@@ -104,6 +109,7 @@ Added Plot-tab image and data export
 Added optional Plot-tab legend and automatic label placement
 Added space group number as a Plot-tab axis choice
 Updated Plot-tab labels for min/max of objectives, default filters, coloring
+Updated Progress-tab color coding for statuses
 Refined GUI tab layouts and runtime refresh behavior
 Set a minimum of 1 second for refresh period in the Progress tab
 Improved composition, atom-limit, molecule-unit and custom-IAD updates

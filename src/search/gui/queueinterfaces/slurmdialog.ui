@@ -28,7 +28,7 @@
    <item row="3" column="1" colspan="2">
     <widget class="QLineEdit" name="edit_sbatch">
      <property name="toolTip">
-      <string>Command used to submit jobs to the SLURM queue. Usually sbatch.</string>
+      <string>Command used to submit jobs to the queue. Usually sbatch.</string>
      </property>
      <property name="text">
       <string>sbatch</string>
@@ -42,9 +42,6 @@
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
-     </property>
-     <property name="toolTip">
-      <string>Command used to delete jobs from the queue. Usually scancel.</string>
      </property>
      <property name="text">
       <string>Path to scancel:</string>
@@ -62,9 +59,6 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="toolTip">
-      <string>Command used to check the SLURM queue. Usually squeue.</string>
-     </property>
      <property name="text">
       <string>Path to squeue:</string>
      </property>
@@ -80,9 +74,6 @@
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
-     </property>
-     <property name="toolTip">
-      <string>Command used to submit jobs to the SLURM queue. Usually sbatch.</string>
      </property>
      <property name="text">
       <string>Path to sbatch:</string>
@@ -105,7 +96,7 @@
    <item row="5" column="1" colspan="2">
     <widget class="QLineEdit" name="edit_squeue">
      <property name="toolTip">
-      <string>Command used to check the SLURM queue. Use squeue.</string>
+      <string>Command used to check the queue. Usually squeue.</string>
      </property>
      <property name="text">
       <string>squeue</string>

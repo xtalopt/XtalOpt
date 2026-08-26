@@ -1,5 +1,5 @@
 /**********************************************************************
-  PoscarFormat - Handlers for POSCAR format structure files.
+  VaspFormat - Handlers for VASP format structure files.
 
   Copyright (C) 2017 by Patrick Avery
 
@@ -12,8 +12,8 @@
   limitations under the License.
  ***********************************************************************/
 
-#ifndef ATOMS_POSCAR_FORMAT_H
-#define ATOMS_POSCAR_FORMAT_H
+#ifndef ATOMS_VASP_FORMAT_H
+#define ATOMS_VASP_FORMAT_H
 
 #include <istream>
 #include <ostream>
@@ -25,10 +25,10 @@ namespace Atoms {
 class Geometry;
 
 /**
- * @class Vienna Ab initio Simulation Package (POSCAR) format.
+ * @class Vienna Ab initio Simulation Package (VASP) format.
  *        https://www.vasp.at/
  */
-class PoscarFormat
+class VaspFormat
 {
 public:
   /**
@@ -61,4 +61,4 @@ public:
 };
 } // namespace Atoms
 
-#endif // ATOMS_POSCAR_FORMAT_H
+#endif // ATOMS_VASP_FORMAT_H

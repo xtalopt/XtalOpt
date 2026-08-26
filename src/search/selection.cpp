@@ -134,9 +134,6 @@ double jfbMedian(const std::vector<const double*>& P, const std::vector<int>& S1
   return values[values.size() / 2];
 }
 
-void jfbHelperA(const std::vector<const double*>& P, std::vector<int>& rank,
-                const std::vector<int>& S, int k);
-
 // Raise the fronts of H for dominance from L using objectives 0..k
 //   (L is never changed here: its fronts must already be final).
 void jfbHelperB(const std::vector<const double*>& P, std::vector<int>& rank,

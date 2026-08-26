@@ -52,6 +52,7 @@ public:
     Finished,
     Error
   };
+
   DirectRunProcess(QObject* parent) : QProcess(parent), m_status(NotStarted)
   {
     connect(this, &QProcess::started, this, &DirectRunProcess::setRunning);
@@ -59,33 +60,40 @@ public:
             this, &DirectRunProcess::setFinished);
     QtCompat::connectProcessError(this, this, &DirectRunProcess::setError);
   }
+
 public slots:
   void setRunning() { m_status = Running; };
+
   // A crashed process is an error; an exit code is useful only after a normal exit.
   void setFinished(int /*exitCode*/, QProcess::ExitStatus exitStatus)
   {
     m_status = (exitStatus == QProcess::NormalExit) ? Finished : Error;
   };
+
   void setError()
   {
     // Keep a normal finish. Some errors arrive late.
     if (m_status != Finished)
       m_status = Error;
   };
+
   Status status() { return m_status; };
   int processStateValue() const { return static_cast<int>(state()); };
   int statusValue() const { return static_cast<int>(m_status); };
   int exitCodeValue() const { return exitCode(); };
   int processErrorValue() const { return static_cast<int>(error()); };
   QString processErrorStringValue() const { return errorString(); };
+
   QString readAllStandardOutputString() const
   {
     return QString(const_cast<DirectRunProcess*>(this)->readAllStandardOutput());
   };
+
   QString readAllStandardErrorString() const
   {
     return QString(const_cast<DirectRunProcess*>(this)->readAllStandardError());
   };
+
   void killProcess() { kill(); };
   int killAndWait()
   {
@@ -93,6 +101,7 @@ public slots:
     waitForFinished(PROCESS_KILL_TIMEOUT);
     return state() == QProcess::NotRunning;
   };
+
   void terminateAndKill()
   {
     terminate();
@@ -101,6 +110,7 @@ public slots:
       waitForFinished(PROCESS_KILL_TIMEOUT);
     }
   };
+
 private:
   Status m_status;
 };

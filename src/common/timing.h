@@ -15,7 +15,8 @@
 #ifndef COMMON_TIMING_H
 #define COMMON_TIMING_H
 
-// Optional timing information, enabled by XTALOPT_TIMING=1.
+// Optional timing information, activated by XTALOPT_TIMING env var.
+// Timing starts only after explicitly enabled by a caller.
 // A call to "ScopedTimer" adds the wall time and per-thread CPU time of its "scope".
 // The total per scopes are outputted with every batch, as well as at the end;
 //   while a header line is printed for "whole-process" timing (so, CPU/elapsed
@@ -91,8 +92,14 @@ inline double timingProcessCpuSeconds()
   return (processCpuNanos() - timing_detail::startProcessCpu()) / 1.0e9;
 }
 
-// The timing can be turned off while the program runs; e.g. a read-only
-//   session does not report any timing.
+// Setting this explicitly will turn timing on.
+inline bool& timingActivated()
+{
+  static bool activated = false;
+  return activated;
+}
+
+// The timing can be turned off with this call.
 inline bool& timingSuspended()
 {
   static bool suspended = false;
@@ -102,8 +109,8 @@ inline bool& timingSuspended()
 // Print the timer values (sorts with largest wall time at the top).
 inline void dumpTimings()
 {
-  // Nothing to report if the timing is turned off.
-  if (timingSuspended())
+  // Nothing to report before timing is activated or while it is suspended.
+  if (!timingActivated() || timingSuspended())
     return;
 
   std::vector<std::pair<std::string, timing_detail::Bucket> > rows;
@@ -146,6 +153,9 @@ inline void dumpTimings()
 
 inline bool timingEnabled()
 {
+  if (!timingActivated() || timingSuspended())
+    return false;
+
   static const bool enabled = []() -> bool {
     const bool on = (std::getenv("XTALOPT_TIMING") != nullptr);
     if (on) {
@@ -155,7 +165,7 @@ inline bool timingEnabled()
     }
     return on;
   }();
-  return enabled && !timingSuspended();
+  return enabled;
 }
 
 // Add a timer value.

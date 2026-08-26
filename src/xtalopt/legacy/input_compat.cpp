@@ -29,7 +29,7 @@
 #include <QTextStream>
 #include <QVector>
 
-// Convert old input files.
+// Convert old v14 input files.
 
 namespace XtalOpt {
 namespace Legacy {
@@ -241,6 +241,8 @@ bool convertLegacyInputText(const QString& inputText, QString& outputText,
     errorMessage->clear();
   compatibilityApplied = false;
 
+  // Parse the whole thing once before converting; some old options can be
+  //   interpreted only in the context of other settings.
   QVector<ParsedLine> lines;
   QString textCopy = inputText;
   QTextStream inputStream(&textCopy);
@@ -290,6 +292,8 @@ bool convertLegacyInputText(const QString& inputText, QString& outputText,
     }
   }
 
+  // Convert each "active" lie to current syntax if needed; while keeping
+  //   the old line as a comment.
   QStringList outputLines;
   QStringList notes;
 
@@ -305,6 +309,11 @@ bool convertLegacyInputText(const QString& inputText, QString& outputText,
       outputLines.append(commentedLine(line.original));
       outputLines.append("queueInterface = none");
       appendNote(notes, "converted legacy queueInterface = local to queueInterface = none");
+    } else if (line.lowerKey == "jobfailaction" &&
+        line.value.trimmed().compare("kill", Qt::CaseInsensitive) == 0) {
+      outputLines.append(commentedLine(line.original));
+      outputLines.append("jobfailaction = fail");
+      appendNote(notes, "converted legacy jobfailaction = kill to jobfailaction = fail");
     } else if (line.lowerKey == "localqueue") {
       outputLines.append(commentedLine(line.original));
       const bool remoteQueue = effectiveQueueInterface != "none" && !optionToBool(line.value);

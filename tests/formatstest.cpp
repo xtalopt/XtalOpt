@@ -24,7 +24,7 @@
 #include <atoms/formats/cmlformat.h>
 #include <atoms/formats/formats.h>
 #include <atoms/formats/mtpformat.h>
-#include <atoms/formats/poscarformat.h>
+#include <atoms/formats/vaspformat.h>
 #include <atoms/formats/pwscfformat.h>
 #include <atoms/formats/siestaformat.h>
 #include <atoms/formats/xyzformat.h>
@@ -129,7 +129,7 @@ void FormatsTest::readPoscar()
   std::ifstream in(rutileFileName.toStdString().c_str());
   QVERIFY(in.is_open());
 
-  QVERIFY(Atoms::PoscarFormat::read(rutile, in));
+  QVERIFY(Atoms::VaspFormat::read(rutile, in));
 
   // Our structure should have a unit cell, 6 atoms, and no bonds
   // The unit cell volume should be about 62.423
@@ -144,7 +144,7 @@ void FormatsTest::readPoscar()
   Common::Vector3 rutileAtom2Pos(1.47906, 2.29686, 2.29686);
   QVERIFY(rutile.atom(5).atomicNumber() == 22);
   QVERIFY(
-    Common::fuzzyCompare(rutile.atom(5).pos(), rutileAtom2Pos, tol));
+    Common::eq(rutile.atom(5).pos(), rutileAtom2Pos, tol));
 
   // The first atom should be O and should have fractional coordinates of
   // 0, 0.3053, 0.3053
@@ -152,7 +152,7 @@ void FormatsTest::readPoscar()
   Common::Vector3 rutileAtom3Ref = rutile.unitCell().toFractional(rutile.atom(0).pos());
   Common::Vector3 rutileAtom3PosFrac(0.0, 0.3053, 0.3053);
   QVERIFY(rutile.atom(0).atomicNumber() == 8);
-  QVERIFY(Common::fuzzyCompare(rutileAtom3Ref, rutileAtom3PosFrac, tol));
+  QVERIFY(Common::eq(rutileAtom3Ref, rutileAtom3PosFrac, tol));
 
   // Let's set rutile to be used for the write test
   m_rutile = rutile;
@@ -162,12 +162,12 @@ void FormatsTest::writePoscar()
 {
   // First, write the POSCAR file to a stringstream
   std::stringstream ss;
-  QVERIFY(Atoms::PoscarFormat::write(m_rutile, ss, m_rutile.getLocpath()));
+  QVERIFY(Atoms::VaspFormat::write(m_rutile, ss, m_rutile.getLocpath()));
 
   // Now read from it and run the same tests we tried above
   /**** Rutile ****/
   Search::Structure rutile;
-  QVERIFY(Atoms::PoscarFormat::read(rutile, ss));
+  QVERIFY(Atoms::VaspFormat::read(rutile, ss));
 
   // Our structure should have a unit cell, 6 atoms, and no bonds
   // The unit cell volume should be about 62.423
@@ -182,7 +182,7 @@ void FormatsTest::writePoscar()
   Common::Vector3 rutileAtom2Pos(1.47906, 2.29686, 2.29686);
   QVERIFY(rutile.atom(5).atomicNumber() == 22);
   QVERIFY(
-    Common::fuzzyCompare(rutile.atom(5).pos(), rutileAtom2Pos, tol));
+    Common::eq(rutile.atom(5).pos(), rutileAtom2Pos, tol));
 
   // The first atom should be O and should have fractional coordinates of
   // 0, 0.3053, 0.3053
@@ -190,7 +190,7 @@ void FormatsTest::writePoscar()
   Common::Vector3 rutileAtom3Ref = rutile.unitCell().toFractional(rutile.atom(0).pos());
   Common::Vector3 rutileAtom3PosFrac(0.0, 0.3053, 0.3053);
   QVERIFY(rutile.atom(0).atomicNumber() == 8);
-  QVERIFY(Common::fuzzyCompare(rutileAtom3Ref, rutileAtom3PosFrac, tol));
+  QVERIFY(Common::eq(rutileAtom3Ref, rutileAtom3PosFrac, tol));
 }
 
 void FormatsTest::readCifWithAtoms()
@@ -283,7 +283,7 @@ void FormatsTest::readCml()
   Common::Vector3 rutileAtom2Pos(1.47906, 2.29686, 2.29686);
   QVERIFY(rutile.atom(1).atomicNumber() == 22);
   QVERIFY(
-    Common::fuzzyCompare(rutile.atom(1).pos(), rutileAtom2Pos, tol));
+    Common::eq(rutile.atom(1).pos(), rutileAtom2Pos, tol));
 
   // The third atom should be O and should have fractional coordinates of
   // 0, 0.3053, 0.3053
@@ -291,7 +291,7 @@ void FormatsTest::readCml()
   Common::Vector3 rutileAtom3Ref = rutile.unitCell().toFractional(rutile.atom(2).pos());
   Common::Vector3 rutileAtom3PosFrac(0.0, 0.3053, 0.3053);
   QVERIFY(rutile.atom(2).atomicNumber() == 8);
-  QVERIFY(Common::fuzzyCompare(rutileAtom3Ref, rutileAtom3PosFrac, tol));
+  QVERIFY(Common::eq(rutileAtom3Ref, rutileAtom3PosFrac, tol));
 
   // Let's set rutile to be used for the write test
   m_rutile = rutile;
@@ -360,7 +360,7 @@ void FormatsTest::writeCml()
   Common::Vector3 rutileAtom2Pos(1.47906, 2.29686, 2.29686);
   QVERIFY(rutile.atom(1).atomicNumber() == 22);
   QVERIFY(
-    Common::fuzzyCompare(rutile.atom(1).pos(), rutileAtom2Pos, tol));
+    Common::eq(rutile.atom(1).pos(), rutileAtom2Pos, tol));
 
   // The third atom should be O and should have fractional coordinates of
   // 0, 0.3053, 0.3053
@@ -368,7 +368,7 @@ void FormatsTest::writeCml()
   Common::Vector3 rutileAtom3Ref = rutile.unitCell().toFractional(rutile.atom(2).pos());
   Common::Vector3 rutileAtom3PosFrac(0.0, 0.3053, 0.3053);
   QVERIFY(rutile.atom(2).atomicNumber() == 8);
-  QVERIFY(Common::fuzzyCompare(rutileAtom3Ref, rutileAtom3PosFrac, tol));
+  QVERIFY(Common::eq(rutileAtom3Ref, rutileAtom3PosFrac, tol));
 
   // Do the same thing with caffeine
   std::stringstream css;
@@ -534,14 +534,14 @@ void FormatsTest::readCastep()
   // Atoms::Atom #1 should be H and have a fractional position of
   // -0.037144, 0.000195, 0.088768
   QVERIFY(s.atom(0).atomicNumber() == 1);
-  QVERIFY(Common::fuzzyCompare(
+  QVERIFY(Common::eq(
     s.unitCell().toFractional(s.atom(0).pos()),
     Common::Vector3(-0.037144, 0.000195, 0.088768), tol));
 
   // Atoms::Atom #2 should be H and have a fractional position of
   // 0.474430, 0.498679, 0.850082
   QVERIFY(s.atom(1).atomicNumber() == 1);
-  QVERIFY(Common::fuzzyCompare(
+  QVERIFY(Common::eq(
     s.unitCell().toFractional(s.atom(1).pos()),
     Common::Vector3(0.474430, 0.498679, 0.850082), tol));
 
@@ -574,14 +574,14 @@ void FormatsTest::readGulp()
   // Atoms::Atom #2 should be Ti and have a fractional position of
   // 0.499957, 0.999999, 0.500003
   QVERIFY(s.atom(1).atomicNumber() == 22);
-  QVERIFY(Common::fuzzyCompare(
+  QVERIFY(Common::eq(
     s.unitCell().toFractional(s.atom(1).pos()),
     Common::Vector3(0.499957, 0.999999, 0.500003), tol));
 
   // Atoms::Atom #3 should be O and have a fractional position of
   // 0.624991, 0.250020, 0.874996
   QVERIFY(s.atom(2).atomicNumber() == 8);
-  QVERIFY(Common::fuzzyCompare(
+  QVERIFY(Common::eq(
     s.unitCell().toFractional(s.atom(2).pos()),
     Common::Vector3(0.624991, 0.250020, 0.874996), tol));
 
@@ -611,14 +611,14 @@ void FormatsTest::readPwscf()
   // Atoms::Atom #1 should be O and have a fractional position of
   // 0.040806225, 0.100970667, 0.003304159
   QVERIFY(s.atom(0).atomicNumber() == 8);
-  QVERIFY(Common::fuzzyCompare(
+  QVERIFY(Common::eq(
     s.unitCell().toFractional(s.atom(0).pos()),
     Common::Vector3(0.040806225, 0.100970667, 0.003304159), tol));
 
   // Atoms::Atom #2 should be O and have a fractional position of
   // 0.577212775, 0.316072333, 0.629713841
   QVERIFY(s.atom(1).atomicNumber() == 8);
-  QVERIFY(Common::fuzzyCompare(
+  QVERIFY(Common::eq(
     s.unitCell().toFractional(s.atom(1).pos()),
     Common::Vector3(0.577212775, 0.316072333, 0.629713841), tol));
 
@@ -654,14 +654,14 @@ void FormatsTest::readSiesta()
   // Atoms::Atom #2 should be Ti and have a fractional position of
   // 0.40338285, 0.38896410, 0.75921162
   QVERIFY(s.atom(1).atomicNumber() == 22);
-  QVERIFY(Common::fuzzyCompare(
+  QVERIFY(Common::eq(
     s.unitCell().toFractional(s.atom(1).pos()),
     Common::Vector3(0.40338285, 0.38896410, 0.75921162), tol));
 
   // Atoms::Atom #3 should be O and have a fractional position of
   // 0.38568921, 0.74679127, 0.21473350
   QVERIFY(s.atom(2).atomicNumber() == 8);
-  QVERIFY(Common::fuzzyCompare(
+  QVERIFY(Common::eq(
     s.unitCell().toFractional(s.atom(2).pos()),
     Common::Vector3(0.38568921, 0.74679127, 0.21473350), tol));
 
@@ -691,7 +691,7 @@ void FormatsTest::readVasp()
   // Atoms::Atom #2 should be H and have a fractional position of
   // 0.9317195263978, 0.20419595775, 0.4923304223199
   QVERIFY(s.atom(1).atomicNumber() == 1);
-  QVERIFY(Common::fuzzyCompare(
+  QVERIFY(Common::eq(
     s.unitCell().toFractional(s.atom(1).pos()),
     Common::Vector3(0.9317195263978, 0.20419595775, 0.4923304223199),
     tol));
@@ -699,7 +699,7 @@ void FormatsTest::readVasp()
   // Atoms::Atom #3 should be O and have a fractional position of
   // 0.087068957523, -0.1465596214494, 0.1524183445695
   QVERIFY(s.atom(2).atomicNumber() == 8);
-  QVERIFY(Common::fuzzyCompare(
+  QVERIFY(Common::eq(
     s.unitCell().toFractional(s.atom(2).pos()),
     Common::Vector3(0.087068957523, -0.1465596214494, 0.1524183445695),
     tol));

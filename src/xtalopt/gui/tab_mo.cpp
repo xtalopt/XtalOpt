@@ -198,7 +198,6 @@ void TabMo::addObjectives()
     errorPromptWindow("Error adding objective!");
     return;
   }
-  xtalopt->rebuildDerivedSettings();
 
   updateObjectivesTable();
 

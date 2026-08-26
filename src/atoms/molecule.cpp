@@ -20,7 +20,6 @@
 #include <common/output.h>
 #include <common/numericutils.h>
 #include <common/stringutils.h>
-#include <common/compatibility/platform_compat.h>
 #include <common/compatibility/qt_compat.h>
 #include <atoms/eleminfo.h>
 
@@ -28,7 +27,6 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
-#include <limits>
 #include <map>
 #include <QStringList>
 #include <sstream>
@@ -630,6 +628,7 @@ unsigned int templateAtomCount(const MoleculeTemplate& moleculeTemplate)
   unsigned int count = 0;
   for (unsigned int i = 0; i < moleculeTemplate.orbitCount; ++i)
     count += moleculeTemplate.orbitSizes[i];
+
   return count;
 }
 
@@ -643,8 +642,10 @@ unsigned int templateOrbitSpecies(const MoleculeTemplate& moleculeTemplate, unsi
 bool templateSpeciesAtomCounts(const MoleculeTemplate& moleculeTemplate,
                                std::vector<unsigned int>& counts)
 {
-  const unsigned int speciesCount = moleculeTemplate.speciesCount == 0 ? moleculeTemplate.orbitCount
-                                       : moleculeTemplate.speciesCount;
+  const unsigned int speciesCount = moleculeTemplate.speciesCount == 0
+                                    ? moleculeTemplate.orbitCount
+                                    : moleculeTemplate.speciesCount;
+
   if (moleculeTemplate.orbitCount == 0 || moleculeTemplate.orbitCount > 3 ||
       speciesCount == 0 || speciesCount > 3) {
     return false;
@@ -657,15 +658,14 @@ bool templateSpeciesAtomCounts(const MoleculeTemplate& moleculeTemplate,
       return false;
     counts[species] += moleculeTemplate.orbitSizes[orbit];
   }
+
   return true;
 }
 
 QString speciesLabel(unsigned int species)
 {
-  const char label[2] = {
-    static_cast<char>('A' + species),
-    '\0'
-  };
+  const char label[2] = {static_cast<char>('A' + species), '\0'};
+
   return QString::fromLatin1(label);
 }
 
@@ -677,6 +677,7 @@ QString templateSpeciesPattern(const MoleculeTemplate& moleculeTemplate)
                .arg(speciesLabel(templateOrbitSpecies(moleculeTemplate, orbit)))
                .arg(moleculeTemplate.orbitSizes[orbit]);
   }
+
   return QString("[%1]").arg(parts.join(","));
 }
 
@@ -690,6 +691,7 @@ QString templateFormulaPattern(const MoleculeTemplate& moleculeTemplate)
   for (size_t i = 0; i < counts.size(); ++i)
     formula += QString("%1%2").arg(speciesLabel(static_cast<unsigned int>(i)))
                               .arg(counts[i]);
+
   return formula;
 }
 
@@ -753,11 +755,13 @@ void findTemplates(const std::map<unsigned int, unsigned int>& composition,
 QString compositionString(const std::map<unsigned int, unsigned int>& composition)
 {
   QString text;
+
   for (std::map<unsigned int, unsigned int>::const_iterator it = composition.begin();
        it != composition.end(); ++it) {
     text += QString::fromStdString(ElementInfo::getAtomicSymbol(it->first));
     text += QString::number(it->second);
   }
+
   return text;
 }
 
@@ -777,6 +781,7 @@ bool readCompositionString(const std::string& formula,
     error = QString("Invalid molecule composition: %1").arg(text);
     return false;
   }
+
   return true;
 }
 
@@ -799,7 +804,9 @@ QString libmsymError(msym_error_t error)
     return QString::fromLocal8Bit(details);
 
   const char* errorString = msymErrorString(error);
-  return errorString && errorString[0] != '\0'
+
+  return errorString &&
+         errorString[0] != '\0'
            ? QString::fromLocal8Bit(errorString)
            : QString("Unknown libmsym error");
 }
@@ -811,7 +818,7 @@ double covalentScaleFactor(const std::vector<msym_element_t>& elements, double s
 
   double maxPairScale = 0.0;
   for (size_t i = 0; i < elements.size(); ++i) {
-    double nearestDistance = std::numeric_limits<double>::infinity();
+    double nearestDistance = PINF;
     std::vector<size_t> nearestNeighbors;
     const Common::Vector3 posI(elements[i].v[0], elements[i].v[1], elements[i].v[2]);
 
@@ -833,7 +840,7 @@ double covalentScaleFactor(const std::vector<msym_element_t>& elements, double s
       }
     }
 
-    if (!GS_ISFINITE(nearestDistance))
+    if (nearestDistance == PINF)
       continue;
 
     for (size_t neighborIndex = 0; neighborIndex < nearestNeighbors.size(); ++neighborIndex) {
@@ -998,6 +1005,7 @@ bool buildMoleculeFromTemplate(const std::map<unsigned int, unsigned int>& compo
   error = QString("Molecule template '%1' does not match composition: %2")
             .arg(selectedTemplate)
             .arg(compositionString(composition));
+
   return false;
 }
 
@@ -1067,6 +1075,7 @@ bool buildMoleculeFromCartesianString(const std::string& text, Geometry& molecul
 
   molecule.setAtoms(moleculeAtoms);
   Q_ASSERT(molecule.is0D());
+
   return true;
 }
 
@@ -1089,6 +1098,7 @@ std::vector<MoleculeTemplateInfo> moleculeTemplatesForFormula(const std::string&
     setTemplateInfo(info, *moleculeTemplate);
     infos.push_back(info);
   }
+
   return infos;
 }
 
@@ -1102,6 +1112,7 @@ std::vector<MoleculeTemplateInfo> moleculeTemplatesCatalog()
     setTemplateInfo(info, moleculeTemplates[i]);
     templates.push_back(info);
   }
+
   return templates;
 }
 
@@ -1123,19 +1134,19 @@ QString moleculeTemplateCatalogText()
 
   // Set the column order.
   out << QString("%1 %2  %3  %4  %5\n")
-           .arg("Formula", -formulaWidth)
-           .arg("Template", -templateWidth)
-           .arg("Species", -speciesWidth)
-           .arg("PG", -3)
-           .arg("Description");
+         .arg("Formula", -formulaWidth)
+         .arg("Template", -templateWidth)
+         .arg("Species", -speciesWidth)
+         .arg("PG", -3)
+         .arg("Description");
   out << QString(templateWidth + 3 + speciesWidth + formulaWidth + 18, QChar('-')) << "\n";
   for (size_t i = 0; i < templates.size(); ++i) {
     out << QString("%1 %2  %3  %4  %5\n")
-             .arg(templates[i].formulaPattern, -formulaWidth)
-             .arg(templates[i].name, -templateWidth)
-             .arg(templates[i].speciesPattern, -speciesWidth)
-             .arg(templates[i].pointGroup, -3)
-             .arg(templates[i].description);
+           .arg(templates[i].formulaPattern, -formulaWidth)
+           .arg(templates[i].name, -templateWidth)
+           .arg(templates[i].speciesPattern, -speciesWidth)
+           .arg(templates[i].pointGroup, -3)
+           .arg(templates[i].description);
   }
 
   return text;

@@ -117,14 +117,14 @@ bool parseLaunchOptions(int argc, char* argv[], LaunchOptions& options)
   if (!ap_parse(parser.get(), argc, argv)) {
     const char* error = ap_get_parse_error(parser.get());
     options.error = error && error[0] != '\0'
-                      ? QString::fromLocal8Bit(error)
-                      : "Failed to parse command-line options.";
+                    ? QString::fromLocal8Bit(error)
+                    : "Failed to parse command-line options.";
     return false;
   }
 
   if (ap_has_args(parser.get())) {
     options.error = QString("Unknown option: %1")
-                      .arg(QString::fromLocal8Bit(ap_get_arg_at_index(parser.get(), 0)));
+                    .arg(QString::fromLocal8Bit(ap_get_arg_at_index(parser.get(), 0)));
     return false;
   }
 
@@ -387,7 +387,7 @@ bool startPlotRun(XtalOpt& xtalopt, std::unique_ptr<XtalOptDialog>& dialog, cons
 
   const QString stateFile = findStateFileInDataDir(QDir(dataDir));
   if (stateFile.isEmpty()) {
-    QMessageBox::critical(dialog.get(), "XtalOpt Plot",
+    QMessageBox::critical(dialog.get(), "XtalOpt (Plot)",
                           QString("No xtalopt.state file was found in:\n%1").arg(dataDir));
     return false;
   }
@@ -402,9 +402,9 @@ bool startPlotRun(XtalOpt& xtalopt, std::unique_ptr<XtalOptDialog>& dialog, cons
   Common::message("Loading xtals for plotting...");
   if (!xtalopt.resumeSearch(stateFile)) {
     Common::removeOutputHandler(outHandlerId);
-    QMessageBox::critical(dialog.get(), "XtalOpt Plot", startupError.isEmpty()
-                            ? QString("Failed to load XtalOpt plot data from:\n%1").arg(dataDir)
-                            : startupError);
+    QMessageBox::critical(dialog.get(), "XtalOpt (Plot)", startupError.isEmpty()
+                          ? QString("Failed to load XtalOpt plot data from:\n%1").arg(dataDir)
+                          : startupError);
     return false;
   }
   Common::removeOutputHandler(outHandlerId);

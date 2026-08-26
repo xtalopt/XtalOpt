@@ -156,6 +156,7 @@ bool BatchQueueInterface::startJob(Structure* s)
     tag = s->getTag();
   }
 
+  // Submit either the script name or its stdin, depending on the in-use scheduler.
   QString command = submitCommand();
   QString stdinFile;
   if (submitScriptOnStdin())
@@ -166,6 +167,8 @@ bool BatchQueueInterface::startJob(Structure* s)
   if (!result.succeeded())
     return false;
 
+  // A successful submission without a usable ID stays submitted. This avoids
+  //   resubmitting a job that may already be running.
   bool ok = false;
   const unsigned int jobId = parseJobId(result.stdoutText, &ok);
   if (!ok || jobId == 0) {
@@ -176,11 +179,12 @@ bool BatchQueueInterface::startJob(Structure* s)
     }
     Common::warning(tr("The scheduler accepted structure %1, but its job ID "
                        "could not be read. Inspect the scheduler before "
-                       "restarting or killing this structure.")
+                       "restarting or stopping this structure.")
                       .arg(tag));
     return true;
   }
 
+  // Record the ID before refreshing the scheduler cache.
   {
     QWriteLocker locker(&s->lock());
     s->setJobID(jobId);
@@ -252,6 +256,8 @@ QueueInterface::QueueStatus BatchQueueInterface::getStatus(Structure* s) const
   if (!jobId && state == Structure::Submitted)
     return QueueInterface::Pending;
 
+  // Routine check is done using cache to avoid repeated call during
+  //   a QueueManager update.
   const QStringList queueData = queueList();
 
   if (queueData.size() == 1 && queueData[0].compare("CommError") == 0)
@@ -260,6 +266,8 @@ QueueInterface::QueueStatus BatchQueueInterface::getStatus(Structure* s) const
   QString rawStatus;
   const QueueInterface::QueueStatus queueStatus = parseQueueStatus(queueData, jobId, &rawStatus);
 
+  // Submission might finish before its job ID reaches the structure. An output
+  //   file will tell if job is still-pending or already started.
   if (state == Structure::Submitted) {
     if (queueStatus == QueueInterface::Unknown && rawStatus.isEmpty()) {
       bool exists;
@@ -286,6 +294,8 @@ QueueInterface::QueueStatus BatchQueueInterface::getStatus(Structure* s) const
 
 QueueInterface::QueueStatus BatchQueueInterface::statusFromMissingQueueEntry(Structure* s) const
 {
+  // A missing status entry is not enough to assume a job is failed. We also
+  //   check output files to decide if it finished ok or needs recovery.
   Optimizer* optimizer = getCurrentOptimizer(s);
   if (!optimizer)
     return QueueInterface::CommunicationError;
@@ -342,6 +352,8 @@ bool BatchQueueInterface::queueListCommandSucceeded(
 
 QStringList BatchQueueInterface::queueList(bool forced) const
 {
+  // Typically we reuse a recent list for all structures in one update; but allow callers
+  //   to force a refresh if handling an unknown submission or cancellation case.
   int refreshInterval = 0;
   {
     QReadLocker runtimeLocker(m_search->runtimeSettingsLock());
@@ -358,6 +370,8 @@ QStringList BatchQueueInterface::queueList(bool forced) const
     oldTimeStamp = m_queueTimeStamp;
   }
 
+  // Only one thread can refresh at a time; so check the latest list of produced
+  //   by another thread.
   QWriteLocker queueLocker(&m_queueMutex);
   if (m_queueTimeStamp != oldTimeStamp) {
     queueLocker.unlock();
@@ -432,6 +446,8 @@ bool BatchQueueInterface::remoteQueueConfigurationReady(QString* err) const
 bool BatchQueueInterface::writeFiles(
   Structure* s, const QHash<QString, QString>& fileHash) const
 {
+  // Complete set of input files are first written to local work dir
+  //   for both local and remote runs.
   if (!writeHashToLocalDir(s, fileHash))
     return false;
 
@@ -444,6 +460,7 @@ bool BatchQueueInterface::writeFiles(
   if (!m_search->isRemoteQueue())
     return true;
 
+  // Cleanup remote working dir before files are copied.
   SSHConnectionLocker connectionLocker(m_search);
   SSHConnection* ssh = connectionLocker.connection();
   if (ssh == nullptr)
@@ -479,7 +496,7 @@ QueueInterface::CommandResult BatchQueueInterface::runACommand(
 QueueInterface::CommandResult BatchQueueInterface::runBatchCommand(const QString& workdir, const QString& command,
                                                                    const QString& stdinFile, int timeoutMs) const
 {
-  // Run a batch command.
+  // Run a batch command (local or remote) and return the results for error/output handling.
   CommandResult result;
 
   // Local batch commands run directly in the local working directory.
@@ -530,6 +547,7 @@ QueueInterface::CommandResult BatchQueueInterface::runBatchCommand(const QString
 
     return result;
   }
+
   SSHConnectionLocker connectionLocker(m_search);
   SSHConnection* ssh = connectionLocker.connection();
   if (ssh == nullptr)

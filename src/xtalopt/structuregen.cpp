@@ -1971,7 +1971,7 @@ bool XtalOpt::checkXtal(Xtal* xtal)
   // another
   for (size_t i = 0; i < xtal->numAtoms(); ++i) {
     for (size_t j = i + 1; j < xtal->numAtoms(); ++j) {
-      if (fuzzyCompare(xtal->atom(i).pos(), xtal->atom(j).pos())) {
+      if (eq(xtal->atom(i).pos(), xtal->atom(j).pos())) {
         Common::debug(QString("Discarding structure %1: two atoms are basically on top "
                       "of one another. This can confuse some optimizers.")
                 .arg(xtal->getTag()));

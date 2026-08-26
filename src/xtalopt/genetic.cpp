@@ -42,44 +42,30 @@ QString listToString(const QList<T>& values)
   return "[" + strings.join(", ") + "]";
 }
 
-bool transformCellAndCoordinates(Common::Matrix3& cell,
-                                 QList<Common::Vector3>& fractionalCoordinates,
-                                 bool standardOrientation = false)
+// Pick which axis is cut first, then select the other two randomly.
+QList<int> randomAxisOrder()
 {
   QList<int> axes;
   axes.append(static_cast<int>(floor(Common::getRandDouble() * 3)));
-  if (axes.at(0) == 3)
+  if (axes.at(0) >= 3)
     axes[0] = 2;
-  switch (axes.at(0)) {
-    case 0:
-      if (Common::getRandDouble() > 0.5) {
-        axes.append(1);
-        axes.append(2);
-      } else {
-        axes.append(2);
-        axes.append(1);
-      }
-      break;
-    case 1:
-      if (Common::getRandDouble() > 0.5) {
-        axes.append(0);
-        axes.append(2);
-      } else {
-        axes.append(2);
-        axes.append(0);
-      }
-      break;
-    case 2:
-      if (Common::getRandDouble() > 0.5) {
-        axes.append(0);
-        axes.append(1);
-      } else {
-        axes.append(1);
-        axes.append(0);
-      }
-      break;
+  for (int i = 0; i < 3; ++i) {
+    if (i != axes.at(0))
+      axes.append(i);
   }
+  if (Common::getRandDouble() <= 0.5) {
+    const int tmp = axes[1];
+    axes[1] = axes[2];
+    axes[2] = tmp;
+  }
+  return axes;
+}
 
+bool transformCellAndCoordinates(Common::Matrix3& cell,
+                                 QList<Common::Vector3>& fractionalCoordinates,
+                                 const QList<int>& axes,
+                                 bool standardOrientation = false)
+{
   Common::Matrix3 transform = Common::Matrix3::Zero();
   for (int i = 0; i < 3; ++i) {
     const int sign = Common::getRandDouble() < 0.5 ? -1 : 1;
@@ -99,7 +85,21 @@ bool transformCellAndCoordinates(Common::Matrix3& cell,
   if (!standardOrientation)
     return true;
 
-  return Atoms::Geometry::rotateCellAndCoordsToStandardOrientation(cell, fractionalCoordinates, true);
+  if (!Atoms::Geometry::rotateCellAndCoordsToStandardOrientation(cell, fractionalCoordinates, true))
+    return false;
+
+  // Shift the atoms randomly along each axis and wrap them back into the
+  //   cell, so the cut does not always fall at the same place.
+  const double shiftA = Common::getRandDouble();
+  const double shiftB = Common::getRandDouble();
+  const double shiftC = Common::getRandDouble();
+  for (auto& fc : fractionalCoordinates) {
+    fc[0] = fmod(fc[0] + shiftA + 100, 1);
+    fc[1] = fmod(fc[1] + shiftB + 100, 1);
+    fc[2] = fmod(fc[2] + shiftC + 100, 1);
+  }
+
+  return true;
 }
 
 bool averageCellComponents(const Common::Matrix3& cell1, const Common::Matrix3& cell2,
@@ -110,7 +110,7 @@ bool averageCellComponents(const Common::Matrix3& cell1, const Common::Matrix3& 
     for (uint column = 0; column < 3; ++column) {
       result(row, column) =
         cell1(row, column) * weight + cell2(row, column) * (1.0 - weight);
-      if (!std::isfinite(result(row, column)))
+      if (!GS_ISFINITE(result(row, column)))
         return false;
     }
   }
@@ -130,12 +130,12 @@ bool averageCellMetrics(const Common::Matrix3& cell1, const Common::Matrix3& cel
   const Common::Matrix3 metric = weight * metric1 + (1.0 - weight) * metric2;
   Common::Matrix3 result = Common::Matrix3::Zero();
   const double scale = std::max(metric(0, 0), std::max(metric(1, 1), metric(2, 2)));
-  if (!std::isfinite(scale) || scale <= 0.0)
+  if (!GS_ISFINITE(scale) || scale <= 0.0)
     return false;
   const double tolerance = ZERO12 * scale;
 
   double diagonal = metric(0, 0);
-  if (!std::isfinite(diagonal) || diagonal <= tolerance)
+  if (!GS_ISFINITE(diagonal) || diagonal <= tolerance)
     return false;
   result(0, 0) = std::sqrt(diagonal);
 
@@ -143,7 +143,7 @@ bool averageCellMetrics(const Common::Matrix3& cell1, const Common::Matrix3& cel
   result(2, 0) = metric(2, 0) / result(0, 0);
 
   diagonal = metric(1, 1) - result(1, 0) * result(1, 0);
-  if (!std::isfinite(diagonal) || diagonal <= tolerance)
+  if (!GS_ISFINITE(diagonal) || diagonal <= tolerance)
     return false;
   result(1, 1) = std::sqrt(diagonal);
 
@@ -152,7 +152,7 @@ bool averageCellMetrics(const Common::Matrix3& cell1, const Common::Matrix3& cel
 
   diagonal = metric(2, 2) - result(2, 0) * result(2, 0) -
              result(2, 1) * result(2, 1);
-  if (!std::isfinite(diagonal) || diagonal <= tolerance)
+  if (!GS_ISFINITE(diagonal) || diagonal <= tolerance)
     return false;
   result(2, 2) = std::sqrt(diagonal);
 
@@ -327,7 +327,7 @@ void ripple(Xtal* xtal, double rho, uint eta, uint mu)
 
   // Get random direction to shift atoms (x=0, y=1, z=2)
   int shiftAxis = 3, axis1 = 0, axis2 = 0;
-  while (shiftAxis == 3)
+  while (shiftAxis >= 3)
     shiftAxis = static_cast<uint>(Common::getRandDouble() * 3);
   switch (shiftAxis) {
     case 0:
@@ -413,19 +413,6 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>&
   // Save the reference chemical system (i.e., full list of symbols)
   QList<QString> refSymbols = compa[0].getCompositionSymbols();
 
-  //
-  // Random Assignments
-
-  // Shift values = s_n_m:
-  //  n = xtal (1,2)
-  //  m = axes (1 = a_ch; 2,3 = secondary axes)
-  double s_1_1, s_1_2, s_1_3, s_2_1, s_2_2, s_2_3;
-  s_1_1 = Common::getRandDouble();
-  s_2_1 = Common::getRandDouble();
-  s_1_2 = Common::getRandDouble();
-  s_2_2 = Common::getRandDouble();
-  s_1_3 = Common::getRandDouble();
-  s_2_3 = Common::getRandDouble();
   // Get parents info: cells, lists of atoms, and fractional coordinates
   Common::Matrix3 cell1;
   QList<uint> xtalCounts1;
@@ -471,35 +458,15 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>&
     tag2 = xtal2->getTag();
   }
 
-  // Transform cells and atoms (reflect / rot)
-  if (!transformCellAndCoordinates(cell1, fracCoordsList1, true) ||
-      !transformCellAndCoordinates(cell2, fracCoordsList2, true))
+  // Transform cells and atoms (relabel and orient axes, shift and wrap atoms)
+  // Each parent is cut using its own random axis order.
+  const QList<int> axes1 = randomAxisOrder();
+  if (!transformCellAndCoordinates(cell1, fracCoordsList1, axes1, true))
     return nullptr;
 
-  // Shift coordinates:
-  for (auto& fc : fracCoordsList1) {
-    // <QList>[<QList index>][<0=x,1=y,2=z axes>]
-    fc[0] += s_1_1;
-    fc[1] += s_1_2;
-    fc[2] += s_1_3;
-  }
-  for (auto& fc : fracCoordsList2) {
-    fc[0] += s_2_1;
-    fc[1] += s_2_2;
-    fc[2] += s_2_3;
-  }
-
-  // Wrap coordinates
-  for (auto& fc : fracCoordsList1) {
-    fc[0] = fmod(fc[0] + 100, 1);
-    fc[1] = fmod(fc[1] + 100, 1);
-    fc[2] = fmod(fc[2] + 100, 1);
-  }
-  for (auto& fc : fracCoordsList2) {
-    fc[0] = fmod(fc[0] + 100, 1);
-    fc[1] = fmod(fc[1] + 100, 1);
-    fc[2] = fmod(fc[2] + 100, 1);
-  }
+  const QList<int> axes2 = randomAxisOrder();
+  if (!transformCellAndCoordinates(cell2, fracCoordsList2, axes2, true))
+    return nullptr;
 
   //
   // Build new xtal
@@ -561,8 +528,12 @@ Xtal* XtalOptGenetic::crossover(Xtal* xtal1, Xtal* xtal2, const QList<CellComp>&
   percent2  = 100.0 - percent1;
 
   if (verbose) {
-    QString tmp_par = QString("   %1: ribbon markers %2% %3% : ")
+    QString tmp_par = QString("   %1: %2 + %3 cut on axes %4,%5 : ribbon markers %6% %7% : ")
                       .arg(__func__)
+                      .arg(tag1)
+                      .arg(tag2)
+                      .arg(axes1.at(0))
+                      .arg(axes2.at(0))
                       .arg(percent1, 5, 'f', 1)
                       .arg(percent2, 5, 'f', 1);
     for (int i = 0; i < numPoints; i++)

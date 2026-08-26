@@ -24,7 +24,7 @@
 
 #include <limits>
 
-// Convert XtalOpt v14 structure states.
+// Convert XtalOpt v4 structure states.
 
 namespace XtalOpt {
 using Search::Structure;
@@ -98,7 +98,7 @@ bool currentStateFromVersion14Status(int statusValue, Structure::State& state)
       state = Structure::Submitted;
       break;
     case Version14Killed:
-      state = Structure::Killed;
+      state = Structure::Failed;
       break;
     case Version14Removed:
       state = Structure::Removed;
@@ -197,7 +197,7 @@ bool convertAndReadStructureState(Search::Structure& structure,
   structure.setStatus(currentState);
 
   // In v15, the os_dismiss is not in active use; it is now equivalent
-  //   to a successful objective calcs and a dismissed constraint calc.
+  //   to a successful objective calcs followed by a dismissed constraint calc.
   if (structure.getStrucObjState() == Structure::Os_Dismiss) {
     structure.setStrucObjState(Structure::Os_Retain);
     structure.setStrucConstraintState(Structure::Cs_Dismiss);

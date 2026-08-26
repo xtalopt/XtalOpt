@@ -487,6 +487,7 @@ QString symOpText(const SymOp& op)
 
 bool CifFormat::read(Geometry& s, const QString& filename)
 {
+  // Read the complete data block first; some entries can refer to subsequent fields.
   QFile file(filename);
   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
     Common::error(QString("CIF file, %1, could not be opened!").arg(filename));
@@ -509,6 +510,7 @@ bool CifFormat::read(Geometry& s, const QString& filename)
     return false;
   }
 
+  // Read the scalar values, atom sites, and symmetry operations (if any).
   std::map<QString, QString> values;
   std::vector<CifAtomSite> sites;
   std::vector<QString> explicitSymOps;
@@ -619,6 +621,7 @@ bool CifFormat::read(Geometry& s, const QString& filename)
     ++i;
   }
 
+  // A periodic cell and at least one atom site are required for expanding the cell.
   bool okA = false, okB = false, okC = false;
   bool okAlpha = false, okBeta = false, okGamma = false;
   const double a = parseCifDouble(values["_cell_length_a"], &okA);
@@ -647,6 +650,7 @@ bool CifFormat::read(Geometry& s, const QString& filename)
   else if (values.count("_chemical_formula_structural"))
     formulaCounts = parseFormulaCounts(values["_chemical_formula_structural"]);
 
+  // Use symmetry ops if given; if not try to recover them from space group information.
   std::vector<SymOp> operations;
   for (const QString& opText : explicitSymOps) {
     SymOp op;
@@ -685,6 +689,8 @@ bool CifFormat::read(Geometry& s, const QString& filename)
     }
   }
 
+  // Expand the given atom sites into full conventional cell.
+  // A duplicate position produced by an atom is kept only once!
   std::vector<AtomKey> expandedAtoms;
   for (const CifAtomSite& site : sites) {
     const unsigned short atomicNumber =
@@ -715,6 +721,7 @@ bool CifFormat::read(Geometry& s, const QString& filename)
     return false;
   }
 
+  // Sanity check: If formula is given, use it to verify the constructed cell.
   if (!formulaCounts.empty()) {
     const std::map<unsigned short, int> finalCounts = atomCounts(expandedAtoms);
     bool zOk = false;
@@ -735,6 +742,7 @@ bool CifFormat::read(Geometry& s, const QString& filename)
     }
   }
 
+  // Sanity check: if symmetry was given, verify the produced cell against it.
   {
     int declaredNumber = 0;
     bool okNumber = false;
@@ -789,6 +797,7 @@ bool CifFormat::read(Geometry& s, const QString& filename)
     }
   }
 
+  // Set up the output Geometry.
   std::vector<Atom> atoms;
   atoms.reserve(expandedAtoms.size());
   for (const AtomKey& key : expandedAtoms)
@@ -807,12 +816,14 @@ bool CifFormat::write(const Geometry& s, std::ostream& out, double symprec)
     return false;
   }
 
+  // We write a conventional cell for consistent symmetry ops and unique sites.
   Geometry conventional(s);
   if (!conventional.standardizeToConventionalCell(symprec)) {
     Common::error("CIF writer failed to standardize the structure.");
     return false;
   }
 
+  // Prepare spglib input info.
   double lattice[3][3];
   cellToColumnLatticeArray(conventional.unitCell().cellMatrix(), lattice);
 
@@ -835,6 +846,7 @@ bool CifFormat::write(const Geometry& s, std::ostream& out, double symprec)
     return false;
   }
 
+  // One per each equivalent atom set is written with its multiplicity.
   std::map<int, int> representatives;
   std::map<int, int> multiplicities;
   for (int i = 0; i < dataset->n_atoms; ++i) {
@@ -844,6 +856,7 @@ bool CifFormat::write(const Geometry& s, std::ostream& out, double symprec)
       representatives[equivalent] = i;
   }
 
+  // Start the output with general cell and space group information.
   out << "data_generated\n";
   out << "_chemical_formula_sum           '"
       << conventional.getChemicalFormula().toStdString() << "'\n";
@@ -865,6 +878,7 @@ bool CifFormat::write(const Geometry& s, std::ostream& out, double symprec)
   if (groupType.number != 0)
     out << "_space_group_name_Hall         '" << groupType.hall_symbol << "'\n\n";
 
+  // Use the same operation list for the symmetry loop and the atom sites.
   const std::vector<SymOp> symmetry =
     symmetryFromDatabase(dataset->hall_number);
   if (symmetry.empty()) {
@@ -889,6 +903,8 @@ bool CifFormat::write(const Geometry& s, std::ostream& out, double symprec)
   out << "_atom_site_occupancy\n";
   out << "_atom_site_type_symbol\n";
 
+  // Write symmetry-unique sites. Labels are counted by element to keep
+  //   the generated CIF easy to read.
   const char wyckoffLetters[] = "abcdefghijklmnopqrstuvwxyz";
   std::map<QString, int> labelCounts;
   for (const auto& representative : representatives) {

@@ -40,9 +40,6 @@ static constexpr double ZERO04 = 1.0e-4;
 static constexpr double ZERO03 = 1.0e-3;
 static constexpr double ZERO02 = 1.0e-2;
 
-// Comparison tolerance
-static constexpr double STABLE_TOL = 1.0e-5;
-
 // Crystallography tolerances
 static constexpr double SPGLIB_TOL = 0.01;
 static constexpr double NIGGLI_TOL = 0.01;

@@ -23,6 +23,7 @@
 
 #include <common/fileutils.h>
 #include <common/output.h>
+#include <common/timing.h>
 #include <common/vector.h>
 #include <common/compatibility/platform_compat.h>
 #include <atoms/eleminfo.h>
@@ -120,6 +121,9 @@ bool checkPercentFileKeyword(const QString& entry, const QString& keyword,
 
 bool checkTemplateFiles(const QString& text, const QString& templateName, QString* errorMessage)
 {
+  // Note: here, intentionally, we don't check if template files are empty! This is to
+  //   allow user easily use an implemented optimizer as a format to run their own
+  //   external code.
   const QStringList parts = text.split('%');
   const QString ownerDescription = QString("Template %1").arg(templateName);
   for (const auto& part : parts) {
@@ -129,27 +133,6 @@ bool checkTemplateFiles(const QString& text, const QString& templateName, QStrin
       return false;
   }
   return true;
-}
-
-// Check an objective or constraint output file name. It must be a simple
-// relative name so the output stays in the structure directory.
-bool isSafeOutputFilename(const QString& filename)
-{
-  const QString trimmed = filename.trimmed();
-  if (trimmed.isEmpty() || trimmed != filename)
-    return false;
-  if (trimmed == "." || trimmed == "..")
-    return false;
-  if (trimmed.contains('/') || trimmed.contains('\\'))
-    return false;
-  if (trimmed.contains(QChar::fromLatin1('\0')))
-    return false;
-
-  // These are filenames used by the code itself in every structure directory
-  if (trimmed.compare("structure.state", Qt::CaseInsensitive) == 0 ||
-      trimmed.compare("output.POSCAR", Qt::CaseInsensitive) == 0)
-    return false;
-  return QFileInfo(trimmed).fileName() == trimmed;
 }
 
 } // namespace
@@ -186,8 +169,8 @@ XtalOpt::XtalOpt(QObject* parent)
   // Connect the engine signals handled by XtalOpt (similarity check is handled different!)
   connect(queue(), &QueueManager::structureFinished,
           this, &XtalOpt::requestStructureEvaluation);
-  connect(queue(), &QueueManager::structureKilled,
-          this, &XtalOpt::requestEvaluationAfterKill);
+  connect(queue(), &QueueManager::structureFailed,
+          this, &XtalOpt::requestEvaluationAfterFail);
   connect(this, &SearchBase::structureStateChanged,
           this,
           static_cast<void (XtalOpt::*)(Search::Structure*)>(
@@ -332,7 +315,7 @@ void XtalOpt::requestStructureStateFileSave(Search::Structure* structure)
   // Objc/cons calculation statuses don't need a save operation
   if (structure) {
     QReadLocker locker(&structure->lock());
-    if (structure->isPostOptimizationCalculationState())
+    if (structure->isScriptCalculationState())
       return;
   }
 
@@ -427,12 +410,12 @@ void XtalOpt::requestFullEvaluation()
   requestStructureEvaluationUpdate();
 }
 
-void XtalOpt::requestEvaluationAfterKill(Search::Structure* structure)
+void XtalOpt::requestEvaluationAfterFail(Search::Structure* structure)
 {
   if (!structure)
     return;
 
-  // Only the kill of an optimized structure (Removed) can move change hull.
+  // Only failing of an optimized structure (Removed) can move change hull.
   bool wasOptimized = false;
   {
     QReadLocker structureLocker(&structure->lock());
@@ -548,6 +531,8 @@ bool XtalOpt::runSearch(const QString& stateFile, bool* onlyMainStateWasLoaded)
 {
   const bool restoring = !stateFile.isEmpty();
   const bool readOnly = isReadOnly();
+  if (!readOnly)
+    Common::timingActivated() = true;
   bool stateWasConverted = false;
   QString loadedStateFile = stateFile;
   QStringList xtalDirs;
@@ -850,96 +835,6 @@ bool XtalOpt::checkOptimizerAndQueue(const QString& readinessAction, QString* er
   return true;
 }
 
-// This is bering used to check an script (ie, objectives and constraints)
-//   output collides with other ones (they are written in the same folder!)
-bool XtalOpt::outputFilenameInUse(const QString& out) const
-{
-  for (int i = 0; i < getObjectivesNum(); ++i)
-    if (!getObjectivesOut(i).isEmpty() && getObjectivesOut(i).compare(out, Qt::CaseInsensitive) == 0)
-      return true;
-
-  for (int i = 0; i < getConstraintsNum(); ++i)
-    if (getConstraintOut(i).compare(out, Qt::CaseInsensitive) == 0)
-      return true;
-
-  return false;
-}
-
-bool XtalOpt::validateUserObjectiveDefinition(ObjType objtyp, const QString& objexe,
-                                              const QString& objout, double objwgt,
-                                              QString* errorMessage) const
-{
-  if (objtyp != ObjType::Ot_Min && objtyp != ObjType::Ot_Max) {
-    if (errorMessage)
-      *errorMessage = "objective type is invalid";
-    return false;
-  }
-
-  if (objexe.trimmed().isEmpty()) {
-    if (errorMessage)
-      *errorMessage = "objective executable path cannot be empty";
-    return false;
-  }
-
-  if (objout.trimmed().isEmpty()) {
-    if (errorMessage)
-      *errorMessage = "objective output filename cannot be empty";
-    return false;
-  }
-
-  if (!isSafeOutputFilename(objout)) {
-    if (errorMessage)
-      *errorMessage = "objective output filename must be a simple relative filename "
-                      "that the code does not write itself";
-    return false;
-  }
-
-  if (outputFilenameInUse(objout)) {
-    if (errorMessage)
-      *errorMessage = "objective output filename is already in use";
-    return false;
-  }
-
-  if (!GS_ISFINITE(objwgt) || objwgt < 0.0 || objwgt > 1.0) {
-    if (errorMessage)
-      *errorMessage = "objective weight should be a finite number in [0,1]";
-    return false;
-  }
-
-  return true;
-}
-
-bool XtalOpt::validateConstraintDefinition(const QString& exe, const QString& out,
-                                           QString* errorMessage) const
-{
-  if (exe.trimmed().isEmpty()) {
-    if (errorMessage)
-      *errorMessage = "constraint executable path cannot be empty";
-    return false;
-  }
-
-  if (out.trimmed().isEmpty()) {
-    if (errorMessage)
-      *errorMessage = "constraint output filename cannot be empty";
-    return false;
-  }
-
-  if (!isSafeOutputFilename(out)) {
-    if (errorMessage)
-      *errorMessage = "constraint output filename must be a simple relative filename "
-                      "that the code does not write itself";
-    return false;
-  }
-
-  if (outputFilenameInUse(out)) {
-    if (errorMessage)
-      *errorMessage = "constraint output filename is already in use";
-    return false;
-  }
-
-  return true;
-}
-
 int XtalOpt::getUserObjectivesNum() const
 {
   const int userObjectives = getObjectivesNum() - getFirstUserObjectiveIndex();
@@ -967,7 +862,8 @@ bool XtalOpt::removeUserObjective(int index)
     return false;
 
   SearchBase::removeObjective(index);
-  rebuildDerivedSettings();
+  // The objectives (weights) changed; adjust the built-in weight. 
+  refreshBuiltinObjectiveWeight();
   return true;
 }
 
@@ -997,76 +893,6 @@ void XtalOpt::refreshBuiltinObjectiveWeight()
     totalUserWeight += getObjectivesWgt(getUserObjectiveIndex(userObjective));
 
   setObjectivesWgt(getBuiltinObjectiveIndex(), std::max(0.0, 1.0 - totalUserWeight));
-}
-
-QString XtalOpt::failActionText() const
-{
-  switch (getFailAction()) {
-    case Search::SearchBase::FA_DoNothing:
-      return "keepTrying";
-    case Search::SearchBase::FA_KillIt:
-      return "kill";
-    case Search::SearchBase::FA_Randomize:
-      return "replaceWithRandom";
-    case Search::SearchBase::FA_NewOffspring:
-      return "replaceWithOffspring";
-  }
-  return "unknown";
-}
-
-bool XtalOpt::setFailActionText(const QString& v)
-{
-  const QString n = v.trimmed().toLower();
-  if (n == "keeptrying")
-    setFailAction(Search::SearchBase::FA_DoNothing);
-  else if (n == "kill")
-    setFailAction(Search::SearchBase::FA_KillIt);
-  else if (n == "replacewithrandom")
-    setFailAction(Search::SearchBase::FA_Randomize);
-  else if (n == "replacewithoffspring")
-    setFailAction(Search::SearchBase::FA_NewOffspring);
-  else
-    return false;
-  return true;
-}
-
-QString XtalOpt::optimizationTypeText() const
-{
-  switch (getOptimizationType()) {
-    case Search::SearchBase::OT_Basic:
-      return "basic";
-    case Search::SearchBase::OT_Pareto:
-      return "pareto";
-  }
-  return "unknown";
-}
-
-bool XtalOpt::setOptimizationTypeText(const QString& v)
-{
-  const QString n = v.trimmed().toLower();
-  if (n == "basic")
-    setOptimizationType(Search::SearchBase::OT_Basic);
-  else if (n == "pareto")
-    setOptimizationType(Search::SearchBase::OT_Pareto);
-  else
-    return false;
-  return true;
-}
-
-QString XtalOpt::seedStructuresText() const
-{
-  return seedList().join(",");
-}
-
-void XtalOpt::setSeedStructuresText(const QString& v)
-{
-  seedList().clear();
-  const QStringList parts = v.split(',');
-  for (const QString& part : parts) {
-    const QString trimmed = part.simplified();
-    if (!trimmed.isEmpty())
-      seedList().append(trimmed);
-  }
 }
 
 } // end namespace XtalOpt

@@ -19,7 +19,7 @@
 #include <common/fileutils.h>
 #include <common/timing.h>
 #include <atoms/eleminfo.h>
-#include <atoms/formats/poscarformat.h>
+#include <atoms/formats/vaspformat.h>
 #include <atoms/formats/siestaformat.h>
 #include <search/optimizer.h>
 #include <common/output.h>
@@ -152,7 +152,7 @@ SearchBase::SearchBase(QObject* parent)
     m_contStructs(15),
     m_maxNumStructures(100),
     m_failLimit(1),
-    m_failAction(FA_KillIt),
+    m_failAction(FA_FailIt),
     m_objectivePrecision(-1),
     m_softExit(false),
     m_hardExit(false),
@@ -434,9 +434,9 @@ SearchBase::SearchBase(QObject* parent)
   }, "%cellVector3Bohr% -- Third cell vector in Bohr");
   registerKeyword("POSCAR", [](Structure* s) -> QString {
     QWriteLocker locker(&s->lock());
-    const QString poscar = Atoms::PoscarFormat::writeToString(*s, s->getLocpath());
+    const QString poscar = Atoms::VaspFormat::writeToString(*s, s->getLocpath());
     if (s->hasBonds() && s->reusePreoptBonding()) {
-      Atoms::PoscarFormat::reorderAtomsToMatchPoscar(*s);
+      Atoms::VaspFormat::reorderAtomsToMatchPoscar(*s);
       s->setPreoptBonding(s->bonds());
     }
     return poscar;
@@ -484,8 +484,6 @@ SearchBase::~SearchBase()
 void SearchBase::setReadOnly(bool v)
 {
   m_readOnly.store(v);
-  // A read-only session is only for viewing; so no timing information.
-  Common::timingSuspended() = v;
 }
 
 void SearchBase::requestStructureEvaluationUpdate()
@@ -649,7 +647,7 @@ bool SearchBase::createSSHConnections()
 
     Common::warning(tr("System SSH precheck failed: %1").arg(systemError));
     emit errorDialogRequested(tr("System SSH precheck failed:\n%1")
-                                .arg(systemError));
+                                 .arg(systemError));
 
     QString libsshError;
     const bool ok = tryLibssh(&libsshError);
@@ -669,7 +667,7 @@ bool SearchBase::createSSHConnections()
     endProgressUpdate();
     const QString error = tr("System SSH precheck failed and libssh is not "
                              "available in this build: %1")
-                            .arg(systemError);
+                             .arg(systemError);
     Common::error(error);
     emit errorDialogRequested(error);
     return false;
@@ -860,8 +858,7 @@ bool SearchBase::buildObjDataFromPool(const QList<Structure*>& structures, int o
 
     if (!hasCompleteObjectiveValues(*s)) {
       Common::error(QString("%1: structure %2 does not have a complete objective table")
-              .arg(__func__)
-              .arg(s->getTag()));
+                            .arg(__func__).arg(s->getTag()));
       objData.clear();
       strTags.clear();
       return false;
@@ -1084,9 +1081,9 @@ int SearchBase::selectTournamentParent(const QList<Structure*>& structures,
     QString outs = QString("\n   Selected (tournament) %1 from structures with rank-dist (%2)")
       .arg(structures[parent]->getTag(),7).arg(total);
     outs += QString("\n   %1   %2   %3").arg(structures[str_a]->getTag(),7)
-                .arg(strFrnt[str_a], 4).arg(strDist[str_a],10,'f',6);
+                    .arg(strFrnt[str_a], 4).arg(strDist[str_a],10,'f',6);
     outs += QString("\n   %1   %2   %3").arg(structures[str_b]->getTag(),7)
-                .arg(strFrnt[str_b], 4).arg(strDist[str_b],10,'f',6);
+                    .arg(strFrnt[str_b], 4).arg(strDist[str_b],10,'f',6);
     outs += QString("\n\n");
     Common::message(outs);
   }
@@ -1345,10 +1342,10 @@ Structure* SearchBase::selectParentStructure(size_t poolSize)
 
 #ifdef SEARCHBASE_PROBS_DEBUG
   QString outs1 = QString("\n   Unnormalized (but sorted and trimmed) probs list is:\n"
-                         "    structure : energetics : probs\n");
+                          "    structure : energetics : probs\n");
   for (const auto& elem: probs) {
     outs1 += QString("      %1 : %3 : %4\n").arg(structures[elem.first]->getTag(),7)
-      .arg(objData[elem.first][0],0,'f',6).arg(elem.second,0,'f',6);
+                     .arg(objData[elem.first][0],0,'f',6).arg(elem.second,0,'f',6);
   }
   Common::debug(outs1);
 #endif
@@ -1385,7 +1382,7 @@ Structure* SearchBase::selectParentStructure(size_t poolSize)
                   "    structure : energetics : probs\n");
   for (const auto& elem: probs) {
     outs1 += QString("      %1 : %3 : %4\n").arg(structures[elem.first]->getTag(),7)
-      .arg(objData[elem.first][0],0,'f',6).arg(elem.second,0,'f',6);
+                     .arg(objData[elem.first][0],0,'f',6).arg(elem.second,0,'f',6);
   }
   Common::debug(outs1);
 #endif
@@ -1401,7 +1398,7 @@ Structure* SearchBase::selectParentStructure(size_t poolSize)
   outs1 = QString("   Cumulative (final) probs list is:\n" "    structure : energetics : probs\n");
   for (const auto& elem: probs) {
     outs1 += QString("      %1 : %3 : %4\n").arg(structures[elem.first]->getTag(),7)
-      .arg(objData[elem.first][0],0,'f',6).arg(elem.second,0,'f',6);
+                     .arg(objData[elem.first][0],0,'f',6).arg(elem.second,0,'f',6);
   }
   Common::debug(outs1);
 #endif
@@ -1431,9 +1428,9 @@ Structure* SearchBase::selectParentStructure(size_t poolSize)
     double previousProbs = 0.0;
     for (const auto& elem: probs) {
       outs += QString("        %1 :     %2 : %3 : %4\n")
-              .arg(structures[elem.first]->getTag(),7)
-              .arg(objData[elem.first][0],12,'f',6)
-              .arg(elem.second - previousProbs,10,'f',6).arg(elem.second,10,'f',6);
+                      .arg(structures[elem.first]->getTag(),7)
+                      .arg(objData[elem.first][0],12,'f',6)
+                      .arg(elem.second - previousProbs,10,'f',6).arg(elem.second,10,'f',6);
       previousProbs = elem.second;
     }
     outs += QString("\n");
@@ -1518,9 +1515,7 @@ bool SearchBase::checkScriptPath(const QString& path, const QString& label, int 
     if (!isRemoteAbsolutePath(trimmed)) {
       if (err) {
         *err = tr("%1 script %2 must be an absolute remote path: %3")
-                 .arg(label)
-                 .arg(index + 1)
-                 .arg(trimmed);
+                  .arg(label).arg(index + 1).arg(trimmed);
       }
       return false;
     }
@@ -1530,16 +1525,12 @@ bool SearchBase::checkScriptPath(const QString& path, const QString& label, int 
     if (!result.succeeded()) {
       if (err) {
         *err = tr("%1 script %2 was not found on the remote host: %3")
-                 .arg(label)
-                 .arg(index + 1)
-                 .arg(trimmed);
+                  .arg(label).arg(index + 1).arg(trimmed);
       }
       return false;
     }
     Common::message(QString("Checked --- remote %1 script %2: %3")
-                      .arg(label)
-                      .arg(index + 1)
-                      .arg(trimmed));
+                            .arg(label).arg(index + 1).arg(trimmed));
     return true;
   }
 
@@ -1547,9 +1538,7 @@ bool SearchBase::checkScriptPath(const QString& path, const QString& label, int 
   if (!info.isAbsolute()) {
     if (err) {
       *err = tr("%1 script %2 must be an absolute local path: %3")
-               .arg(label)
-               .arg(index + 1)
-               .arg(trimmed);
+                .arg(label).arg(index + 1).arg(trimmed);
     }
     return false;
   }
@@ -1557,9 +1546,7 @@ bool SearchBase::checkScriptPath(const QString& path, const QString& label, int 
   if (!info.exists() || !info.isFile()) {
     if (err) {
       *err = tr("%1 script %2 was not found on the local machine: %3")
-               .arg(label)
-               .arg(index + 1)
-               .arg(trimmed);
+                .arg(label).arg(index + 1).arg(trimmed);
     }
     return false;
   }
@@ -1568,9 +1555,7 @@ bool SearchBase::checkScriptPath(const QString& path, const QString& label, int 
                                  ? info.absoluteFilePath()
                                  : info.canonicalFilePath();
   Common::message(QString("Checked --- %1 script %2: %3")
-                    .arg(label)
-                    .arg(index + 1)
-                    .arg(readablePath));
+                          .arg(label).arg(index + 1).arg(readablePath));
   return true;
 }
 

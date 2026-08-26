@@ -30,6 +30,7 @@ QString localPath(const QString& base, const QString& child)
     return base;
   if (base.isEmpty() || QFileInfo(child).isAbsolute())
     return child;
+
   return QDir(base).filePath(child);
 }
 
@@ -50,6 +51,7 @@ QString remotePath(const QString& base, const QString& child)
 
   if (left == "/")
     return left + right;
+
   return left + "/" + right;
 }
 
@@ -63,6 +65,7 @@ QString quoteRemotePath(const QString& path)
     quoted.remove(0, 2);
   quoted.replace("'", "'\\''");
   quoted = "'" + quoted + "'";
+
   return path.startsWith("~/") ? "~/" + quoted : quoted;
 }
 
@@ -79,6 +82,7 @@ bool readFileToString(const QString& filename, std::string* contents)
 
   const QByteArray data = file.readAll();
   contents->assign(data.constData(), static_cast<size_t>(data.size()));
+
   return true;
 }
 
@@ -92,18 +96,21 @@ bool readFileToQString(const QString& filename, QString* contents)
     return false;
 
   *contents = QString::fromLocal8Bit(file.readAll());
+
   return true;
 }
 
 bool isReadableFile(const QString& path)
 {
   const QFileInfo info(path);
+
   return info.exists() && info.isFile() && info.isReadable();
 }
 
 bool isReadableDirectory(const QString& path)
 {
   const QFileInfo info(path);
+
   return info.exists() && info.isDir() && info.isReadable();
 }
 
@@ -117,7 +124,7 @@ bool copyDir(const QString& sourceDir, const QString& destDir)
     return false;
 
   const QFileInfoList entries = source.entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries |
-                         QDir::Hidden | QDir::System);
+                                                     QDir::Hidden | QDir::System);
   for (const QFileInfo& entry : entries) {
     const QString srcPath = entry.absoluteFilePath();
     const QString dstPath = localPath(destDir, entry.fileName());

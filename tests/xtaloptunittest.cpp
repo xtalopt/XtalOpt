@@ -180,7 +180,7 @@ int buildTestSearch(XtalOpt& opt, const QString& workdir)
     { 1, 2, 1, 0, 1, -0.5, Xtal::Optimized, nullptr, {} },
     { 1, 3, 2, 1, 2, -6.0, Xtal::Optimized, nullptr, {} },
     { 2, 1, 3, 1, 1, -3.0, Xtal::Optimized, "1x1", {} },
-    { 2, 2, 4, 2, 1, -2.5, Xtal::Killed, nullptr, {} },
+    { 2, 2, 4, 2, 1, -2.5, Xtal::Failed, nullptr, {} },
     { 2, 3, 5, 1, 2, -4.0, Xtal::Removed, nullptr, { 0.1, 2.5 } },
   };
 
@@ -543,7 +543,7 @@ void XtalOptUnitTest::loadTest()
   QVERIFY(findByTag(2, 1));
   QCOMPARE(findByTag(2, 1)->getStatus(), Structure::Optimized);
   QVERIFY(findByTag(2, 2));
-  QCOMPARE(findByTag(2, 2)->getStatus(), Structure::Killed);
+  QCOMPARE(findByTag(2, 2)->getStatus(), Structure::Failed);
   QVERIFY(findByTag(2, 3));
   QCOMPARE(findByTag(2, 3)->getStatus(), Structure::Removed);
 
@@ -581,15 +581,15 @@ void XtalOptUnitTest::readOnlyResumeLoadsState()
   QCOMPARE(opt.tracker()->size(), count);
 
   // Check saved structures and states (parent links are checked by the full load).
-  Structure* killed = nullptr;
+  Structure* failed = nullptr;
   for (Structure* structure : opt.queue()->getAllStructures()) {
     if (structure->getGeneration() == 2 && structure->getIDNumber() == 2) {
-      killed = structure;
+      failed = structure;
       break;
     }
   }
-  QVERIFY(killed);
-  QCOMPARE(killed->getStatus(), Structure::Killed);
+  QVERIFY(failed);
+  QCOMPARE(failed->getStatus(), Structure::Failed);
 }
 
 void XtalOptUnitTest::invalidSettingsRejectedResetOrReverted()
@@ -714,10 +714,10 @@ void XtalOptUnitTest::settingsDefaultsMatchBuiltInDefaults()
   // Spot checks across a range of scalar keywords.
   QCOMPARE(opt.getMaxAtoms(), 20);
   QCOMPARE(opt.getAMin(), 3.0);
-  QCOMPARE(opt.getPCross(), 35u);
+  QCOMPARE(opt.getPCross(), 20u);
   QCOMPARE(opt.getTolRdfNbins(), 3000);
   QCOMPARE(opt.getContStructs(), 15u);
-  QCOMPARE(opt.getFailAction(), Search::SearchBase::FA_KillIt);
+  QCOMPARE(opt.getFailAction(), Search::SearchBase::FA_FailIt);
 }
 
 void XtalOptUnitTest::settingsRegistryAppliesAndReadsScalars()
@@ -745,9 +745,9 @@ void XtalOptUnitTest::settingsRegistryAppliesAndReadsScalars()
   QVERIFY(!opt.isSoftExit());
 
   // Check a setting with special input handling.
-  QVERIFY(Settings::applyScalarSetting(opt, "jobFailAction", "kill"));
-  QCOMPARE(opt.getFailAction(), Search::SearchBase::FA_KillIt);
-  QCOMPARE(Settings::scalarSettingValue(opt, "jobFailAction"), QString("kill"));
+  QVERIFY(Settings::applyScalarSetting(opt, "jobFailAction", "fail"));
+  QCOMPARE(opt.getFailAction(), Search::SearchBase::FA_FailIt);
+  QCOMPARE(Settings::scalarSettingValue(opt, "jobFailAction"), QString("fail"));
   QVERIFY(!Settings::applyScalarSetting(opt, "jobFailAction", "nonsense"));
 
   // Bad numeric values change nothing and report failure.
@@ -1079,7 +1079,6 @@ void XtalOptUnitTest::removeUserObjectivePreservesBuiltinObjective()
   XtalOpt opt;
   QVERIFY(opt.processInputObjectives("min /tmp/objective-a a.out 0.25"));
   QVERIFY(opt.processInputObjectives("max /tmp/objective-b b.out 0.25"));
-  opt.refreshBuiltinObjectiveWeight();
 
   QCOMPARE(opt.getObjectivesNum(), 3);
   QCOMPARE(opt.getUserObjectivesNum(), 2);

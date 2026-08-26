@@ -100,8 +100,8 @@ public slots:
   void releaseStructureReferences();
   void progressContextMenu(QPoint);
   void restartJobProgress();
-  void killXtalProgress();
-  void unkillXtalProgress();
+  void failXtalProgress();
+  void unfailXtalProgress();
   void resetFailureCountProgress();
   void randomizeStructureProgress();
   void replaceWithOffspringProgress();
@@ -138,8 +138,8 @@ private:
 
   void updateInfo_();
   void restartJobProgress_(int incar);
-  void killXtalProgress_();
-  void unkillXtalProgress_();
+  void failXtalProgress_();
+  void unfailXtalProgress_();
   void resetFailureCountProgress_();
   void randomizeStructureProgress_();
   void replaceWithOffspringProgress_();

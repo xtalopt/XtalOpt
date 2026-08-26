@@ -148,8 +148,8 @@ public:
   {
     // Do nothing; keep submitting for optimization
     FA_DoNothing = 0,
-    // Kill the structure
-    FA_KillIt,
+    // Fail the structure
+    FA_FailIt,
     // Replace the failing structure with a new random one
     FA_Randomize,
     // Replace with a new offspring structure
@@ -515,6 +515,7 @@ public:
       markParentSelectionForUpdate();
     }
   }
+
   bool hasExternalObjectiveCalculations() const
   {
     for (int i = 0; i < getObjectivesNum(); ++i)
@@ -522,6 +523,7 @@ public:
         return true;
     return false;
   }
+
   // Reset all the objectives
   void resetObjectives()
   {
@@ -530,6 +532,7 @@ public:
       markParentSelectionForUpdate();
     }
   }
+
   // Remove the "i"th objective
   void removeObjective(int i)
   {
@@ -542,6 +545,7 @@ public:
   {
     m_constraints.push_back(ConstraintInfo(exe, out));
   }
+
   int getConstraintsNum() const { return m_constraints.size(); }
   QString getConstraintExe(int i) const { return m_constraints.at(i).exe; }
   QString getConstraintOut(int i) const { return m_constraints.at(i).out; }
@@ -657,6 +661,7 @@ public:
       markParentSelectionForUpdate();
     }
   }
+
   bool isTournamentSelection() const { return m_tournamentSelection; }
   void setTournamentSelection(bool v){ m_tournamentSelection = v; }
   bool isRestrictedPool() const     { return m_restrictedPool; }
@@ -669,6 +674,7 @@ public:
       markParentSelectionForUpdate();
     }
   }
+
   bool isParetoFilterZeroWeights() const { return m_paretoFilterZeroWeights; }
   void setParetoFilterZeroWeights(bool v)
   {
@@ -677,6 +683,7 @@ public:
       markParentSelectionForUpdate();
     }
   }
+
   int  getObjectivePrecision() const { return m_objectivePrecision; }
   void setObjectivePrecision(int v)
   {
@@ -1107,6 +1114,7 @@ public slots:
   {
     return m_hoursForCancelJobAfterTime;
   }
+
   void setHoursForCancelJobAfterTime(double v)
   {
     m_hoursForCancelJobAfterTime = v;
@@ -1127,6 +1135,7 @@ public slots:
   {
     return m_hoursForCancelScriptAfterTime;
   }
+
   void setHoursForCancelScriptAfterTime(double v)
   {
     m_hoursForCancelScriptAfterTime = v;
@@ -1272,6 +1281,7 @@ private:
   {
     return !m_objectives.at(i).exe.isEmpty() || !m_objectives.at(i).out.isEmpty();
   }
+
   bool objectiveParticipatesInOptimization(int i) const;
 
   // Entry in the template-keyword registry.
@@ -1325,19 +1335,19 @@ private:
   int  m_maxNumStructures;
   uint m_failLimit;
   FailActions m_failAction;
-  int     m_objectivePrecision;
+  int  m_objectivePrecision;
   // Atomic: written under runtimeSettingsLock, but also read by the queue
   // thread in checkExit() without that lock (see queuemanager.cpp), so the
   // type must make those reads/writes well-defined.
   std::atomic<bool> m_softExit;
   std::atomic<bool> m_hardExit;
-  bool    m_remoteQueue;
-  bool    m_constraintsReDo;
+  bool m_remoteQueue;
+  bool m_constraintsReDo;
   OptimizationType m_optimizationType;
-  bool    m_tournamentSelection;
-  bool    m_restrictedPool;
-  bool    m_crowdingDistance;
-  bool    m_paretoFilterZeroWeights;
+  bool m_tournamentSelection;
+  bool m_restrictedPool;
+  bool m_crowdingDistance;
+  bool m_paretoFilterZeroWeights;
 
   // Keep the parent-selection data so it is not recalculated for every parent.
   struct ParentSelectionData
@@ -1353,6 +1363,7 @@ private:
     long long stamp = -1;
     bool built = false;
   };
+
   void rebuildParentSelectionData(const QList<Structure*>& structures);
   bool parentPoolEligible(Structure* s) const;
   ParentSelectionData m_parentSelectionData;

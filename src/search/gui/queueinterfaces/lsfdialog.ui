@@ -33,9 +33,6 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="toolTip">
-      <string>Path to the LSF bsub command. Usually bsub.</string>
-     </property>
      <property name="text">
       <string>Path to bsub:</string>
      </property>
@@ -47,7 +44,7 @@
    <item row="3" column="1" colspan="2">
     <widget class="QLineEdit" name="edit_bsub">
      <property name="toolTip">
-      <string>Path to the LSF bsub command. Usually bsub.</string>
+      <string>Command used to submit jobs to the queue. Usually bsub.</string>
      </property>
      <property name="text">
       <string>bsub</string>
@@ -62,9 +59,6 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="toolTip">
-      <string>Path to the LSF bkill command. Usually bkill.</string>
-     </property>
      <property name="text">
       <string>Path to bkill:</string>
      </property>
@@ -76,7 +70,7 @@
    <item row="5" column="1" colspan="2">
     <widget class="QLineEdit" name="edit_bjobs">
      <property name="toolTip">
-      <string>Path to the LSF bjobs command. Usually bjobs.</string>
+      <string>Command used to check the queue. Usually bjobs.</string>
      </property>
      <property name="text">
       <string>bjobs</string>
@@ -91,9 +85,6 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="toolTip">
-      <string>Path to the LSF qjobs command. Usually bjobs.</string>
-     </property>
      <property name="text">
       <string>Path to bjobs:</string>
      </property>
@@ -105,7 +96,7 @@
    <item row="4" column="1" colspan="2">
     <widget class="QLineEdit" name="edit_bkill">
      <property name="toolTip">
-      <string>Path to the LSF bkill command. Usually bkill.</string>
+      <string>Command used to delete jobs from the queue. Usually bkill.</string>
      </property>
      <property name="text">
       <string>bkill</string>

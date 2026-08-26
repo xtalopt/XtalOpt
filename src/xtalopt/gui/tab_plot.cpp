@@ -24,7 +24,7 @@
 #include <search/queuemanager.h>
 #include <search/tracker.h>
 #include <common/fileutils.h>
-#include <atoms/formats/poscarformat.h>
+#include <atoms/formats/vaspformat.h>
 
 #include <QAction>
 #include <QApplication>
@@ -89,7 +89,7 @@ PlotStatusCategory plotStatusCategory(const Xtal* xtal)
     return Psc_Similar;
   if (state == Structure::Optimized)
     return Psc_Complete;
-  if (xtal->isDismissedFinalState())
+  if (xtal->isScriptDismissedState())
     return Psc_Dismissed;
   if (xtal->isStoppedFinalState())
     return Psc_Failed;
@@ -373,7 +373,7 @@ void TabPlot::releaseStructureReferences()
 void TabPlot::savePlotImage()
 {
   QString selectedFilter;
-  QString filename = QFileDialog::getSaveFileName(m_tab_widget, tr("Save Plot Image"),
+  QString filename = QFileDialog::getSaveFileName(m_tab_widget, tr("Save Plot View"),
      QDir(defaultSaveDir()).filePath("xtalopt-plot.png"),
     tr("PNG Image (*.png);;JPEG Image (*.jpg *.jpeg);;BMP Image (*.bmp)"), &selectedFilter,
     QFileDialog::DontUseNativeDialog);
@@ -415,7 +415,7 @@ void TabPlot::savePlotImage()
 
   if (!image.save(filename, format.constData(), 95)) {
     QMessageBox::warning(m_tab_widget,
-                         tr("Save Plot Image"),
+                         tr("Save Plot View"),
                          tr("Could not write image file:\n%1")
                            .arg(filename));
   }
@@ -591,7 +591,8 @@ void TabPlot::plotTrends()
   const int userObjectivesNum = xtalopt->getUserObjectivesNum();
 
   if (xAxis == StructureINDX_T && (yAxis == Energy_T || yAxis == Enthalpy_T ||
-                               yAxis == Enthalpy_per_Atm_T || yAxis == AboveHull_per_Atm_T)) {
+                               yAxis == Enthalpy_per_Atm_T || yAxis == AboveHull_per_Atm_T ||
+                               yAxis == FormationEnergy_per_Atm_T || yAxis == Energy_per_Atm_T)) {
     performTrace = true;
   }
 
@@ -739,6 +740,21 @@ void TabPlot::plotTrends()
               break;
           }
           break;
+        case FormationEnergy_per_Atm_T:
+          // Skip xtals that don't have enthalpy/energy set
+          if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy()) {
+            usePoint = false;
+            continue;
+          }
+          switch (j) {
+            case 0:
+              x = xtalopt->getFormationEnergyPerAtom(xtal);
+              break;
+            default:
+              y = xtalopt->getFormationEnergyPerAtom(xtal);
+              break;
+          }
+          break;
         case Enthalpy_per_Atm_T:
           // Skip xtals that don't have enthalpy/energy set
           if (xtal->getEnergy() == 0.0 && !xtal->hasEnthalpy()) {
@@ -751,6 +767,21 @@ void TabPlot::plotTrends()
               break;
             default:
               y = xtal->getEnthalpyPerAtom();
+              break;
+          }
+          break;
+        case Energy_per_Atm_T:
+          // Skip xtals that don't have energy set
+          if (xtal->getEnergy() == 0.0) {
+            usePoint = false;
+            continue;
+          }
+          switch (j) {
+            case 0:
+              x = xtal->getEnergyPerAtom();
+              break;
+            default:
+              y = xtal->getEnergyPerAtom();
               break;
           }
           break;
@@ -942,9 +973,17 @@ void TabPlot::plotTrends()
           if (GS_ISFINITE(xtal->getEnthalpyPerAtom()))
             s = QString::number(xtal->getEnthalpyPerAtom(), 'g', 5);
           break;
+        case Energy_per_Atm_L:
+          if (GS_ISFINITE(xtal->getEnergyPerAtom()))
+            s = QString::number(xtal->getEnergyPerAtom(), 'g', 5);
+          break;
         case AboveHull_per_Atm_L:
           if (GS_ISFINITE(xtal->getDistAboveHull()))
             s = QString::number(xtal->getDistAboveHull(), 'g', 5);
+          break;
+        case FormationEnergy_per_Atm_L:
+          if (GS_ISFINITE(xtalopt->getFormationEnergyPerAtom(xtal)))
+            s = QString::number(xtalopt->getFormationEnergyPerAtom(xtal), 'g', 5);
           break;
         case ParetoFront_L:
           s = QString::number(xtal->getParetoFront());
@@ -1030,6 +1069,9 @@ void TabPlot::plotTrends()
       case AboveHull_per_Atm_T:
         label = tr("Above Hull per Atom");
         break;
+      case FormationEnergy_per_Atm_T:
+        label = tr("Formation Energy per Atom");
+        break;
       case ParetoFront_T:
         label = tr("Pareto Front");
         break;
@@ -1041,6 +1083,9 @@ void TabPlot::plotTrends()
         break;
       case Enthalpy_per_Atm_T: // PSA Enthalpy per atom
         label = tr("Enthalpy per Atom");
+        break;
+      case Energy_per_Atm_T:
+        label = tr("Energy per Atom");
         break;
       case Energy_T:
         label = tr("Energy");
@@ -1219,7 +1264,7 @@ void TabPlot::clipPOSCARPlot()
   std::stringstream poscarStream;
   {
     QReadLocker locker(&m_context_xtal->lock());
-    Atoms::PoscarFormat::write(*m_context_xtal, poscarStream, m_context_xtal->getLocpath());
+    Atoms::VaspFormat::write(*m_context_xtal, poscarStream, m_context_xtal->getLocpath());
   }
   const QString poscar = QString::fromStdString(poscarStream.str());
   if (!poscar.isEmpty()) {

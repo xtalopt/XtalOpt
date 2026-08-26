@@ -20,6 +20,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <common/compatibility/platform_compat.h>
 #include <common/constants.h>
 #include <common/matrix.h>
 #include <common/vector.h>
@@ -142,6 +143,15 @@ public:
     return is3D() ? u_cellMatrix : Common::Matrix3::Zero();
   };
 
+  /**
+   * Check whether a cell matrix is valid: its determinant must be a
+   * finite and non-vanishing number.
+   *
+   * @param matrix The 3x3 cell matrix to check.
+   *
+   * @return true if @p matrix is valid.
+   */
+  static bool isCellValid(const Common::Matrix3& matrix);
 
   /**
    * Set the A vector. Marks the A axis periodic.
@@ -217,6 +227,17 @@ public:
 
   /* Returns the volume of the unit cell in Angstroms cubed */
   double volume() const;
+
+  /**
+   * Return the reciprocal cell matrix as row vectors: a*, b*, and c*
+   * This includes the 2*pi factor.
+   *
+   * For a non-3D cell, or one that is not invertible, this returns
+   * a zero matrix.
+   *
+   * @return The 3x3 reciprocal cell matrix in row vector form.
+   */
+  Common::Matrix3 reciprocalCell() const;
 
   /**
    * Converts the @p frac vector into a Cartesian vector.
@@ -361,6 +382,33 @@ inline UnitCell& UnitCell::operator=(UnitCell&& other) noexcept
   return *this;
 }
 
+inline void UnitCell::setCellParameters(double a, double b, double c, double alpha,
+                                        double beta, double gamma)
+{
+  const double cosAlpha = std::cos(alpha * DEG2RAD);
+  const double cosBeta = std::cos(beta * DEG2RAD);
+  const double cosGamma = std::cos(gamma * DEG2RAD);
+  const double sinGamma = std::sin(gamma * DEG2RAD);
+
+  u_cellMatrix(0, 0) = a;
+  u_cellMatrix(0, 1) = 0.0;
+  u_cellMatrix(0, 2) = 0.0;
+
+  u_cellMatrix(1, 0) = b * cosGamma;
+  u_cellMatrix(1, 1) = b * sinGamma;
+  u_cellMatrix(1, 2) = 0.0;
+
+  u_cellMatrix(2, 0) = c * cosBeta;
+  u_cellMatrix(2, 1) = c * (cosAlpha - cosBeta * cosGamma) / sinGamma;
+  u_cellMatrix(2, 2) =
+    (c / sinGamma) *
+    std::sqrt(1.0 - ((cosAlpha * cosAlpha) + (cosBeta * cosBeta) +
+                     (cosGamma * cosGamma)) +
+              (2.0 * cosAlpha * cosBeta * cosGamma));
+
+  u_periodic[0] = u_periodic[1] = u_periodic[2] = true;
+}
+
 inline void UnitCell::setCellVectors(const Common::Vector3& a, const Common::Vector3& b,
                                      const Common::Vector3& c)
 {
@@ -369,9 +417,23 @@ inline void UnitCell::setCellVectors(const Common::Vector3& a, const Common::Vec
   setCVector(c);
 }
 
+inline bool UnitCell::isCellValid(const Common::Matrix3& matrix)
+{
+  const double determinant = matrix.determinant();
+  return GS_ISFINITE(determinant) && std::fabs(determinant) > ZERO08;
+}
+
 inline double UnitCell::volume() const
 {
   return std::fabs(aVector().cross(bVector()).dot(cVector()));
+}
+
+inline Common::Matrix3 UnitCell::reciprocalCell() const
+{
+  if (!is3D() || !isCellValid(u_cellMatrix))
+    return Common::Matrix3::Zero();
+
+  return (2.0 * PI) * u_cellMatrix.inverse().transpose();
 }
 
 inline Common::Vector3 UnitCell::toCartesian(const Common::Vector3& frac) const
@@ -391,9 +453,28 @@ inline Common::Vector3 UnitCell::wrapCartesian(const Common::Vector3& cart) cons
   return toCartesian(wrapFractional(toFractional(cart)));
 }
 
+inline Common::Vector3 UnitCell::wrapFractional(const Common::Vector3& frac) const
+{
+  Common::Vector3 ret;
+  for (int i = 0; i < 3; ++i) {
+    ret[i] = frac[i] - std::floor(frac[i]);
+    if (ret[i] >= 1.0)
+      ret[i] = 0.0;
+  }
+  return ret;
+}
+
 inline Common::Vector3 UnitCell::minimumImage(const Common::Vector3& cart) const
 {
   return toCartesian(minimumImageFractional(toFractional(cart)));
+}
+
+inline Common::Vector3 UnitCell::minimumImageFractional(const Common::Vector3& frac)
+{
+  double x = frac[0] - std::rint(frac[0]);
+  double y = frac[1] - std::rint(frac[1]);
+  double z = frac[2] - std::rint(frac[2]);
+  return Common::Vector3(x, y, z);
 }
 
 inline double UnitCell::distance(const Common::Vector3& v1, const Common::Vector3& v2) const

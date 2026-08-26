@@ -97,6 +97,7 @@ struct StructureToolOptions
   bool doNiggli = false;
   bool doStandardOrientation = false;
   bool doPrintVolume = false;
+  bool doPrintLattice = false;
   bool doShortestDistance = false;
   bool doNearestNeighbors = false;
   bool doPrintRDF = false;
@@ -120,6 +121,7 @@ void registerParserOptions(ArgParser* parser, const StructureToolOptions& defaul
   ap_add_flag(parser, "niggli");
   ap_add_flag(parser, "standard-orient");
   ap_add_flag(parser, "volume");
+  ap_add_flag(parser, "lattice");
   ap_add_flag(parser, "shortest-distance");
   ap_add_flag(parser, "nearest-neighbors");
   ap_add_flag(parser, "rdf");
@@ -167,6 +169,7 @@ void readRawOptions(ArgParser* parser, int argc, char* argv[], StructureToolOpti
   options.doNiggli = ap_found(parser, "niggli");
   options.doStandardOrientation = ap_found(parser, "standard-orient");
   options.doPrintVolume = ap_found(parser, "volume");
+  options.doPrintLattice = ap_found(parser, "lattice");
   options.doShortestDistance = ap_found(parser, "shortest-distance");
   options.doNearestNeighbors = ap_found(parser, "nearest-neighbors");
   options.doPrintRDF = ap_found(parser, "rdf");
@@ -504,7 +507,8 @@ bool readMolCrystalMolecule(const StructureToolOptions& options,
       return readMoleculeFromXyzFile(options.inputFile, molecule, error);
     case MoleculeSource_FormulaTemplate:
       return generateMoleculeFromFormulaRequest(options.molCrystalFormulaRequest, molecule, error,
-                         options.distanceScale, "--molcrystal expects <space-group> <formula> <template>.");
+                                                options.distanceScale,
+                                                "--molcrystal expects <space-group> <formula> <template>.");
     case MoleculeSource_Cartesian:
       return Atoms::buildMoleculeFromCartesianString(options.molCrystalCartesian, molecule, error);
     case MoleculeSource_None:
@@ -584,6 +588,50 @@ void printVolumeInfo(const Atoms::Geometry& structure)
                   .arg(structure.getVolume(), 14, 'f', 6));
 }
 
+QString formatCellInfo(const QString& label, const Atoms::UnitCell& cell)
+{
+  const Common::Matrix3 matrix = cell.cellMatrix();
+
+  QString out = QString("%1 %2 %3 %4 %5 %6 %7\n")
+                  .arg(label, -7)
+                  .arg(cell.a(), 12, 'f', 6)
+                  .arg(cell.b(), 12, 'f', 6)
+                  .arg(cell.c(), 12, 'f', 6)
+                  .arg(cell.alpha(), 12, 'f', 6)
+                  .arg(cell.beta(), 12, 'f', 6)
+                  .arg(cell.gamma(), 12, 'f', 6);
+  out += "\n";
+
+  for (int row = 0; row < 3; row++) {
+    out += QString("%1 %2 %3 %4\n")
+             .arg("", -7)
+             .arg(matrix(row, 0), 12, 'f', 6)
+             .arg(matrix(row, 1), 12, 'f', 6)
+             .arg(matrix(row, 2), 12, 'f', 6);
+  }
+
+  return out;
+}
+
+void printLatticeInfo(const Atoms::Geometry& structure)
+{
+  if (!structure.is3D()) {
+    Common::error("Lattice information is applicable only to a crystal");
+    return;
+  }
+
+  const Atoms::UnitCell& direct = structure.unitCell();
+  if (!Atoms::UnitCell::isCellValid(direct.cellMatrix())) {
+    Common::error("Input cell is not valid");
+    return;
+  }
+
+  const Atoms::UnitCell recipr(direct.reciprocalCell());
+
+  Common::message(formatCellInfo("Direct:", direct) + "\n" +
+                  formatCellInfo("Recipr:", recipr));
+}
+
 bool printShortestDistance(const Atoms::Geometry& structure)
 {
   QList<QString> symbol1, symbol2;
@@ -599,7 +647,8 @@ bool printShortestDistance(const Atoms::Geometry& structure)
     if (distance.at(i) > 0.0 && distance.at(i) < overall)
       overall = distance.at(i);
   }
-  Common::message(QString("Overall shortest interatomic distance: %1").arg(overall, 12, 'f', 5, QLatin1Char(' ')));
+  Common::message(QString("Overall shortest interatomic distance: %1")
+                  .arg(overall, 12, 'f', 5, QLatin1Char(' ')));
 
   QString out = "";
   for (int i = 0; i < distance.size(); i++) {
@@ -712,8 +761,9 @@ bool readStructure(Atoms::Geometry& structure, const std::string& inputFile, con
   if (format.empty())
     return Atoms::Formats::read(structure, filename);
 
+  // The main code recognizes the file formats as upper case strings.
   return Atoms::Formats::read(structure, filename,
-                              QString::fromLocal8Bit(format.c_str()));
+                              QString::fromLocal8Bit(format.c_str()).toUpper());
 }
 
 bool compareRDFtoFile(Atoms::Geometry& structure, const std::string& compareFile,
@@ -742,11 +792,12 @@ bool compareRDFtoFile(Atoms::Geometry& structure, const std::string& compareFile
 }
 
 bool compareXtalComptoFile(const Atoms::Geometry& structure, const std::string& compareFile,
-                     const std::string& compareFormat, double lengthTol, double angleTol)
+                           const std::string& compareFormat, double lengthTol, double angleTol)
 {
   Atoms::Geometry other;
   if (!readStructure(other, compareFile, compareFormat)) {
-    Common::error(QString("Failed to read comparison structure: %1").arg(QString::fromLocal8Bit(compareFile.c_str())));
+    Common::error(QString("Failed to read comparison structure: %1")
+                  .arg(QString::fromLocal8Bit(compareFile.c_str())));
     return false;
   }
 
@@ -766,6 +817,8 @@ bool printStructureReports(Atoms::Geometry& structure, const StructureToolOption
     printSymmetryInfo(structure, options.symprec);
   if (options.doPrintVolume)
     printVolumeInfo(structure);
+  if (options.doPrintLattice)
+    printLatticeInfo(structure);
   if (options.doShortestDistance && !printShortestDistance(structure))
     return false;
   if (options.doNearestNeighbors && !printNearestNeighbors(structure, options.rdfCutoff))
@@ -777,11 +830,11 @@ bool printStructureReports(Atoms::Geometry& structure, const StructureToolOption
     return false;
   if (!options.compareFile.empty() &&
       !compareRDFtoFile(structure, options.compareFile, options.compareFormat,
-                  options.rdfBins, options.rdfCutoff, options.rdfSigma, options.rdfTolerance))
+                        options.rdfBins, options.rdfCutoff, options.rdfSigma, options.rdfTolerance))
     return false;
   if (!options.compareXtalCompFile.empty() &&
       !compareXtalComptoFile(structure, options.compareXtalCompFile,
-                       options.compareFormat, options.xtalcompLengthTol, options.xtalcompAngleTol))
+                             options.compareFormat, options.xtalcompLengthTol, options.xtalcompAngleTol))
     return false;
 
   return true;
@@ -789,22 +842,17 @@ bool printStructureReports(Atoms::Geometry& structure, const StructureToolOption
 
 bool hasStructureReport(const StructureToolOptions& options)
 {
-  return options.printSymmetry || options.doPrintVolume ||
+  return options.printSymmetry || options.doPrintVolume || options.doPrintLattice ||
          options.doShortestDistance || options.doNearestNeighbors || options.doPrintRDF ||
          options.doFormula || !options.compareFile.empty() || !options.compareXtalCompFile.empty();
 }
 
-QString outputFormatForFile(const std::string& outputFile, const std::string& explicitFormat)
+QString outputFormatForFile(const std::string& outputFile)
 {
-  if (!explicitFormat.empty())
-    return Atoms::Formats::normalizedFormatName(QString::fromLocal8Bit(explicitFormat.c_str()));
-
-  if (outputFile.empty())
-    return "POSCAR";
-
   const QString path = QString::fromLocal8Bit(outputFile.c_str()).toLower();
+
   if (path.endsWith("poscar") || path.endsWith("contcar") || path.endsWith(".vasp"))
-    return "POSCAR";
+    return "VASP";
   if (path.endsWith(".cml"))
     return "CML";
   if (path.endsWith(".cif"))
@@ -814,7 +862,7 @@ QString outputFormatForFile(const std::string& outputFile, const std::string& ex
   if (path.endsWith(".cfg") || path.endsWith(".mtp"))
     return "MTP";
 
-  return "POSCAR";
+  return "VASP";
 }
 
 bool writeStructureOutputIfNeeded(Atoms::Geometry& structure, const StructureToolOptions& options)
@@ -825,9 +873,11 @@ bool writeStructureOutputIfNeeded(Atoms::Geometry& structure, const StructureToo
   if (!shouldWriteStructure)
     return true;
 
-  const QString outFormat = outputFormatForFile(options.outputFile, options.outputFormat);
-  if (outFormat.isEmpty())
-    return false;
+  // The main code recognizes the file formats as upper case strings.
+  const QString outFormat = options.outputFormat.empty()
+                          ? outputFormatForFile(options.outputFile)
+                          : QString::fromLocal8Bit(options.outputFormat.c_str()).toUpper();
+
   if (!writeStructure(structure, options.outputFile, outFormat, options.symprec)) {
     Common::error("Failed to write structure output");
     return false;
@@ -840,10 +890,13 @@ int finishStructureWorkflow(Atoms::Geometry& structure, const StructureToolOptio
 {
   if (!applyStructureTransforms(structure, options))
     return 1;
+
   if (!printStructureReports(structure, options))
     return 1;
+
   if (!writeStructureOutputIfNeeded(structure, options))
     return 1;
+
   return 0;
 }
 
@@ -859,7 +912,8 @@ int runMolCrystal(const StructureToolOptions& options)
   }
 
   std::unique_ptr<Atoms::Geometry> generated =
-    Atoms::Generators::generateMolecularCrystal(options.molCrystalSpaceGroup, molecule, error,options.symprec, options.distanceScale);
+    Atoms::Generators::generateMolecularCrystal(options.molCrystalSpaceGroup, molecule, error,
+                                                options.symprec, options.distanceScale);
   if (!generated) {
     Common::error(error);
     return 1;
@@ -885,7 +939,7 @@ bool isStructureToolOptionName(const QString& name)
 {
   static const char* const structureToolOptions[] = {
     "--primitive", "--conventional", "--symmetry", "--niggli",
-    "--standard-orient", "--volume", "--shortest-distance", "--rdf",
+    "--standard-orient", "--volume", "--lattice", "--shortest-distance", "--rdf",
     "--formula", "--format", "-f", "--output", "-o", "--output-format",
     "--compare-rdf", "--compare-xtalcomp", "--compare-format", "--rdf-bins",
     "--rdf-cutoff", "--rdf-sigma", "--rdf-tol",
@@ -955,9 +1009,9 @@ void printHelp(QTextStream& out)
 {
   // clang-format off
   out << "Structure Toolset Options (used with \"--input\" structure file):\n";
-  out << "  -f, --format <fmt>                  Input <file> FORMAT (POSCAR,CIF,XYZ,CML,MTP,GULP,CASTEP,PWSCF,SIESTA; Default: auto)\n";
+  out << "  -f, --format <fmt>                  Input <file> FORMAT (VASP,CIF,XYZ,CML,MTP,GULP,CASTEP,PWSCF,SIESTA; Default: auto)\n";
   out << "  -o, --output <file>                 Write output structure to <file> instead of printing to output\n";
-  out << "      --output-format <fmt>           Output <file> FORMAT (POSCAR,CIF,XYZ,MTP,CML; Default: POSCAR)\n";
+  out << "      --output-format <fmt>           Output <file> FORMAT (VASP,CIF,XYZ,CML,MTP; Default: VASP)\n";
   out << "      --symprec <val>                 Spglib symmetry tolerance VALUE (Default: 0.01)\n";
   out << "      --symmetry                      Print space group (crystals) and point group (molecules)\n";
   out << "      --primitive                     Generate primitive cell\n";
@@ -969,6 +1023,7 @@ void printHelp(QTextStream& out)
   out << "      --nearest-neighbors             Print nearest neighbors distances list\n";
   out << "      --formula                       Print chemical formula and composition information\n";
   out << "      --volume                        Print volume and volume per atom of structure\n";
+  out << "      --lattice                       Print direct and reciprocal (with 2*pi) cell parameters and vectors\n";
   out << "      --rdf                           Print normalized RDF vector of the cell\n";
   out << "      --rdf-cutoff <val>              RDF vector cutoff VALUE (Default: 6.0 Ang.)\n";
   out << "      --rdf-bins <num>                RDF vector bins NUMBER (Default: 3000)\n";

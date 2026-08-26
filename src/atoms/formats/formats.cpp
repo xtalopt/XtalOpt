@@ -21,7 +21,7 @@
 #include <atoms/formats/cmlformat.h>
 #include <atoms/formats/gulpformat.h>
 #include <atoms/formats/mtpformat.h>
-#include <atoms/formats/poscarformat.h>
+#include <atoms/formats/vaspformat.h>
 #include <atoms/formats/pwscfformat.h>
 #include <atoms/formats/siestaformat.h>
 #include <atoms/formats/xyzformat.h>
@@ -160,7 +160,7 @@ DetectedFormat detectFormatFromContents(const QString& filename)
   const QString lower = text.toLower();
 
   if (looksLikePoscar(lines))
-    return DetectedFormat("POSCAR", ReadStructure);
+    return DetectedFormat("VASP", ReadStructure);
 
   if (lower.contains("_cell_length_") && lower.contains("_atom_site") && lower.contains("loop_"))
     return DetectedFormat("CIF", ReadStructure);
@@ -214,10 +214,10 @@ DetectedFormat detectFormatFromFilename(const QString& filename)
   const QString ext = info.suffix().toLower();
 
   if (file == "POSCAR" || file == "CONTCAR")
-    return DetectedFormat("POSCAR", ReadStructure);
+    return DetectedFormat("VASP", ReadStructure);
 
   if (ext == "poscar" || ext == "contcar" || ext == "vasp")
-    return DetectedFormat("POSCAR", ReadStructure);
+    return DetectedFormat("VASP", ReadStructure);
   if (ext == "cif")
     return DetectedFormat("CIF", ReadStructure);
   if (ext == "cml")
@@ -274,8 +274,8 @@ bool readWithFormat(Atoms::Geometry& s, const QString& filename,
     ok = GulpFormat::readOutput(parsed, filename);
   } else if (detected.format == "MTP") {
     ok = MtpFormat::read(parsed, filename);
-  } else if (detected.format == "POSCAR") {
-    ok = PoscarFormat::read(parsed, filename);
+  } else if (detected.format == "VASP") {
+    ok = VaspFormat::read(parsed, filename);
   } else if (detected.format == "PWSCF") {
     if (detected.kind == ReadOptimizerOutput)
       ok = PwscfFormat::readOutput(parsed, filename);
@@ -297,7 +297,7 @@ bool readWithFormat(Atoms::Geometry& s, const QString& filename,
   if (!ok)
     return false;
 
-  if (parsed.is3D() && !Atoms::Geometry::isCellMatrixUsable(parsed.unitCell().cellMatrix())) {
+  if (parsed.is3D() && !Atoms::UnitCell::isCellValid(parsed.unitCell().cellMatrix())) {
     Common::error(QString("The cell read from %1 is invalid.").arg(filename));
     return false;
   }
@@ -323,39 +323,27 @@ bool Formats::read(Atoms::Geometry& s, const QString& filename)
 
 bool Formats::read(Atoms::Geometry& s, const QString& filename, const QString& format)
 {
-  return readWithFormat(s, filename,
-                        DetectedFormat(normalizedFormatName(format), ReadStructure));
+  return readWithFormat(s, filename, DetectedFormat(format, ReadStructure));
 }
 
 bool Formats::write(const Atoms::Geometry& s, std::ostream& out, const QString& format,
                     double symprec)
 {
-  const QString normalized = normalizedFormatName(format);
-  if (normalized == "POSCAR")
-    return PoscarFormat::write(s, out);
-  if (normalized == "CML")
+  if (format == "VASP")
+    return VaspFormat::write(s, out);
+  if (format == "CML")
     return CmlFormat::write(s, out);
-  if (normalized == "CIF")
+  if (format == "CIF")
     return CifFormat::write(s, out, symprec);
-  if (normalized == "XYZ")
+  if (format == "XYZ")
     return XyzFormat::write(s, out);
-  if (normalized == "MTP")
+  if (format == "MTP")
     return MtpFormat::write(s, out);
 
   Common::error(QString("Unsupported output format: %1. Currently supported formats are:\n"
-                        "  POSCAR/VASP, CML, CIF, XYZ, and MTP.")
+                        "  VASP, CIF, XYZ, CML, and MTP.")
                         .arg(format));
   return false;
-}
-
-QString Formats::normalizedFormatName(const QString& format)
-{
-  const QString upper = format.toUpper();
-  if (upper == "VASP")
-    return "POSCAR";
-  if (upper == "CFG")
-    return "MTP";
-  return upper;
 }
 
 } // namespace Atoms

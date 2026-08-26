@@ -206,7 +206,17 @@
            </item>
            <item>
             <property name="text">
+             <string>Formation Energy per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
              <string>Enthalpy per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Energy per Atom</string>
             </property>
            </item>
            <item>
@@ -326,7 +336,17 @@
            </item>
            <item>
             <property name="text">
+             <string>Formation Energy per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
              <string>Enthalpy per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Energy per Atom</string>
             </property>
            </item>
            <item>
@@ -483,7 +503,17 @@
            </item>
            <item>
             <property name="text">
+             <string>Formation Energy per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
              <string>Enthalpy per Atom</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Energy per Atom</string>
             </property>
            </item>
            <item>

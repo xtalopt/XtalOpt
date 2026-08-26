@@ -188,7 +188,8 @@ void DirectRunInterface::prepareForThreadStop()
     if (directRunProcessInt(proc.data(), "processStateValue",
                             static_cast<int>(QProcess::NotRunning)) ==
         static_cast<int>(QProcess::Running)) {
-      // terminate, wait, then kill (see terminateAndKill).
+      // Terminate process: ask and wait first, then kill process if
+      //   needed (see terminateAndKill).
       directRunProcessCall(proc.data(), "terminateAndKill");
     }
   }
@@ -261,11 +262,12 @@ bool DirectRunInterface::startJob(Structure* s)
     return false;
   }
 
-  // Use the optimizer command as-is; it may be a PATH name, an absolute
-  // path, or a user-provided command line.
+  // Use the optimizer command as given; it may be a PATH name, an absolute
+  //   path, or a user-provided command line.
   QString command = optimizer->getDirectRunCommand();
 
-  // Start the process.
+  // Start the process on its own thread: this keeps QProcess signal and later
+  //   cleanup on the queue thread.
   DirectRunProcess* proc = nullptr;
   const Qt::ConnectionType invokeType = (m_processHost->thread() == QThread::currentThread())
       ? Qt::DirectConnection
@@ -290,12 +292,14 @@ bool DirectRunInterface::startJob(Structure* s)
 
   const uint pid = static_cast<uint>(proc->processId());
 
+  // Save the job id after the process is successfully started.
   {
     QWriteLocker locker(&s->lock());
     s->startOptTimer();
     s->setJobID(pid);
   }
 
+  // Keep the process alive until QueueManager sees its terminal state.
   {
     QtCompat::MutexLocker locker(&m_processesMutex);
     m_processes.insert(pid, QSharedPointer<DirectRunProcess>(proc, deleteDirectRunProcess));
@@ -397,9 +401,9 @@ QueueInterface::QueueStatus DirectRunInterface::getStatus(Structure* s) const
     return QueueInterface::Error;
   }
 
-  // Copy the shared pointer out under the mutex to keep the process alive; the
-  // mutex must not be held across the calls below (see the note in
-  // directrun.h).
+  // Copy the shared pointer under the mutex to keep the process alive; the
+  //   mutex must not be held across the calls below (see the note in
+  //   directrun.h).
   QSharedPointer<DirectRunProcess> proc;
   {
     QtCompat::MutexLocker locker(&m_processesMutex);
@@ -407,8 +411,8 @@ QueueInterface::QueueStatus DirectRunInterface::getStatus(Structure* s) const
   }
 
   // For a submitted structure with no process in the table, no output file
-  // means still pending; otherwise the job finished before we polled, so fall
-  // through to Started.
+  //   means still pending; otherwise the job finished before we polled, so fall
+  //   through to Started.
   if (state == Structure::Submitted) {
     if (pid == 0 || !proc) {
       bool exists = false;
@@ -426,6 +430,7 @@ QueueInterface::QueueStatus DirectRunInterface::getStatus(Structure* s) const
     return QueueInterface::Error;
   }
 
+  // Read the process status first: extra details are needed only for failures.
   int statusValue = directRunProcessInt(proc.data(), "statusValue",
                         static_cast<int>(DirectRunProcess::Error));
   int exitCode = 0;
@@ -447,6 +452,7 @@ QueueInterface::QueueStatus DirectRunInterface::getStatus(Structure* s) const
     stderrText = directRunProcessString(proc.data(), "readAllStandardErrorString");
   }
 
+  // Return the proper QueueManager state decisions from QProcess status details.
   switch (static_cast<DirectRunProcess::Status>(statusValue)) {
     case DirectRunProcess::NotStarted:
       return QueueInterface::Pending;
@@ -511,7 +517,7 @@ QueueInterface::CommandResult DirectRunInterface::runACommand(
   const QString& workdir, const QString& command, int timeoutMs) const
 {
   // QProcess stderr is unreliable for direct runs (e.g. srun writes to stderr
-  // on success), so don't fail on stderr or exit code; just warn on either.
+  // on success), so don't fail on stderr or exit code; just warn on them.
   CommandResult result;
 
   QProcess proc;

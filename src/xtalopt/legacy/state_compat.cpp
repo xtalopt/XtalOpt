@@ -37,7 +37,7 @@
 #include <limits>
 #include <map>
 
-// Convert old version=4 state files.
+// Convert old version 4 state files.
 
 namespace XtalOpt {
 
@@ -114,7 +114,7 @@ void normalizeEditSettings(QSettings& settings, QStringList& notes)
       settings.setValue(queueKey, "none");
       appendNote(notes,
                  QString("replaced xtalopt/edit/%1=local with none")
-                   .arg(queueKey));
+                 .arg(queueKey));
     }
 
     const QString optimizerPrefix = "optimizer/" + QString::number(i);
@@ -126,8 +126,8 @@ void normalizeEditSettings(QSettings& settings, QStringList& notes)
       settings.setValue(currentKey, settings.value(oldKey));
       appendNote(notes,
                  QString("replaced xtalopt/edit/%1 with xtalopt/edit/%2")
-                   .arg(oldKey)
-                   .arg(currentKey));
+                 .arg(oldKey)
+                 .arg(currentKey));
     } else if (hasCurrentCommand && hasOldCommand) {
       appendNote(notes,
                  QString("ignored xtalopt/edit/%1 because xtalopt/edit/%2 "
@@ -206,7 +206,7 @@ bool convertLegacyMolUnit(const LegacyMolUnitFields& fields, LegacyMolUnitConver
   QString templateName;
   if (noCenter) {
     if (fields.numNeighbors == 1 && geometry == LegacyGeomLinear) {
-      // An old single-atom molunit won't be converted; only checked for composition!
+      // A v4 single-atom molunit won't be converted; only checked for composition!
       addAtomCount(conversion.atomCounts, neighborAtomicNum,
                    static_cast<unsigned int>(fields.numCenters));
       return true;
@@ -474,6 +474,7 @@ bool normalizeMoleculeUnits(QSettings& settings, QStringList& notes, QString& er
                "neighbor and no center (a lone atom needs no molUnit)");
   }
   settings.endGroup();
+
   return true;
 }
 
@@ -490,6 +491,7 @@ QStringList chemicalSystemFromState(QSettings& settings)
 
   QStringList symbols = compositions.first().getCompositionSymbols();
   std::sort(symbols.begin(), symbols.end());
+
   return symbols;
 }
 
@@ -498,6 +500,7 @@ int currentNumOptSteps(QSettings& settings)
   int numOptSteps = settings.value("xtalopt/edit/numOptSteps", 1).toInt();
   if (numOptSteps < 1)
     numOptSteps = 1;
+
   return numOptSteps;
 }
 
@@ -546,6 +549,7 @@ bool legacyPotcarAssetMap(const QString& potcarTemplate, const QStringList& symb
   for (int i = 0; i < symbols.size() && i < entries.size(); ++i)
     parsedEntries.append(symbols.at(i) + "=" + entries.at(i).trimmed());
   normalized = parsedEntries.join("; ");
+
   return true;
 }
 
@@ -578,6 +582,7 @@ bool normalizeVaspPotcarAssets(QSettings& settings, QStringList& notes, QString&
                QString("normalized legacy VASP POTCAR asset at %1")
                  .arg(potcarKey));
   }
+
   return true;
 }
 
@@ -676,6 +681,7 @@ bool isLegacyConstraintObjective(const StateObjectiveEntry& entry)
   bool okWeight = false;
   const int typeValue = entry.typ.toInt(&okType);
   entry.wgt.toDouble(&okWeight);
+
   return okType && okWeight && typeValue == 2;
 }
 
@@ -711,6 +717,7 @@ QList<StateConstraintEntry> readConstraintEntries(QSettings& settings)
   }
   settings.endArray();
   settings.endGroup();
+
   return constraints;
 }
 
@@ -849,7 +856,7 @@ void convertSeedStructuresToScalar(QSettings& settings)
     settings.setValue("xtalopt/input/seedStructures", seeds.join(","));
 }
 
-// Convert old forced space groups (v4 minXtalsOfSpg to current forcedSpgs comma string).
+// Convert v4 minXtalsOfSpg to current forcedSpgs comma string.
 void convertForcedSpgsToScalar(QSettings& settings)
 {
   settings.beginGroup("xtalopt/init");
@@ -933,6 +940,7 @@ QStringList optimizerAssetNames(const QString& optimizerId)
     return QStringList() << "POTCAR";
   if (id == "siesta")
     return QStringList() << "PSF";
+
   return QStringList();
 }
 
@@ -1008,7 +1016,10 @@ void convertConstraintsToRepeated(QSettings& settings)
 // Convert the old state layout.
 void convertVersion4LayoutToCurrent(QSettings& settings, QStringList& notes)
 {
-  // init/* scalars -> scalar/<keyword>
+  // Build current "input" and "optscheme" alongside the old fields first;
+  //   the old entries will be removed after all current entries are written.
+
+  // Convert init/* scalars -> scalar/<keyword>
   copyValueIfPresent(settings, "xtalopt/init/vcSearch", "xtalopt/input/vcSearch");
   copyValueIfPresent(settings, "xtalopt/init/using/randSpg", "xtalopt/input/usingRandSpg");
   copyValueIfPresent(settings, "xtalopt/init/minAtoms", "xtalopt/input/minAtoms");
@@ -1054,7 +1065,7 @@ void convertVersion4LayoutToCurrent(QSettings& settings, QStringList& notes)
   copySettingsGroup(settings, "xtalopt/init/molUnit", "xtalopt/input/molUnit");
   convertCustomIADsToRepeated(settings);
 
-  // edit/* scalars -> scalar/<keyword>
+  // Convert edit/* scalars -> scalar/<keyword>
   copyValueIfPresent(settings, "xtalopt/edit/locWorkDir", "xtalopt/input/localWorkingDirectory");
   copyValueIfPresent(settings, "xtalopt/edit/description", "xtalopt/input/description");
   copyValueIfPresent(settings, "xtalopt/edit/logErrorDirs", "xtalopt/input/logErrorDirectories");
@@ -1080,6 +1091,7 @@ void convertVersion4LayoutToCurrent(QSettings& settings, QStringList& notes)
   // Convert the number of optimization steps.
   copyValueIfPresent(settings, "xtalopt/edit/numOptSteps", "xtalopt/optscheme/numOptSteps");
 
+  // Recreate opt steps before moving their template and asset info.
   const int numOptSteps = currentNumOptSteps(settings);
   for (int i = 0; i < numOptSteps; ++i) {
     const QString step = QString::number(i);
@@ -1105,7 +1117,7 @@ void convertVersion4LayoutToCurrent(QSettings& settings, QStringList& notes)
     copyOptimizerInputs(settings, i, optimizerId);
   }
 
-  // opt/opt/* run parameters -> scalar/<keyword>
+  // Convert opt/opt/* run parameters -> scalar/<keyword>
   copyValueIfPresent(settings, "xtalopt/opt/opt/p_supercell", "xtalopt/input/randomSuperCell");
   copyValueIfPresent(settings, "xtalopt/opt/opt/numInitial", "xtalopt/input/numInitial");
   copyValueIfPresent(settings, "xtalopt/opt/opt/parentsPoolSize", "xtalopt/input/parentsPoolSize");
@@ -1149,13 +1161,13 @@ void convertVersion4LayoutToCurrent(QSettings& settings, QStringList& notes)
     if (failAction == 0)
       name = "keepTrying";
     else if (failAction == 1)
-      name = "kill";
+      name = "fail";
     else if (failAction == 3)
       name = "replaceWithOffspring";
     settings.setValue("xtalopt/input/jobFailAction", name);
   }
 
-  // opt/tol/* tolerances -> scalar/<keyword>
+  // Convert opt/tol/* tolerances -> scalar/<keyword>
   copyValueIfPresent(settings, "xtalopt/opt/tol/rdf/tolerance", "xtalopt/input/rdfTolerance");
   copyValueIfPresent(settings, "xtalopt/opt/tol/rdf/cutoff", "xtalopt/input/rdfCutoff");
   copyValueIfPresent(settings, "xtalopt/opt/tol/rdf/nbins", "xtalopt/input/rdfNumBins");
@@ -1166,7 +1178,7 @@ void convertVersion4LayoutToCurrent(QSettings& settings, QStringList& notes)
                      "xtalopt/input/xtalcompToleranceAngle");
   copyValueIfPresent(settings, "xtalopt/opt/tol/spg", "xtalopt/input/spglibTolerance");
 
-  // obj/* fitness parameters -> scalar/<keyword>, repeated -> repeated/
+  // Convert obj/* fitness parameters -> scalar/<keyword>, repeated -> repeated/
   copyValueIfPresent(settings, "xtalopt/obj/optimizationType", "xtalopt/input/optimizationType");
   copyValueIfPresent(settings, "xtalopt/obj/tournamentSelection",
                      "xtalopt/input/tournamentSelection");
@@ -1200,21 +1212,29 @@ void convertVersion4LayoutToCurrent(QSettings& settings, QStringList& notes)
 bool convertVersion4StateFile(QSettings& settings, bool fullState, int loadedVersion,
                               QStringList& notes, QString& error)
 {
+  // Normalize special v4 values before processing their keys.
+  // Some converters need the original grouping to distinguish old/current settings.
   normalizeEditSettings(settings, notes);
   Legacy::normalizeSearchState(settings, "xtalopt", loadedVersion, notes);
 
   if (!normalizeVaspPotcarAssets(settings, notes, error))
     return false;
+
   normalizeSiestaPsfAssets(settings, notes);
 
+  // A complete session needs structures, queues, and molecule data; while
+  //   a settings-only import does not need these session-specific changes.
   if (fullState) {
     if (!normalizeMoleculeUnits(settings, notes, error))
       return false;
+
     removeLegacyOptimizerSettings(settings, notes);
     normalizeRemoteQueue(settings, notes);
     normalizeRandSpgCounts(settings, notes);
   }
 
+  // Finish with settings that depend on the normalized data (above); then
+  //   we can write the current version.
   normalizeObjectiveSettings(settings, notes);
   convertVersion4LayoutToCurrent(settings, notes);
   markStateFileCurrent(settings);
@@ -1288,13 +1308,14 @@ bool convertStateFile(const QString& filename, bool fullState,
     return false;
   }
 
+  // Convert into a new separate file; the original old state file remains as is.
   QString temporaryFilename;
   {
     QTemporaryFile temporaryFile(
       QDir(QDir::tempPath()).filePath("xtalopt-state-XXXXXX.compat"));
     if (!temporaryFile.open()) {
       Common::error(QString("%1: could not prepare a temporary compatibility state copy.")
-                      .arg(__func__));
+                    .arg(__func__));
       return false;
     }
     temporaryFile.setAutoRemove(false);
@@ -1302,10 +1323,11 @@ bool convertStateFile(const QString& filename, bool fullState,
   }
   if (!QFile::remove(temporaryFilename)) {
     Common::error(QString("%1: could not prepare a temporary compatibility state copy.")
-                    .arg(__func__));
+                  .arg(__func__));
     return false;
   }
 
+  // First copy the file then convert it: "notes" outlines adjustments/conversions.
   QStringList notes;
   QString error;
   bool converted = false;
@@ -1321,8 +1343,8 @@ bool convertStateFile(const QString& filename, bool fullState,
       compatSettings.sync();
       if (compatSettings.status() != QSettings::NoError) {
         Common::error(QString("%1: failed to sync compatibility state copy %2.")
-                        .arg(__func__)
-                        .arg(temporaryFilename));
+                      .arg(__func__)
+                      .arg(temporaryFilename));
       } else {
         converted = true;
       }
@@ -1334,6 +1356,7 @@ bool convertStateFile(const QString& filename, bool fullState,
     return false;
   }
 
+  // The copy will be kept as .compat only when caller asks for it!
   if (!keepCompatibilityCopy) {
     readFilename = temporaryFilename;
     return true;
@@ -1348,15 +1371,15 @@ bool convertStateFile(const QString& filename, bool fullState,
   const QString compatFilename = filename + ".compat";
   if (QFile::exists(compatFilename) && !QFile::remove(compatFilename)) {
     Common::error(QString("%1: could not replace compatibility state copy %2.")
-                    .arg(__func__)
-                    .arg(compatFilename));
+                  .arg(__func__)
+                  .arg(compatFilename));
     QFile::remove(temporaryFilename);
     return false;
   }
   if (!QFile::copy(temporaryFilename, compatFilename)) {
     Common::error(QString("%1: could not write compatibility state copy %2.")
-                    .arg(__func__)
-                    .arg(compatFilename));
+                  .arg(__func__)
+                  .arg(compatFilename));
     QFile::remove(temporaryFilename);
     return false;
   }

@@ -50,7 +50,7 @@ class Geometry
 {
 public:
   explicit Geometry(const std::vector<Atom>& atoms = std::vector<Atom>(),
-                     const UnitCell& unitCell = UnitCell())
+                    const UnitCell& unitCell = UnitCell())
     : g_atoms(atoms), g_bonds(), g_unitCell(unitCell)
   {
   }
@@ -65,25 +65,27 @@ public:
   Common::Vector3 fracToCart(const Common::Vector3& v) const {
     return unitCell().toCartesian(v);
   }
+
   Common::Vector3 cartToFrac(const Common::Vector3& v) const {
     return unitCell().toFractional(v);
   }
 
   // Cell data. These functions make a 3D cell.
-  void setCellInfo(double a, double b, double c, double alpha, double beta,
-                   double gamma);
+  void setCellInfo(double a, double b, double c,
+                   double alpha, double beta, double gamma);
   void setCellInfo(const Common::Matrix3& m) {
     g_unitCell.setCellMatrix(m);
     clearGeometryCaches();
   }
+
   void setCellInfo(const Common::Vector3& a, const Common::Vector3& b, const Common::Vector3& c);
-  static bool isCellMatrixUsable(const Common::Matrix3& matrix);
   void setVolume(double volume);
+
   // rescale cell can be used to "fix" any cell parameter at a particular value.
   // Simply pass the fixed values and use "0" for any non-fixed parameters.
   // Volume will be preserved.
-  void rescaleCell(double a, double b, double c, double alpha, double beta,
-                   double gamma);
+  void rescaleCell(double a, double b, double c,
+                   double alpha, double beta, double gamma);
 
   // Rotate the cell vectors and atomic coordinates so that v1 is parallel
   // to x and v2 is in the xy plane
@@ -170,7 +172,8 @@ public:
    * @sa getNearestNeighborDistance
    */
   virtual bool generateIADHistogram(std::vector<double>* distance, std::vector<double>* frequency,
-    double min = 0.0, double max = 10.0, double step = 0.01, const Atom& atom = Atom()) const;
+                                    double min = 0.0, double max = 10.0, double step = 0.01,
+                                    const Atom& atom = Atom()) const;
 
   bool getSquaredAtomicDistancesToPoint(const Common::Vector3& coord,
                                         QList<double>* distances) const;
@@ -218,8 +221,8 @@ public:
    *     rdf[b * npairs + p]
    */
   ///@{
-  const std::vector<float>&
-       getNormalizedRDF() const { return g_norm_rdf; }
+  const std::vector<float>& getNormalizedRDF() const { return g_norm_rdf; }
+
   void clearNormalizedRDF()
   {
     g_norm_rdf.clear();
@@ -228,6 +231,7 @@ public:
     g_norm_rdf_cutoff = 0.0;
     g_norm_rdf_sigma = 0.0;
   }
+
   bool hasNormalizedRDF() const { return !g_norm_rdf.empty(); }
   bool calculateNormalizedRDF(int nbins, double cutoff, double sigma);
   bool calculateTotalNormalizedRDF(int nbins, double cutoff, double sigma,
@@ -237,11 +241,13 @@ public:
 
   std::vector<std::vector<std::pair<int, double> > >
        getNearestNeighborLists() const { return g_neighbor_list; }
+
   void clearNearestNeighborLists()
   {
     g_neighbor_list.clear();
     g_neighbor_list_cutoff = 0.0;
   }
+
   void notifyGeometryChanged() { clearGeometryCaches(); }
   bool hasNearestNeighborLists() const { return !g_neighbor_list.empty(); }
   bool calculateNearestNeighborLists(double cutoff);
@@ -569,8 +575,8 @@ public:
    *
    * @return The dihedral angle in degrees.
    */
-  static double dihedral(const Common::Vector3& A, const Common::Vector3& B, const Common::Vector3& C,
-                         const Common::Vector3& D);
+  static double dihedral(const Common::Vector3& A, const Common::Vector3& B,
+                         const Common::Vector3& C, const Common::Vector3& D);
 
   /**
    * Get the dihedral angle (in degrees) created by four atoms where the
@@ -583,8 +589,8 @@ public:
    *
    * @return The dihedral angle (in degrees).
    */
-  double dihedral(size_t atomInd1, size_t atomInd2, size_t atomInd3,
-                  size_t atomInd4) const;
+  double dihedral(size_t atomInd1, size_t atomInd2,
+                  size_t atomInd3, size_t atomInd4) const;
 
   /**
    * Does this geometry contain bonds? Returns true if !g_bonds.empty().

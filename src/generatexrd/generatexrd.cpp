@@ -19,6 +19,7 @@
 #include <common/output.h>
 #include <common/numericutils.h>
 #include <atoms/basis/unitcell.h>
+#include <common/matrix.h>
 #include <common/vector.h>
 #include <atoms/geometry.h>
 
@@ -56,29 +57,12 @@ inline double radiansToDegrees(double radians)
   return radians * 180.0 / pi();
 }
 
-Common::Vector3 reciprocalVectorA(const Atoms::UnitCell& cell)
-{
-  const double volume = cell.volume();
-  return cell.bVector().cross(cell.cVector()) / volume;
-}
-
-Common::Vector3 reciprocalVectorB(const Atoms::UnitCell& cell)
-{
-  const double volume = cell.volume();
-  return cell.cVector().cross(cell.aVector()) / volume;
-}
-
-Common::Vector3 reciprocalVectorC(const Atoms::UnitCell& cell)
-{
-  const double volume = cell.volume();
-  return cell.aVector().cross(cell.bVector()) / volume;
-}
-
 // Return an estimated scattering factor when no table value is available.
 double approximateAtomicScatteringFactor(unsigned short atomicNumber, double sinThetaOverLambda)
 {
   const double z = static_cast<double>(atomicNumber);
   const double s2 = sinThetaOverLambda * sinThetaOverLambda;
+
   return z * std::exp(-10.0 * s2);
 }
 
@@ -91,6 +75,7 @@ double atomicScatteringFactor(unsigned short atomicNumber, double wavelength, do
     return f0;
 
   const double theta = degreesToRadians(twoTheta / 2.0);
+
   return approximateAtomicScatteringFactor(atomicNumber, std::sin(theta) / wavelength);
 }
 
@@ -109,8 +94,8 @@ double lorentzPolarizationFactor(double twoTheta)
   return (1.0 + cosTwoTheta * cosTwoTheta) / denom;
 }
 
-std::vector<Reflection> calculateReflections(const Atoms::Geometry& structure, double wavelength,
-  double max2theta)
+std::vector<Reflection> calculateReflections(const Atoms::Geometry& structure,
+                                             double wavelength, double max2theta)
 {
   std::vector<Reflection> reflections;
 
@@ -126,9 +111,12 @@ std::vector<Reflection> calculateReflections(const Atoms::Geometry& structure, d
   const double minDSpacing = wavelength / (2.0 * sinThetaMax);
   const double maxReciprocalNorm = 1.0 / minDSpacing;
 
-  const Common::Vector3 aStar = reciprocalVectorA(cell);
-  const Common::Vector3 bStar = reciprocalVectorB(cell);
-  const Common::Vector3 cStar = reciprocalVectorC(cell);
+  // Reciprocal cell includes 2*pi factor which here should be divided by.
+  // Also, it returns a zero matrix for a singular cell; hence no reflections at all!
+  const Common::Matrix3 reciprocal = cell.reciprocalCell() / (2.0 * PI);
+  const Common::Vector3 aStar = reciprocal.row(0);
+  const Common::Vector3 bStar = reciprocal.row(1);
+  const Common::Vector3 cStar = reciprocal.row(2);
 
   const int maxH = std::max(1, static_cast<int>(std::ceil(maxReciprocalNorm * cell.aVector().norm())));
   const int maxK = std::max(1, static_cast<int>(std::ceil(maxReciprocalNorm * cell.bVector().norm())));
@@ -215,6 +203,7 @@ std::vector<Reflection> mergeEquivalentReflections(std::vector<Reflection> refle
   }
 
   merged.push_back(current);
+
   return merged;
 }
 
@@ -297,6 +286,7 @@ bool generatePattern(const Atoms::Geometry& structure, XrdData& results, double 
   }
 
   broadenReflections(reflections, results, peakwidth, numpoints, max2theta);
+
   return !results.empty();
 }
 

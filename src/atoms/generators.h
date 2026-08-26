@@ -70,7 +70,7 @@ public:
 
   // Can RandSpg generate spaceGroup for the given atomic numbers?
   static bool canGenerateRandSpg(unsigned int spaceGroup,
-    const std::vector<unsigned int>& atomicNumbers);
+                                 const std::vector<unsigned int>& atomicNumbers);
 
   // Generate with RandSpg; returns nullptr on failure.
   static std::unique_ptr<Geometry> generateRandSpg(const CrystalGenerationOptions& options);
@@ -81,8 +81,8 @@ public:
   // Build a molecular crystal from one molecule (a 0D Geometry) placed on
   // symmetry-equivalent sites; nullptr on failure (error holds the reason).
   static std::unique_ptr<Geometry> generateMolecularCrystal(int spaceGroup,
-    const Geometry& molecule, QString& error, double symprec = SPGLIB_TOL,
-    double distanceScale = 1.0);
+                                                            const Geometry& molecule, QString& error,
+                                                            double symprec = SPGLIB_TOL, double distanceScale = 1.0);
 };
 
 } // namespace Atoms

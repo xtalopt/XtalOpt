@@ -234,12 +234,6 @@
               <pointsize>11</pointsize>
              </font>
             </property>
-            <property name="toolTip">
-             <string>Number of random initial structures generated from the input formulas.
-
-Default: 0
-</string>
-            </property>
             <property name="text">
              <string>Random initial structures</string>
             </property>
@@ -364,13 +358,6 @@ Default: 0
               <pointsize>11</pointsize>
              </font>
             </property>
-            <property name="toolTip">
-             <string>Number of structures to be considered for genetic operations.
-
-Structures are chosen for genetic operations based on a weighted probability list, such that the lowest enthalpy structures have the greatest probability of being chosen. The number specified here is used to determine how many of the lowest enthalpy structures will have a non-zero probability.
-
-Default: 60</string>
-            </property>
             <property name="text">
              <string>Parents pool size</string>
             </property>
@@ -423,7 +410,7 @@ Default: 60</string>
              </font>
             </property>
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Take an action for failed local optimizations after this many failures.&lt;/p&gt;&lt;p&gt;Default: 2&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Take an action for failed local optimizations after this many failures.&lt;/p&gt;&lt;p&gt;Default: 1&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="suffix">
              <string> times,</string>
@@ -487,7 +474,7 @@ Default: 60</string>
              </font>
             </property>
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Perform one of the indicated tasks for a structure that fail more than the specified number of times.&lt;/p&gt;&lt;p&gt;Default: replace with random&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Perform one of the indicated tasks for a structure that fail more than the specified number of times.&lt;/p&gt;&lt;p&gt;Default: fail the structure&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="currentText">
              <string>replace with random.</string>
@@ -502,7 +489,7 @@ Default: 60</string>
             </item>
             <item>
              <property name="text">
-              <string>kill the structure.</string>
+              <string>fail the structure.</string>
              </property>
             </item>
             <item>
@@ -541,11 +528,6 @@ Default: 60</string>
              <font>
               <pointsize>11</pointsize>
              </font>
-            </property>
-            <property name="toolTip">
-             <string>How many structures are created for population &gt; 1. This has no effect in continuous mode.
-
-Default: 10</string>
             </property>
             <property name="text">
              <string notr="true">Continuous structures</string>
@@ -720,13 +702,13 @@ If the file extension is unknown, XtalOpt will try to identify the format from t
              </size>
             </property>
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Relative weight for chances of using permucomp in producing offspring structures (applies only to the variable-composition search).&lt;/p&gt;&lt;p&gt;The weights specified for all operations will be combined to determine the &amp;quot;percentage chance&amp;quot; of performing each operation:&lt;/p&gt;&lt;p&gt;% = (operation weight) / (sum of weight of operations)&lt;/p&gt;&lt;p&gt;In a variable-composition search the sum includes weights for crossover, stripple, permustrain, permutomic, and permucomp; otherwise the permutomic and permucomp are ignored (with their chances being set to 0 internally).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;Default: 5&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Relative weight for chances of using permucomp in producing offspring structures (applies only to the variable-composition search).&lt;/p&gt;&lt;p&gt;The weights specified for all operations will be combined to determine the &amp;quot;percentage chance&amp;quot; of performing each operation:&lt;/p&gt;&lt;p&gt;% = (operation weight) / (sum of weight of operations)&lt;/p&gt;&lt;p&gt;In a variable-composition search the sum includes weights for crossover, stripple, permustrain, permutomic, and permucomp; otherwise the permutomic and permucomp are ignored (with their chances being set to 0 internally).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;Default: 10&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="maximum">
              <number>999</number>
             </property>
             <property name="value">
-             <number>5</number>
+             <number>10</number>
             </property>
            </widget>
           </item>
@@ -762,13 +744,13 @@ If the file extension is unknown, XtalOpt will try to identify the format from t
              </font>
             </property>
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Relative weight for chances of using stripple in producing offspring structures.&lt;/p&gt;&lt;p&gt;The weights specified for all operations will be combined to determine the &amp;quot;percentage chance&amp;quot; of performing each operation:&lt;/p&gt;&lt;p&gt;% = (operation weight) / (sum of weight of operations)&lt;/p&gt;&lt;p&gt;In a variable-composition search the sum includes weights for crossover, stripple, permustrain, permutomic, and permucomp; otherwise the permutomic and permucomp are ignored (with their chances being set to 0 internally).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;Default: 25&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Relative weight for chances of using stripple in producing offspring structures.&lt;/p&gt;&lt;p&gt;The weights specified for all operations will be combined to determine the &amp;quot;percentage chance&amp;quot; of performing each operation:&lt;/p&gt;&lt;p&gt;% = (operation weight) / (sum of weight of operations)&lt;/p&gt;&lt;p&gt;In a variable-composition search the sum includes weights for crossover, stripple, permustrain, permutomic, and permucomp; otherwise the permutomic and permucomp are ignored (with their chances being set to 0 internally).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;Default: 20&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="maximum">
              <number>999</number>
             </property>
             <property name="value">
-             <number>25</number>
+             <number>20</number>
             </property>
            </widget>
           </item>
@@ -799,13 +781,13 @@ If the file extension is unknown, XtalOpt will try to identify the format from t
              </font>
             </property>
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Relative weight for chances of using permustrain in producing offspring structures.&lt;/p&gt;&lt;p&gt;The weights specified for all operations will be combined to determine the &amp;quot;percentage chance&amp;quot; of performing each operation:&lt;/p&gt;&lt;p&gt;% = (operation weight) / (sum of weight of operations)&lt;/p&gt;&lt;p&gt;In a variable-composition search the sum includes weights for crossover, stripple, permustrain, permutomic, and permucomp; otherwise the permutomic and permucomp are ignored (with their chances being set to 0 internally).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;Default: 25&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Relative weight for chances of using permustrain in producing offspring structures.&lt;/p&gt;&lt;p&gt;The weights specified for all operations will be combined to determine the &amp;quot;percentage chance&amp;quot; of performing each operation:&lt;/p&gt;&lt;p&gt;% = (operation weight) / (sum of weight of operations)&lt;/p&gt;&lt;p&gt;In a variable-composition search the sum includes weights for crossover, stripple, permustrain, permutomic, and permucomp; otherwise the permutomic and permucomp are ignored (with their chances being set to 0 internally).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;Default: 20&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="maximum">
              <number>999</number>
             </property>
             <property name="value">
-             <number>25</number>
+             <number>20</number>
             </property>
            </widget>
           </item>
@@ -846,13 +828,6 @@ If the file extension is unknown, XtalOpt will try to identify the format from t
               <pointsize>11</pointsize>
              </font>
             </property>
-            <property name="toolTip">
-             <string>Percentage of offspring structures that will be generated from the permutation operator.
-
-The permutation operator will swap two atoms of different type within a single parent. Set to zero if there is only one atom type in the cell!
-
-Default: 5%</string>
-            </property>
             <property name="text">
              <string>Weight of permustrain</string>
             </property>
@@ -876,13 +851,6 @@ Default: 5%</string>
              <font>
               <pointsize>11</pointsize>
              </font>
-            </property>
-            <property name="toolTip">
-             <string>Percentage of new structures to be created from the heredity operator.
-
-Heredity combines two random spatially coherent slabs from two unique parents to form a single offspring.
-
-Default: 85</string>
             </property>
             <property name="text">
              <string>Weight of crossover</string>
@@ -909,13 +877,13 @@ Default: 85</string>
              </font>
             </property>
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Relative weight for chances of using permutomic in producing offspring structures (applies only to the variable-composition search).&lt;/p&gt;&lt;p&gt;The weights specified for all operations will be combined to determine the &amp;quot;percentage chance&amp;quot; of performing each operation:&lt;/p&gt;&lt;p&gt;% = (operation weight) / (sum of weight of operations)&lt;/p&gt;&lt;p&gt;In a variable-composition search the sum includes weights for crossover, stripple, permustrain, permutomic, and permucomp; otherwise the permutomic and permucomp are ignored (with their chances being set to 0 internally).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;Default: 15&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Relative weight for chances of using permutomic in producing offspring structures (applies only to the variable-composition search).&lt;/p&gt;&lt;p&gt;The weights specified for all operations will be combined to determine the &amp;quot;percentage chance&amp;quot; of performing each operation:&lt;/p&gt;&lt;p&gt;% = (operation weight) / (sum of weight of operations)&lt;/p&gt;&lt;p&gt;In a variable-composition search the sum includes weights for crossover, stripple, permustrain, permutomic, and permucomp; otherwise the permutomic and permucomp are ignored (with their chances being set to 0 internally).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;Default: 20&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="maximum">
              <number>999</number>
             </property>
             <property name="value">
-             <number>15</number>
+             <number>20</number>
             </property>
            </widget>
           </item>
@@ -939,13 +907,13 @@ Default: 85</string>
              </font>
             </property>
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Relative weight for chances of using crossover in producing offspring structures.&lt;/p&gt;&lt;p&gt;The weights specified for all operations will be combined to determine the &amp;quot;percentage chance&amp;quot; of performing each operation:&lt;/p&gt;&lt;p&gt;% = (operation weight) / (sum of weight of operations)&lt;/p&gt;&lt;p&gt;In a variable-composition search the sum includes weights for crossover, stripple, permustrain, permutomic, and permucomp; otherwise the permutomic and permucomp are ignored (with their chances being set to 0 internally).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;Default: 35&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Relative weight for chances of using crossover in producing offspring structures.&lt;/p&gt;&lt;p&gt;The weights specified for all operations will be combined to determine the &amp;quot;percentage chance&amp;quot; of performing each operation:&lt;/p&gt;&lt;p&gt;% = (operation weight) / (sum of weight of operations)&lt;/p&gt;&lt;p&gt;In a variable-composition search the sum includes weights for crossover, stripple, permustrain, permutomic, and permucomp; otherwise the permutomic and permucomp are ignored (with their chances being set to 0 internally).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;Default: 20&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="maximum">
              <number>999</number>
             </property>
             <property name="value">
-             <number>35</number>
+             <number>20</number>
             </property>
            </widget>
           </item>
@@ -1087,11 +1055,6 @@ Default: 0.5</string>
              <font>
               <pointsize>11</pointsize>
              </font>
-            </property>
-            <property name="toolTip">
-             <string>Number of separate swaps in the permutation operator.
-
-Default: 3</string>
             </property>
             <property name="text">
              <string>number of exchanges</string>
@@ -1532,11 +1495,6 @@ Default: 0.5</string>
              <font>
               <pointsize>11</pointsize>
              </font>
-            </property>
-            <property name="toolTip">
-             <string>Standard deviation of the random elements of the strain matrix.
-
-Default: 0.07</string>
             </property>
             <property name="text">
              <string>strain stdev range</string>

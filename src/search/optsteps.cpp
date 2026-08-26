@@ -40,11 +40,10 @@ QueueInterface* OptSteps::queueInterface(int optStep) const
   if (optStep < 0 || optStep >= static_cast<int>(numSteps())) {
     Common::error(QString("%1: optStep %2 is out of bounds. The number of "
                   "optimization steps is %3.")
-            .arg(__func__)
-            .arg(optStep + 1)
-            .arg(numSteps()));
+                  .arg(__func__).arg(optStep + 1).arg(numSteps()));
     return nullptr;
   }
+
   return m_queueInterfaceAtOptStep[optStep].get();
 }
 
@@ -54,6 +53,7 @@ int OptSteps::indexOf(const QueueInterface* qi) const
     if (qi == m_queueInterfaceAtOptStep[i].get())
       return i;
   }
+
   return -1;
 }
 
@@ -62,11 +62,10 @@ Optimizer* OptSteps::optimizer(int optStep) const
   if (optStep < 0 || optStep >= static_cast<int>(numSteps())) {
     Common::error(QString("%1: optStep %2 is out of bounds. The number of "
                   "optimization steps is %3.")
-            .arg(__func__)
-            .arg(optStep + 1)
-            .arg(numSteps()));
+                  .arg(__func__).arg(optStep + 1).arg(numSteps()));
     return nullptr;
   }
+
   return m_optimizerAtOptStep[optStep].get();
 }
 
@@ -90,9 +89,7 @@ void OptSteps::append()
     m_queueInterfaceTemplates.push_back(templateMap());
     m_optimizerTemplates.push_back(templateMap());
     m_optimizerInputAssets.push_back(PerStepInputAssetMap::value_type());
-  }
-  // We will duplicate the most recent opt step otherwise
-  else {
+  } else { // Otherwise, duplicate the most recent opt step.
     QueueInterface* previousQueue = m_queueInterfaceAtOptStep.back().get();
 
     std::unique_ptr<QueueInterface> queueInterface = previousQueue
@@ -125,9 +122,7 @@ void OptSteps::remove(size_t optStep)
   if (optStep >= m_numSteps) {
     Common::error(QString("%1: attempting to remove opt step %2, which is "
                   "out of bounds. The number of opt steps is %3.")
-            .arg(__func__)
-            .arg(optStep + 1)
-            .arg(m_numSteps));
+                  .arg(__func__).arg(optStep + 1).arg(m_numSteps));
     return;
   }
 
@@ -146,23 +141,24 @@ bool OptSteps::setQueueInterface(size_t optStep, const std::string& qiName)
   if (optStep >= m_numSteps) {
     Common::error(QString("%1: optStep %2 is out of bounds. Number of opt "
                   "steps is %3.")
-            .arg(__func__)
-            .arg(optStep + 1)
-            .arg(m_numSteps));
+                  .arg(__func__).arg(optStep + 1).arg(m_numSteps));
     return false;
   }
   std::unique_ptr<QueueInterface> queueInterface = m_queueInterfaceCreatorByName(qiName);
   if (!queueInterface)
     return false;
 
+  // Replacing a queue invalidates its old template names. Create empty entries
+  //   for the selected queue before any template contents are restored.
   m_queueInterfaceAtOptStep[optStep] = std::move(queueInterface);
   m_queueInterfaceTemplates[optStep].clear();
 
-  // We need to populate the templates list with empty templates
+  // Populate the template list with empty contents.
   for (const auto& templateName :
        m_queueInterfaceAtOptStep[optStep]->getQueueInterfaceTemplateFileNames()) {
     setQueueInterfaceTemplate(optStep, templateName.toStdString(), "");
   }
+
   return true;
 }
 
@@ -171,18 +167,15 @@ std::string OptSteps::queueInterfaceTemplate(size_t optStep, const std::string& 
   if (optStep >= m_numSteps) {
     Common::error(QString("%1: optStep %2 is out of bounds. Number of opt "
                   "steps is %3.")
-            .arg(__func__)
-            .arg(optStep + 1)
-            .arg(m_numSteps));
+                  .arg(__func__).arg(optStep + 1).arg(m_numSteps));
     return "";
   }
   if (m_queueInterfaceTemplates[optStep].count(name) == 0) {
     Common::error(QString("%1: invalid key entry name %2 for opt step %3.")
-            .arg(__func__)
-            .arg(name.c_str())
-            .arg(optStep + 1));
+                  .arg(__func__).arg(name.c_str()).arg(optStep + 1));
     return "";
   }
+
   return m_queueInterfaceTemplates[optStep].at(name);
 }
 
@@ -191,9 +184,7 @@ void OptSteps::setQueueInterfaceTemplate(size_t optStep, const std::string& name
   if (optStep >= m_numSteps) {
     Common::error(QString("%1: optStep %2 is out of bounds. Number of opt "
                   "steps is %3.")
-            .arg(__func__)
-            .arg(optStep + 1)
-            .arg(m_numSteps));
+                  .arg(__func__).arg(optStep + 1).arg(m_numSteps));
     return;
   }
   m_queueInterfaceTemplates[optStep][name] = temp;
@@ -204,26 +195,27 @@ bool OptSteps::setOptimizer(size_t optStep, const std::string& optName)
   if (optStep >= m_numSteps) {
     Common::error(QString("%1: optStep %2 is out of bounds. Number of opt "
                   "steps is %3.")
-            .arg(__func__)
-            .arg(optStep + 1)
-            .arg(m_numSteps));
+                  .arg(__func__).arg(optStep + 1).arg(m_numSteps));
     return false;
   }
   std::unique_ptr<Optimizer> optimizer = m_optimizerCreatorByName(optName);
   if (!optimizer)
     return false;
 
+  // Replacing an optimizer invalidates its old template and asset names.
+  // Create empty selected-optimizer entries before their contents are restored.
   m_optimizerAtOptStep[optStep] = std::move(optimizer);
   m_optimizerTemplates[optStep].clear();
   m_optimizerInputAssets[optStep].clear();
 
-  // We need to populate the templates list with empty templates
+  // Populate the template list with empty contents.
   for (const auto& templateName : m_optimizerAtOptStep[optStep]->getOptimizerTemplateFileNames()) {
     setOptimizerTemplate(optStep, templateName.toStdString(), "");
   }
   for (const auto& assetName : m_optimizerAtOptStep[optStep]->getOptimizerInputAssetNames()) {
     setOptimizerInputAssets(optStep, assetName.toStdString(), OptimizerInputAssetMap());
   }
+
   return true;
 }
 
@@ -232,18 +224,15 @@ std::string OptSteps::optimizerTemplate(size_t optStep, const std::string& name)
   if (optStep >= m_numSteps) {
     Common::error(QString("%1: optStep %2 is out of bounds. Number of opt "
                   "steps is %3.")
-            .arg(__func__)
-            .arg(optStep + 1)
-            .arg(m_numSteps));
+                  .arg(__func__).arg(optStep + 1).arg(m_numSteps));
     return "";
   }
   if (m_optimizerTemplates[optStep].count(name) == 0) {
     Common::error(QString("%1: invalid key entry name %2 for opt step %3.")
-            .arg(__func__)
-            .arg(name.c_str())
-            .arg(optStep + 1));
+                  .arg(__func__).arg(name.c_str()).arg(optStep + 1));
     return "";
   }
+
   return m_optimizerTemplates[optStep].at(name);
 }
 
@@ -254,9 +243,7 @@ void OptSteps::setOptimizerTemplate(size_t optStep,
   if (optStep >= m_numSteps) {
     Common::error(QString("%1: optStep %2 is out of bounds. Number of opt "
                   "steps is %3.")
-            .arg(__func__)
-            .arg(optStep + 1)
-            .arg(m_numSteps));
+                  .arg(__func__).arg(optStep + 1).arg(m_numSteps));
     return;
   }
   m_optimizerTemplates[optStep][name] = temp;
@@ -268,18 +255,15 @@ OptimizerInputAssetMap OptSteps::optimizerInputAssets(size_t optStep,
   if (optStep >= m_numSteps) {
     Common::error(QString("%1: optStep %2 is out of bounds. Number of opt "
                   "steps is %3.")
-            .arg(__func__)
-            .arg(optStep + 1)
-            .arg(m_numSteps));
+                  .arg(__func__).arg(optStep + 1).arg(m_numSteps));
     return OptimizerInputAssetMap();
   }
   if (m_optimizerInputAssets[optStep].count(name) == 0) {
     Common::error(QString("%1: invalid input asset name %2 for opt step %3.")
-            .arg(__func__)
-            .arg(name.c_str())
-            .arg(optStep + 1));
+                  .arg(__func__).arg(name.c_str()).arg(optStep + 1));
     return OptimizerInputAssetMap();
   }
+
   return m_optimizerInputAssets[optStep].at(name);
 }
 
@@ -289,11 +273,10 @@ void OptSteps::setOptimizerInputAssets(size_t optStep, const std::string& name,
   if (optStep >= m_numSteps) {
     Common::error(QString("%1: optStep %2 is out of bounds. Number of opt "
                   "steps is %3.")
-            .arg(__func__)
-            .arg(optStep + 1)
-            .arg(m_numSteps));
+                  .arg(__func__).arg(optStep + 1).arg(m_numSteps));
     return;
   }
+  // Store element IDs in one canonical form.
   OptimizerInputAssetMap canonicalAssets;
   for (const auto& asset : assets) {
     std::string id = asset.first;

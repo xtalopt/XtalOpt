@@ -23,7 +23,7 @@
 #include <common/output.h>
 #include <search/queueinterface.h>
 #include <search/structure.h>
-#include <atoms/formats/poscarformat.h>
+#include <atoms/formats/vaspformat.h>
 
 #include <QFile>
 #include <QHash>
@@ -91,7 +91,7 @@ QString workPath(const ScriptCalculationContext& context, const QString& filenam
 
 bool writeOutputPoscar(Structure* s, const QString& filename)
 {
-  const std::string poscar = Atoms::PoscarFormat::writeToString(*s, s->getLocpath()).toStdString();
+  const std::string poscar = Atoms::VaspFormat::writeToString(*s, s->getLocpath()).toStdString();
   if (poscar.empty())
     return false;
 
@@ -100,7 +100,7 @@ bool writeOutputPoscar(Structure* s, const QString& filename)
   QFile file(Common::localPath(s->getLocpath(), filename));
   if (file.open(QIODevice::WriteOnly) &&
       file.write(poscar.c_str(), static_cast<qint64>(poscar.size())) ==
-        static_cast<qint64>(poscar.size())) {
+                                 static_cast<qint64>(poscar.size())) {
     file.close();
     return true;
   }
@@ -125,7 +125,7 @@ bool removeOldOutputFiles(Structure* s, const ScriptCalculationContext& context,
     if (existingFiles.value(script.outputFile, false)) {
       if (!context.queue->removeAFile(s, script.outputFile)) {
         Common::error(QObject::tr("Failed to remove file %1!")
-                        .arg(script.outputFile));
+                                  .arg(script.outputFile));
         return false;
       }
     }
@@ -149,7 +149,8 @@ bool runExternalScripts(Structure* s, const ScriptCalculationContext& context,
     if (context.search->isShuttingDown())
       return false;
 
-    const int remaining = timeoutMs < 0 ? -1
+    const int remaining = timeoutMs < 0
+                          ? -1
                           : qMax(0, timeoutMs - static_cast<int>(qMin<qint64>(timer.elapsed(), INT_MAX)));
     if (remaining == 0)
       return false;
@@ -165,9 +166,7 @@ bool runExternalScripts(Structure* s, const ScriptCalculationContext& context,
 
     if (!result.succeeded()) {
       Common::error(QObject::tr("Failed to run the user script for %1 %2 for structure %3")
-                      .arg(scriptKind)
-                      .arg(script.displayIndex)
-                      .arg(s->getTag()));
+                                .arg(scriptKind).arg(script.displayIndex).arg(s->getTag()));
       return false;
     }
   }
@@ -211,9 +210,7 @@ bool checkAndGetScriptOutputs(Structure* s, const ScriptCalculationContext& cont
     if (!context.queue->copyFileFromExecutionHost(
           workPath(context, script.outputFile), localOutput)) {
       Common::error(QObject::tr("Failed to copy output for %1 %2 for structure %3 from remote!")
-                      .arg(lowerKind)
-                      .arg(script.displayIndex)
-                      .arg(s->getTag()));
+                                .arg(lowerKind).arg(script.displayIndex).arg(s->getTag()));
       return false;
     }
   }
@@ -275,14 +272,14 @@ bool SearchBase::startConstraintCalculations(Structure* s)
   const QString outputStructure = "output.POSCAR";
   if (!writeOutputPoscar(s, outputStructure)) {
     Common::error(tr("Failed writing output.POSCAR file for structure %1")
-                    .arg(s->getTag()));
+                     .arg(s->getTag()));
     return false;
   }
 
   if (!context.queue->copyFileToExecutionHost(Common::localPath(context.localDir, outputStructure),
         workPath(context, outputStructure))) {
     Common::error(tr("Failed to copy the output.POSCAR file for structure %1 to remote!")
-                    .arg(s->getTag()));
+                     .arg(s->getTag()));
     return false;
   }
   return runExternalScripts(s, context, scripts, tr("constraint"));
@@ -310,8 +307,7 @@ bool SearchBase::finishConstraintCalculations(Structure* s)
     values.append(value);
     if (!valid) {
       Common::error(tr("Failed to read any results from output file for constraint %1 for structure %2")
-              .arg(i + 1)
-              .arg(s->getTag()));
+                       .arg(i + 1).arg(s->getTag()));
       failedCount += 1;
     } else if (value == 0.0) {
       dismissedCount += 1;
@@ -335,7 +331,7 @@ bool SearchBase::finishConstraintCalculations(Structure* s)
   structureLocker.unlock();
 
   Common::message(tr("Constraint calculations for %1 finished (status = %2).")
-          .arg(s->getTag()).arg(constext));
+                     .arg(s->getTag()).arg(constext));
 
   return true;
 }
@@ -356,14 +352,14 @@ bool SearchBase::startObjectiveCalculations(Structure* s)
   const QString outputStructure = "output.POSCAR";
   if (!writeOutputPoscar(s, outputStructure)) {
     Common::error(tr("Failed writing output.POSCAR file for structure %1")
-                    .arg(s->getTag()));
+                     .arg(s->getTag()));
     return false;
   }
 
   if (!context.queue->copyFileToExecutionHost(Common::localPath(context.localDir, outputStructure),
         workPath(context, outputStructure))) {
     Common::error(tr("Failed to copy the output.POSCAR file for structure %1 to remote!")
-                    .arg(s->getTag()));
+                     .arg(s->getTag()));
     return false;
   }
   return runExternalScripts(s, context, scripts, tr("objective"));
@@ -398,8 +394,7 @@ bool SearchBase::finishObjectiveCalculations(Structure* s)
     const bool valid = readScriptValue(objectiveFile, context.localDir, false, value);
     if (!valid) {
       Common::error(tr("Failed to read any results from output file for objective %1 for structure %2")
-              .arg(i + 1)
-              .arg(s->getTag()));
+                       .arg(i + 1).arg(s->getTag()));
       failedCount += 1;
     }
 
@@ -419,7 +414,7 @@ bool SearchBase::finishObjectiveCalculations(Structure* s)
   structureLocker.unlock();
 
   Common::message(tr("Objective calculations for %1 finished (status = %2).")
-          .arg(s->getTag()).arg(objctext));
+                     .arg(s->getTag()).arg(objctext));
 
   return true;
 }

@@ -132,7 +132,8 @@ public:
 
   Vector3 cross(const Vector3& other) const
   {
-    return Vector3(y() * other.z() - z() * other.y(), z() * other.x() - x() * other.z(),
+    return Vector3(y() * other.z() - z() * other.y(),
+                   z() * other.x() - x() * other.z(),
                    x() * other.y() - y() * other.x());
   }
 
@@ -183,10 +184,12 @@ inline std::ostream& operator<<(std::ostream& out, const Vector3& vector)
   return out;
 }
 
-inline bool fuzzyCompare(const Vector3& v1, const Vector3& v2, double tol = ZERO08)
+// Two vectors match if all their components match within the tolerance.
+inline bool eq(const Vector3& v1, const Vector3& v2, double tol = ZERO08)
 {
-  return fuzzyCompare(v1[0], v2[0], tol) && fuzzyCompare(v1[1], v2[1], tol) &&
-         fuzzyCompare(v1[2], v2[2], tol);
+  return eq(v1[0], v2[0], tol) &&
+         eq(v1[1], v2[1], tol) &&
+         eq(v1[2], v2[2], tol);
 }
 
 } // namespace Common

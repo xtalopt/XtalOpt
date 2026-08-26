@@ -47,7 +47,7 @@ class Structure;
  * Structure and state at a time.
  *
  * The application adds structures with addNewStructure(),
- * addStructureToSubmissionQueue(), and killStructure(). SearchBase keeps
+ * addStructureToSubmissionQueue(), and failStructure(). SearchBase keeps
  * the search settings and structure functions. QueueManager moves structures
  * through their states. QueueInterface handles jobs and files. Optimizer reads
  * the results.
@@ -99,12 +99,12 @@ signals:
   void structureSubmitted(Search::Structure* s);
 
   /**
-   * Emitted when a Structure has been killed through
-   * killStructure(Structure*)
-   * @param s The Structure that has been killed
-   * @sa killStructure
+   * Emitted when a Structure has been failed through
+   * failStructure(Structure*)
+   * @param s The Structure that has been failed
+   * @sa failStructure
    */
-  void structureKilled(Search::Structure* s);
+  void structureFailed(Search::Structure* s);
 
   /**
    * Emitted when a Structure has changed status. Useful for
@@ -142,7 +142,7 @@ signals:
    * @param optimized Number of optimized structures
    * @param running Number of running structures (e.g. submitted
    * for optimization)
-   * @param failing Number of structures stopped by failure, dismissal, or kill
+   * @param failing Number of structures stopped by failure, dismissal, or remove
    */
   void newStatusOverview(int optimized, int running, int failing, int total);
 
@@ -155,14 +155,14 @@ public slots:
 
   /**
    * Stops any running optimization processes associated with a
-   * structure and sets its status to Structure::Killed.
+   * structure and sets its status to Structure::Failed.
    *
-   * The structureKilled signal is emitted as well.
+   * The structureFailed signal is emitted as well.
    *
-   * @param s The Structure to kill.
-   * @sa structureKilled
+   * @param s The Structure to fail.
+   * @sa structureFailed
    */
-  void killStructure(Structure* s);
+  void failStructure(Structure* s);
 
   /**
    * Restores QueueManager tracking for a loaded structure.
@@ -295,7 +295,7 @@ protected:
   void startJob(Structure* s);
 
   /**
-   * Kills the optimization process for the indicated Structure.
+   * Stops the optimization process for the indicated Structure.
    *
    * @param s The Structure to stop optimizing.
    */
@@ -355,15 +355,15 @@ protected:
     InProcessHandler,
     ErrorHandler,
     SubmittedHandler,
-    KilledHandler,
+    FailedHandler,
     RestartHandler,
-    PostprocessingHandler,
-    ObjectiveFailHandler,
-    ObjectiveDismissHandler,
+    ScriptCalculationHandler,
+    ScriptFailHandler,
+    ScriptDismissHandler,
     SubmissionHandler,
     JobStartHandler,
     NamingHandler,
-    KillRequestHandler,
+    FailRequestHandler,
     ScriptLaunchHandler
   };
 
@@ -379,11 +379,11 @@ protected:
   void handleInProcessStructure(Structure* s);
   void handleErrorStructure(Structure* s);
   void handleSubmittedStructure(Structure* s);
-  void handleKilledStructure(Structure* s);
+  void handleFailedStructure(Structure* s);
   void handleRestartStructure(Structure* s);
-  void handlePostprocessingStructure(Structure* s);
-  void handleFailObjectiveStructure(Structure* s);
-  void handleDismissObjectiveStructure(Structure* s);
+  void handleScriptCalculationStructure(Structure* s);
+  void handleScriptFailedStructure(Structure* s);
+  void handleScriptDismissedStructure(Structure* s);
   void handleSubmissionStructure(Structure* s, int optStep);
   /// @endcond
 

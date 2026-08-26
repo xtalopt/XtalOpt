@@ -18,7 +18,7 @@
 #include <common/constants.h>
 #include <common/fileutils.h>
 #include <search/structure.h>
-#include <atoms/formats/poscarformat.h>
+#include <atoms/formats/vaspformat.h>
 #include <atoms/geometry.h>
 #include <generatexrd/generatexrd.h>
 
@@ -159,7 +159,7 @@ void GenXrdTest::generatePatternTest()
   std::ifstream in(rutileFileName.toStdString().c_str());
   QVERIFY(in.is_open());
 
-  QVERIFY(Atoms::PoscarFormat::read(rutile, in));
+  QVERIFY(Atoms::VaspFormat::read(rutile, in));
 
   GenerateXrd::XrdData results;
 
@@ -199,7 +199,7 @@ void GenXrdTest::generatePatternFromAtoms()
   QVERIFY(in.is_open());
 
   Atoms::Geometry rutile;
-  QVERIFY(Atoms::PoscarFormat::read(rutile, in));
+  QVERIFY(Atoms::VaspFormat::read(rutile, in));
 
   GenerateXrd::XrdData results;
   QVERIFY(GenerateXrd::generatePattern(rutile, results));
@@ -214,7 +214,7 @@ void GenXrdTest::compareAgainstReferencePattern()
   Atoms::Geometry structure;
   std::ifstream in(poscarFile.toStdString().c_str());
   QVERIFY(in.is_open());
-  QVERIFY(Atoms::PoscarFormat::read(structure, in));
+  QVERIFY(Atoms::VaspFormat::read(structure, in));
 
   GenerateXrd::XrdData generated;
   QVERIFY(GenerateXrd::generatePattern(structure, generated, GenerateXrd::DEFAULT_WAVELENGTH,

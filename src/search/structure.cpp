@@ -55,10 +55,10 @@ bool hasUsablePrimaryObjective(const Search::Structure* structure)
 // Return the results sort group.
 int sortGroupRank(Search::Structure::State state)
 {
-  if (Search::Structure::isOptimizedState(state))      return 0;
+  if (Search::Structure::isOptimizedState(state))         return 0;
   if (Search::Structure::isActiveState(state))            return 1;
   if (state == Search::Structure::WaitingForOptimization) return 2;
-  if (Search::Structure::isDismissedFinalState(state))    return 3;
+  if (Search::Structure::isScriptDismissedState(state))   return 3;
   if (Search::Structure::isTerminalFailureState(state))   return 4;
   return 5;
 }
@@ -111,7 +111,7 @@ bool Structure::isQueueTerminalState(State state)
 {
   switch (state) {
     case Optimized:
-    case Killed:
+    case Failed:
     case Removed:
     case Dismissed:
     case ObjcFailed:
@@ -145,7 +145,7 @@ bool Structure::isQueueInProgressState() const
   return Structure::isQueueInProgressState(getStatus());
 }
 
-bool Structure::isPostOptimizationCalculationState(State state)
+bool Structure::isScriptCalculationState(State state)
 {
   switch (state) {
     case ObjectiveCalculation:
@@ -156,9 +156,9 @@ bool Structure::isPostOptimizationCalculationState(State state)
   }
 }
 
-bool Structure::isPostOptimizationCalculationState() const
+bool Structure::isScriptCalculationState() const
 {
-  return Structure::isPostOptimizationCalculationState(getStatus());
+  return Structure::isScriptCalculationState(getStatus());
 }
 
 bool Structure::isOptimizedState(State state)
@@ -176,7 +176,7 @@ bool Structure::isOptimizedState() const
   return Structure::isOptimizedState(getStatus());
 }
 
-bool Structure::isFailedFinalState(State state)
+bool Structure::isScriptFailedState(State state)
 {
   switch (state) {
     case ObjcFailed:
@@ -187,12 +187,12 @@ bool Structure::isFailedFinalState(State state)
   }
 }
 
-bool Structure::isFailedFinalState() const
+bool Structure::isScriptFailedState() const
 {
-  return Structure::isFailedFinalState(getStatus());
+  return Structure::isScriptFailedState(getStatus());
 }
 
-bool Structure::isDismissedFinalState(State state)
+bool Structure::isScriptDismissedState(State state)
 {
   switch (state) {
     case Dismissed:
@@ -202,15 +202,15 @@ bool Structure::isDismissedFinalState(State state)
   }
 }
 
-bool Structure::isDismissedFinalState() const
+bool Structure::isScriptDismissedState() const
 {
-  return Structure::isDismissedFinalState(getStatus());
+  return Structure::isScriptDismissedState(getStatus());
 }
 
-bool Structure::isKilledOrRemovedState(State state)
+bool Structure::isFailedOrRemovedState(State state)
 {
   switch (state) {
-    case Killed:
+    case Failed:
     case Removed:
       return true;
     default:
@@ -218,16 +218,16 @@ bool Structure::isKilledOrRemovedState(State state)
   }
 }
 
-bool Structure::isKilledOrRemovedState() const
+bool Structure::isFailedOrRemovedState() const
 {
-  return Structure::isKilledOrRemovedState(getStatus());
+  return Structure::isFailedOrRemovedState(getStatus());
 }
 
 bool Structure::isStoppedFinalState(State state)
 {
-  return Structure::isKilledOrRemovedState(state) ||
-         Structure::isDismissedFinalState(state) ||
-         Structure::isFailedFinalState(state);
+  return Structure::isFailedOrRemovedState(state) ||
+         Structure::isScriptDismissedState(state) ||
+         Structure::isScriptFailedState(state);
 }
 
 bool Structure::isStoppedFinalState() const
@@ -261,8 +261,8 @@ bool Structure::isActiveState(State state)
     case Submitted:
     case Error:
     case Restart:
+    case ScriptCalculation:
     case ObjectiveCalculation:
-    case Postprocessing:
     case ConstraintCalculation:
       return true;
     default:
@@ -278,7 +278,7 @@ bool Structure::isActiveState() const
 bool Structure::isTerminalFailureState(State state)
 {
   switch (state) {
-    case Killed:
+    case Failed:
     case Removed:
     case ObjcFailed:
     case ConsFailed:
@@ -299,31 +299,31 @@ QString Structure::statusText(State state, bool longText)
     case Optimized:
       return "Optimized";
     case StepOptimized:
-      return longText ? "Checking status..." : "Checking";
+      return longText ? "Checking status" : "Checking";
     case WaitingForOptimization:
       return longText ? "Waiting for optimization" : "Waiting";
     case InProcess:
       return longText ? "In process" : "InProcess";
     case Empty:
-      return longText ? "Structure empty..." : "Empty";
+      return longText ? "Structure empty" : "Empty";
     case Updating:
-      return longText ? "Updating structure..." : "Updating";
+      return longText ? "Updating structure" : "Updating";
     case Submitted:
       return longText ? "Job submitted" : "Submitted";
     case Error:
       return longText ? "Job error" : "Error";
-    case Killed:
-      return "Killed";
+    case Failed:
+      return "Failed";
     case Removed:
       return "Removed";
     case Restart:
-      return longText ? "Restarting job..." : "Restart";
-    case Postprocessing:
-      return longText ? "Postprocessing..." : "Postproc";
+      return longText ? "Restarting job" : "Restart";
+    case ScriptCalculation:
+      return longText ? "Script Calculation" : "ScriptCalcs";
     case ObjectiveCalculation:
-      return longText ? "Calculating objectives..." : "ObjcCalcs";
+      return longText ? "Calculating objectives" : "ObjcCalcs";
     case ConstraintCalculation:
-      return longText ? "Calculating constraints..." : "ConsCalcs";
+      return longText ? "Calculating constraints" : "ConsCalcs";
     case Dismissed:
       return "Dismissed";
     case ObjcFailed:
@@ -340,8 +340,13 @@ QString Structure::statusText(bool longText) const
   if (isSimilar()) {
     if (longText)
       return QString("Similar to %1").arg(getSimilarityString());
-    return QString("Sim(%1)").arg(getSimilarityString());
+    return QString("Sim:%1").arg(getSimilarityString());
   }
+
+  // While the job is with the queue (in process), the long text also reports what
+  //   the queue last told us.
+  if (longText && getStatus() == InProcess && !m_queueStatusText.isEmpty())
+    return m_queueStatusText;
 
   return Structure::statusText(getStatus(), longText);
 }
@@ -361,6 +366,7 @@ Structure::Structure(QObject* parent)
   m_currentOptStep = 0;
   m_fixCount = 0;
   m_failCount = 0;
+  m_initialCell = Common::Matrix3::Zero();
   setStatus(Empty);
   resetFailCount();
 }
@@ -410,6 +416,7 @@ Structure& Structure::operator=(const Structure& other)
     m_simString = other.m_simString;
     m_rempath = other.m_rempath;
     m_locpath = other.m_locpath;
+    m_queueStatusText = other.m_queueStatusText;
     m_status = other.m_status.load();
     m_optStart = other.m_optStart;
     m_optEnd = other.m_optEnd;
@@ -419,6 +426,10 @@ Structure& Structure::operator=(const Structure& other)
     m_histEnergies = other.m_histEnergies;
     m_histCoords = other.m_histCoords;
     m_histCells = other.m_histCells;
+    m_histOptSteps = other.m_histOptSteps;
+    m_initialAtomicNums = other.m_initialAtomicNums;
+    m_initialCoords = other.m_initialCoords;
+    m_initialCell = other.m_initialCell;
     m_parentStructure = other.m_parentStructure;
     m_copyFiles = other.m_copyFiles;
     m_reusePreoptBonding = other.m_reusePreoptBonding;
@@ -456,6 +467,7 @@ Structure& Structure::operator=(Structure&& other) noexcept
     m_simString = std::move(other.m_simString);
     m_rempath = std::move(other.m_rempath);
     m_locpath = std::move(other.m_locpath);
+    m_queueStatusText = std::move(other.m_queueStatusText);
     m_status = std::move(other.m_status.load());
     m_optStart = std::move(other.m_optStart);
     m_optEnd = std::move(other.m_optEnd);
@@ -465,6 +477,10 @@ Structure& Structure::operator=(Structure&& other) noexcept
     m_histEnergies = std::move(other.m_histEnergies);
     m_histCoords = std::move(other.m_histCoords);
     m_histCells = std::move(other.m_histCells);
+    m_histOptSteps = std::move(other.m_histOptSteps);
+    m_initialAtomicNums = std::move(other.m_initialAtomicNums);
+    m_initialCoords = std::move(other.m_initialCoords);
+    m_initialCell = std::move(other.m_initialCell);
     m_parentStructure = std::move(other.m_parentStructure);
 
     // We never delete the parent pointer; just clear it in the moved-from
@@ -490,6 +506,26 @@ void Structure::structureChanged()
   m_updatedSinceSimChecked = true;
 }
 
+void Structure::recordInitialGeometry()
+{
+  m_initialAtomicNums.clear();
+  m_initialCoords.clear();
+  for (size_t i = 0; i < numAtoms(); ++i) {
+    m_initialAtomicNums.append(atom(i).atomicNumber());
+    m_initialCoords.append(atom(i).pos());
+  }
+  m_initialCell = unitCell().cellMatrix();
+}
+
+void Structure::setInitialGeometry(const QList<unsigned int>& atomicNums,
+                                   const QList<Common::Vector3>& coords,
+                                   const Common::Matrix3& cell)
+{
+  m_initialAtomicNums = atomicNums;
+  m_initialCoords = coords;
+  m_initialCell = cell;
+}
+
 bool Structure::updateAndSkipHistory(const QList<unsigned int>& atomicNums,
                                      const QList<Common::Vector3>& coords,
                                      const double energy, const double enthalpy,
@@ -499,7 +535,7 @@ bool Structure::updateAndSkipHistory(const QList<unsigned int>& atomicNums,
              "Lengths of atomicNums and coords must match.");
   if (atomicNums.size() != coords.size() ||
       !hasFiniteUpdateData(coords, energy, enthalpy) ||
-      (!cell.isZero() && !Atoms::Geometry::isCellMatrixUsable(cell)))
+      (!cell.isZero() && !Atoms::UnitCell::isCellValid(cell)))
     return false;
 
   clearAtoms();
@@ -533,7 +569,7 @@ bool Structure::updateAndAddToHistory(const QList<unsigned int>& atomicNums,
              "Lengths of atomicNums and coords must match numAtoms().");
   if (atomicNums.size() != coords.size() ||
       !hasFiniteUpdateData(coords, energy, enthalpy) ||
-      (!cell.isZero() && !Atoms::Geometry::isCellMatrixUsable(cell)))
+      (!cell.isZero() && !Atoms::UnitCell::isCellValid(cell)))
     return false;
 
   // Update history
@@ -542,6 +578,7 @@ bool Structure::updateAndAddToHistory(const QList<unsigned int>& atomicNums,
   m_histEnergies.append(energy);
   m_histEnthalpies.append(enthalpy);
   m_histCells.append(cell);
+  m_histOptSteps.append(static_cast<int>(getCurrentOptStep()));
 
   // Reset atoms
   clearAtoms();
@@ -576,7 +613,7 @@ bool Structure::updateAndAddToHistory(const QList<unsigned int>& atomicNums,
 }
 
 bool Structure::updateAndAddToHistory(const Atoms::Geometry& structure, const double energy,
-  const double enthalpy)
+                                      const double enthalpy)
 {
   QList<unsigned int> atomicNums;
   QList<Common::Vector3> coords;

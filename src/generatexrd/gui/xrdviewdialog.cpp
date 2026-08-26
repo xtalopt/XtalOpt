@@ -99,6 +99,7 @@ void XrdViewDialog::updatePlot()
   if (!m_hasStructure)
     return;
 
+  // Save the shown parameters, so an exported pattern has the same values.
   m_lastWavelength = ui->wavelengthSpin->value();
   m_lastPeakwidth = ui->peakwidthSpin->value();
   m_lastNumpoints = static_cast<size_t>(ui->numpointsSpin->value());
@@ -114,8 +115,11 @@ void XrdViewDialog::updatePlot()
     return;
   }
 
+  // Keep this result for both the plot and later data export.
   m_lastData = results;
   m_lastTag = tag;
+
+  // Update the complete visible result after a successful calculation.
   ui->infoLabel->setText(
     tr("%1%2%3")
       .arg(tag.isEmpty() ? QString() : tag)
@@ -143,7 +147,7 @@ void XrdViewDialog::saveImage() const
                                 ? QStringLiteral("xrd-pattern.png")
                                 : m_lastTag + QStringLiteral("-xrd.png");
   QString filename = QFileDialog::getSaveFileName(
-    const_cast<XrdViewDialog*>(this), tr("Save XRD Image"),
+    const_cast<XrdViewDialog*>(this), tr("Save XRD View"),
     QDir(defaultSaveDir()).filePath(defaultName),
     tr("PNG Image (*.png);;JPEG Image (*.jpg);;BMP Image (*.bmp)"),
     nullptr, QFileDialog::DontUseNativeDialog);
@@ -163,7 +167,7 @@ void XrdViewDialog::saveImage() const
   painter.end();
 
   if (!image.save(filename, nullptr, 95)) {
-    QMessageBox::warning(const_cast<XrdViewDialog*>(this), tr("Save XRD Image"),
+    QMessageBox::warning(const_cast<XrdViewDialog*>(this), tr("Save XRD View"),
                          tr("Could not write image file:\n%1").arg(filename));
   }
 }

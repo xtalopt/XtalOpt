@@ -77,8 +77,8 @@ int legacyNumOptSteps(const QSettings& settings, const QString& root)
 const LegacyBatchQueueDefinition* legacyStepQueueDefinition(const QSettings& settings,
                                                             const QString& root, int step)
 {
-  const QString queueId = settings.value(root + "/edit/queueInterface/" + QString::number(step),
-                   "none").toString();
+  const QString queueId = settings.value(root + "/edit/queueInterface/" + QString::number(step), "none").toString();
+
   return legacyBatchQueueDefinition(queueId);
 }
 
@@ -102,7 +102,7 @@ void normalizeLegacyPerStepBatchQueueCommands(QSettings& settings, const QString
       continue;
 
     const QString legacyBase = root + "/queueinterface/" + definition->settingsGroup + "/" +
-      QString::number(i) + "/paths/";
+                               QString::number(i) + "/paths/";
     const QString commandBase = currentBatchCommandBase(root, i, *definition);
     setCurrentBatchCommandIfMissing(settings, commandBase + "/submit",
                                     settings.value(legacyBase + definition->submitKey));
@@ -168,8 +168,8 @@ void normalizeLegacyBatchQueueCommands(QSettings& settings, const QString& searc
 
 } // end anonymous namespace
 
-void normalizeSearchState(QSettings& settings, const QString& searchId, int loadedVersion,
-                          QStringList& notes)
+void normalizeSearchState(QSettings& settings, const QString& searchId,
+                          int loadedVersion, QStringList& notes)
 {
   if (loadedVersion != OriginalSearchStateVersion)
     return;

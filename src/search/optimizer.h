@@ -75,7 +75,7 @@ public:
    *   GUI menu.
    */
   static bool registerOptimizer(const QString& name,
-    std::function<std::unique_ptr<Optimizer>(SearchBase*)> creator);
+                                std::function<std::unique_ptr<Optimizer>(SearchBase*)> creator);
 
   /** @return Names of all registered optimizers, in registration order. */
   static QStringList registeredOptimizers();
@@ -194,8 +194,8 @@ public slots:
   {
     QReadLocker locker(&m_commandLock);
     return !m_directRunOverride.isEmpty()
-             ? m_directRunOverride
-             : (m_optimizerDefaults ? QString::fromLatin1(m_optimizerDefaults->directRunCommand) : QString());
+            ? m_directRunOverride
+            : (m_optimizerDefaults ? QString::fromLatin1(m_optimizerDefaults->directRunCommand) : QString());
   };
 
   /**
@@ -267,8 +267,7 @@ private:
    * Create an optimizer by its registered name.
    * @return Owning optimizer pointer, or nullptr if name is unknown.
    */
-  static std::unique_ptr<Optimizer> createRegisteredOptimizer(
-    const QString& name, SearchBase* parent);
+  static std::unique_ptr<Optimizer> createRegisteredOptimizer(const QString& name, SearchBase* parent);
 
   /// User override for the direct-run command. Empty means "use the optimizer
   ///   default" (see getDirectRunCommand()).

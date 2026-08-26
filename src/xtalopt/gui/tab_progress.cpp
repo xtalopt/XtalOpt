@@ -23,7 +23,7 @@
 #include <search/tracker.h>
 #include <search/gui/abstracttab.h>
 #include <common/fileutils.h>
-#include <atoms/formats/poscarformat.h>
+#include <atoms/formats/vaspformat.h>
 
 #include <xtalopt/constants.h>
 #include <xtalopt/structures/xtal.h>
@@ -285,6 +285,24 @@ void TabProgress::updateInfo()
 
 void TabProgress::updateInfo_()
 {
+  // Background color for statuses
+  //
+  // Active runs (optimization, queued, scripts)
+  static const QColor colInProcess    = QColor(  0, 255,   0);
+  static const QColor colScriptCalc   = QColor(255, 255,   0);
+  // Transitions
+  static const QColor colWaiting      = QColor(  0, 139, 139);
+  static const QColor colSubmitted    = QColor(160, 160, 160);
+  static const QColor colTransition   = QColor(160, 160, 160);
+  static const QColor colError        = QColor(160, 160, 160);
+  // Failures and errors
+  static const QColor colScriptFail   = QColor(220, 150, 150);
+  static const QColor colTerminalFail = QColor(139,   0,   0);
+  // Optimized (including dismissed, similar)
+  static const QColor colDismiss      = QColor(160, 205, 245);
+  static const QColor colOptimized    = QColor(  0,   0, 255);
+  static const QColor colSimilar      = QColor(  0, 100,   0);
+
   for (;;) {
     Structure* structure = nullptr;
     {
@@ -339,64 +357,21 @@ void TabProgress::updateInfo_()
 
     const Xtal::State lifecycleState = xtal->getStatus();
     switch (lifecycleState) {
-      case Xtal::InProcess: {
-        // A read-only session does not talk to the queue.
-        if (m_search->isReadOnly()) {
-          e.status = xtal->statusText(true);
-          break;
-        }
+      // A structure with a job in the queue. The engine owns the job status;
+      //   we only show the text that it has saved for us.
+      case Xtal::InProcess:
         // Wait for the session to start.
         if (m_search->isSessionStarting()) {
           e.status = tr("In process (loading session)...");
           break;
         }
-        // Get the queue status.
-        const int optStep = xtal->getCurrentOptStep();
-        xtalLocker.unlock();
-        trackerLocker.unlock();
-        QueueInterface* queue = m_search->queueInterface(optStep);
-        QueueInterface::QueueStatus state = queue ? queue->getStatus(xtal) : QueueInterface::Error;
-        trackerLocker.relock();
-        xtalLocker.relock();
-        switch (state) {
-          case QueueInterface::Running:
-            e.status = tr("Running (Opt Step %1 of %2, %3 failures)")
-                         .arg(QString::number(xtal->getCurrentOptStep() + 1))
-                         .arg(QString::number(totalOptSteps))
-                         .arg(QString::number(xtal->getFailCount()));
-            e.brush.setColor(Qt::green);
-            break;
-          case QueueInterface::Queued:
-            e.status = tr("Queued (Opt Step %1 of %2, %3 failures)")
-                         .arg(QString::number(xtal->getCurrentOptStep() + 1))
-                         .arg(QString::number(totalOptSteps))
-                         .arg(QString::number(xtal->getFailCount()));
-            e.brush.setColor(Qt::cyan);
-            break;
-          case QueueInterface::Success:
-            e.status = "Starting update...";
-            break;
-          case QueueInterface::Unknown:
-            e.status = "Unknown";
-            e.brush.setColor(Qt::lightGray);
-            break;
-          case QueueInterface::Error:
-            e.status = "Error: Restarting job...";
-            e.brush.setColor(Qt::lightGray);
-            break;
-          case QueueInterface::CommunicationError:
-            e.status = "Communication Error";
-            e.brush.setColor(Qt::lightGray);
-            break;
-          // Shouldn't happen; started and pending only occur when xtal is
-          // "Submitted"
-          case QueueInterface::Started:
-          case QueueInterface::Pending:
-          default:
-            break;
-        }
+        e.status = tr("%1 (Opt Step %2 of %3, %4 failures)")
+                     .arg(xtal->statusText(true))
+                     .arg(QString::number(xtal->getCurrentOptStep() + 1))
+                     .arg(QString::number(totalOptSteps))
+                     .arg(QString::number(xtal->getFailCount()));
+        e.brush.setColor(colInProcess);
         break;
-      }
       // Structures waiting for or moving between optimization steps.
       case Xtal::Submitted:
         if (xtal->getJobID() == 0) {
@@ -410,13 +385,13 @@ void TabProgress::updateInfo_()
                        .arg(QString::number(xtal->getCurrentOptStep() + 1))
                        .arg(QString::number(totalOptSteps));
         }
-        e.brush.setColor(Qt::cyan);
+        e.brush.setColor(colSubmitted);
         break;
       case Xtal::Restart:
       case Xtal::StepOptimized:
       case Xtal::Updating:
         e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::cyan);
+        e.brush.setColor(colTransition);
         break;
 
       // A structure is waiting for the next optimization job.
@@ -425,53 +400,53 @@ void TabProgress::updateInfo_()
                      .arg(xtal->statusText(true))
                      .arg(QString::number(xtal->getCurrentOptStep() + 1))
                      .arg(QString::number(totalOptSteps));
-        e.brush.setColor(Qt::darkCyan);
+        e.brush.setColor(colWaiting);
         break;
 
       // Objective and constraint calculations are in progress.
+      case Xtal::ScriptCalculation:
       case Xtal::ObjectiveCalculation:
       case Xtal::ConstraintCalculation:
-      case Xtal::Postprocessing:
         e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::yellow);
+        e.brush.setColor(colScriptCalc);
         break;
 
-      // Terminal calculation failures.
+      // Terminal script calculation failures.
       case Xtal::ObjcFailed:
       case Xtal::ConsFailed:
         e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::red);
+        e.brush.setColor(colScriptFail);
         break;
 
-      // Terminal failed/stopped structures.
-      case Xtal::Killed:
+      // Terminal failed/removed structures.
+      case Xtal::Failed:
       case Xtal::Removed:
         e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::darkRed);
+        e.brush.setColor(colTerminalFail);
         e.pen.setColor(Qt::white);
         break;
 
       // Terminal dismissal of structure by constraints.
       case Xtal::Dismissed:
         e.status = xtal->statusText(true);
-        e.brush.setColor(QColor(173, 216, 230));
+        e.brush.setColor(colDismiss);
         break;
 
       // Finished structures.
       case Xtal::Optimized:
         e.status = xtal->statusText(true);
         if (xtal->isSimilar()) {
-          e.brush.setColor(Qt::darkGreen);
+          e.brush.setColor(colSimilar);
         } else {
-          e.brush.setColor(Qt::blue);
-          e.pen.setColor(Qt::white);
+          e.brush.setColor(colOptimized);
         }
+        e.pen.setColor(Qt::white);
         break;
 
       // A temporary error may still be handled by the failure policy.
       case Xtal::Error:
         e.status = xtal->statusText(true);
-        e.brush.setColor(Qt::lightGray);
+        e.brush.setColor(colError);
         break;
 
       case Xtal::Empty:
@@ -484,7 +459,7 @@ void TabProgress::updateInfo_()
 
     // The below override is commented out! With that, any restored structure
     //   with previous failure would be shown with "darkRed" color (ie, the one
-    //   for the killed/removed) until it was successfully optimized. Without this,
+    //   for the failed/removed) until it was successfully optimized. Without this,
     //   the color coding will reflect the actual current status (failure count
     //   is still an indicator of history!)
     /*
@@ -660,11 +635,11 @@ void TabProgress::progressContextMenu(QPoint p)
   const bool readOnly = m_search->isReadOnly();
 
   bool isStopped = false;
-  bool canUnkill = false;
+  bool canUnfail = false;
   if (xtal != nullptr) {
     QReadLocker xtalLocker(&xtal->lock());
     isStopped = xtal->isStoppedFinalState();
-    canUnkill = xtal->isKilledOrRemovedState();
+    canUnfail = xtal->isFailedOrRemovedState();
     /*
     Common::debug(QString("%1: Context menu at row %2 for structure %3")
                   .arg(__func__).arg(index).arg(xtal->getTag()));
@@ -673,9 +648,9 @@ void TabProgress::progressContextMenu(QPoint p)
 
   QMenu menu;
   QAction* a_restart = menu.addAction("&Restart job");
-  QAction* a_kill = menu.addAction("&Kill structure");
-  QAction* a_unkill = menu.addAction("Un&kill structure");
-  QAction* a_resetFail = menu.addAction("Reset &failure count");
+  QAction* a_fail = menu.addAction("&Fail structure");
+  QAction* a_unfail = menu.addAction("&Unfail structure");
+  QAction* a_resetFail = menu.addAction("R&eset failure count");
   menu.addSeparator();
   QAction* a_randomize = menu.addAction("Replace with &new random structure");
   QAction* a_offspring = menu.addAction("Replace with new &offspring");
@@ -684,14 +659,14 @@ void TabProgress::progressContextMenu(QPoint p)
   menu.addSeparator();
   QAction* a_clipPOSCAR = menu.addAction("&Copy POSCAR to clipboard");
   menu.addSeparator();
-  QAction* a_viewStructure = menu.addAction("View Structure");
+  QAction* a_viewStructure = menu.addAction("&View Structure");
   menu.addSeparator();
-  QAction* a_plotXrd = menu.addAction("View Simulated XRD Pattern");
+  QAction* a_plotXrd = menu.addAction("View Simulated &XRD Pattern");
 
   // Connect actions
   connect(a_restart,    &QAction::triggered, this, &TabProgress::restartJobProgress);
-  connect(a_kill,       &QAction::triggered, this, &TabProgress::killXtalProgress);
-  connect(a_unkill,     &QAction::triggered, this, &TabProgress::unkillXtalProgress);
+  connect(a_fail,       &QAction::triggered, this, &TabProgress::failXtalProgress);
+  connect(a_unfail,     &QAction::triggered, this, &TabProgress::unfailXtalProgress);
   connect(a_resetFail,  &QAction::triggered, this, &TabProgress::resetFailureCountProgress);
   connect(a_randomize,  &QAction::triggered, this, &TabProgress::randomizeStructureProgress);
   connect(a_offspring,  &QAction::triggered, this, &TabProgress::replaceWithOffspringProgress);
@@ -702,13 +677,13 @@ void TabProgress::progressContextMenu(QPoint p)
 
   // Disable / hide illogical operations
   if (isStopped) {
-    a_kill->setVisible(false);
+    a_fail->setVisible(false);
     a_restart->setVisible(false);
   } else {
-    a_unkill->setVisible(false);
+    a_unfail->setVisible(false);
   }
-  if (!canUnkill)
-    a_unkill->setVisible(false);
+  if (!canUnfail)
+    a_unfail->setVisible(false);
 
   if (!canGenerateOffspring) {
     a_offspring->setDisabled(true);
@@ -716,8 +691,8 @@ void TabProgress::progressContextMenu(QPoint p)
 
   if (readOnly) {
     a_restart->setEnabled(false);
-    a_kill->setEnabled(false);
-    a_unkill->setEnabled(false);
+    a_fail->setEnabled(false);
+    a_unfail->setEnabled(false);
     a_resetFail->setEnabled(false);
     a_randomize->setEnabled(false);
     a_offspring->setEnabled(false);
@@ -726,8 +701,8 @@ void TabProgress::progressContextMenu(QPoint p)
 
   if (!xtalIsSelected) {
     a_restart->setEnabled(false);
-    a_kill->setEnabled(false);
-    a_unkill->setEnabled(false);
+    a_fail->setEnabled(false);
+    a_unfail->setEnabled(false);
     a_resetFail->setEnabled(false);
     a_randomize->setEnabled(false);
     a_offspring->setEnabled(false);
@@ -835,7 +810,7 @@ void TabProgress::restartJobProgress_(int optStep)
   m_context_xtal = 0;
 }
 
-void TabProgress::killXtalProgress()
+void TabProgress::failXtalProgress()
 {
   QPointer<Xtal> xtal;
   {
@@ -853,7 +828,7 @@ void TabProgress::killXtalProgress()
       const QMessageBox::StandardButton answer = QMessageBox::question(
         m_dialog, tr("Unconfirmed scheduler job"),
         tr("The scheduler accepted this job, but XtalOpt could not read its job ID.\n\n"
-           "Inspect the scheduler and cancel the job manually before killing the "
+           "Inspect the scheduler and cancel the job manually before stopping the "
            "structure. Continue only after doing that."),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
 
@@ -869,11 +844,11 @@ void TabProgress::killXtalProgress()
   QPointer<TabProgress> self(this);
   (void)QtConcurrent::run(&m_workerPool, [self]() {
     if (self)
-      self->killXtalProgress_();
+      self->failXtalProgress_();
   });
 }
 
-void TabProgress::killXtalProgress_()
+void TabProgress::failXtalProgress_()
 {
   QPointer<Xtal> xtal;
   {
@@ -886,7 +861,7 @@ void TabProgress::killXtalProgress_()
   }
 
   // QueueManager will handle mutex locking
-  m_search->queue()->killStructure(xtal);
+  m_search->queue()->failStructure(xtal);
 
   // Clear context xtal pointer
   emit finishedBackgroundProcessing();
@@ -895,17 +870,17 @@ void TabProgress::killXtalProgress_()
   m_context_xtal = 0;
 }
 
-void TabProgress::unkillXtalProgress()
+void TabProgress::unfailXtalProgress()
 {
   emit startingBackgroundProcessing();
   QPointer<TabProgress> self(this);
   (void)QtConcurrent::run(&m_workerPool, [self]() {
     if (self)
-      self->unkillXtalProgress_();
+      self->unfailXtalProgress_();
   });
 }
 
-void TabProgress::unkillXtalProgress_()
+void TabProgress::unfailXtalProgress_()
 {
   QPointer<Xtal> xtal;
   {
@@ -916,9 +891,9 @@ void TabProgress::unkillXtalProgress_()
   bool changed = false;
   if (xtal) {
     QWriteLocker locker(&xtal->lock());
-    if (xtal->isKilledOrRemovedState()) {
-      // Restart a killed structure from its current optimization step.
-      if (xtal->getStatus() == Xtal::Killed)
+    if (xtal->isFailedOrRemovedState()) {
+      // Restart a failed structure from its current optimization step.
+      if (xtal->getStatus() == Xtal::Failed)
         xtal->setStatus(Xtal::Restart);
       else {
         xtal->setStatus(Xtal::Optimized);
@@ -1158,7 +1133,7 @@ void TabProgress::clipPOSCARProgress_()
   std::stringstream poscarStream;
   {
     QReadLocker locker(&xtal->lock());
-    Atoms::PoscarFormat::write(*xtal, poscarStream, xtal->getLocpath());
+    Atoms::VaspFormat::write(*xtal, poscarStream, xtal->getLocpath());
   }
   const QString poscar = QString::fromStdString(poscarStream.str());
   if (!poscar.isEmpty()) {

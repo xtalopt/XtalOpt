@@ -49,9 +49,12 @@ protected:
     parseQueueStatus(statusList, jobId, &rawStatus);
     return rawStatus;
   }
+
   unsigned int parseJobId(const QString& submissionOutput, bool* ok) const override;
+
   QueueInterface::QueueStatus parseQueueStatus(const QStringList& statusList, unsigned int jobId,
-    QString* rawStatus = nullptr) const override;
+                                               QString* rawStatus = nullptr) const override;
+
   QString queueListCommand() const override;
 };
 }

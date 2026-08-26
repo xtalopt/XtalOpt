@@ -132,7 +132,7 @@ bool sharedReplaceStateFileWithTemp(const QString& tempFilename, const QString& 
 {
   if (!QFile::exists(tempFilename)) {
     Common::error(QString("%1: temporary state file %2 does not exist.")
-                    .arg(caller).arg(tempFilename));
+                  .arg(caller).arg(tempFilename));
     return false;
   }
 
@@ -144,7 +144,7 @@ bool sharedReplaceStateFileWithTemp(const QString& tempFilename, const QString& 
       return false;
     if (!QFile::rename(filename, replacedFilename)) {
       Common::error(QString("%1: could not preserve file %2 before replacing it.")
-                      .arg(caller).arg(filename));
+                    .arg(caller).arg(filename));
       return false;
     }
   }
@@ -158,11 +158,11 @@ bool sharedReplaceStateFileWithTemp(const QString& tempFilename, const QString& 
   }
 
   Common::error(QString("%1: could not replace %2 with temporary state file %3.")
-                  .arg(caller).arg(filename).arg(tempFilename));
+                .arg(caller).arg(filename).arg(tempFilename));
 
   if (replacingExistingFile && !QFile::rename(replacedFilename, filename)) {
     Common::error(QString("%1: could not restore preserved state file %2.")
-                    .arg(caller).arg(filename));
+                  .arg(caller).arg(filename));
   }
   return false;
 }
@@ -331,8 +331,7 @@ void writeStateSchemeOptimizer(XtalOpt& xtalopt, size_t optStep,
   QStringList assetNames = optim->getOptimizerInputAssetNames();
   for (const auto& assetName : assetNames) {
     settings->setValue(assetName,
-      optimizerInputAssetsToStateText(
-        xtalopt.getOptimizerInputAssets(optStep, assetName.toStdString())));
+      optimizerInputAssetsToStateText(xtalopt.getOptimizerInputAssets(optStep, assetName.toStdString())));
   }
   settings->endGroup();
 }
@@ -406,7 +405,7 @@ bool readStateInputGroup(QSettings& settings, XtalOpt& xtalopt, bool fullState)
     const QString value = settings.value(keyword).toString();
     if (!Settings::applyScalarSetting(xtalopt, keyword, value)) {
       Common::warning(QString("Ignored invalid state value for '%1': %2")
-                        .arg(keyword).arg(value));
+                      .arg(keyword).arg(value));
     }
   }
 
@@ -433,12 +432,13 @@ bool readStateInputGroup(QSettings& settings, XtalOpt& xtalopt, bool fullState)
         if (!Settings::addRepeatedSettingEntry(xtalopt, keyword, entry)) {
           settings.endGroup();
           Common::error(QString("Invalid %1 entry in state file: %2")
-                          .arg(keyword, entry));
+                        .arg(keyword, entry));
           return false;
         }
       }
     }
-    // Objectives need their built-in weight refreshed after (re)loading.
+    // The repeated entries were cleared and re-read; with no objective
+    //   entry nothing recreated the built-in objective. So restore it.
     xtalopt.refreshBuiltinObjectiveWeight();
   }
 
@@ -523,6 +523,7 @@ bool readStateScheme(XtalOpt& xtalopt, const QString& filename)
   //   must not leave part of itself behind.
   const QStringList queueInterfaces = QueueInterface::registeredQueueInterfaces();
   const QStringList optimizers = Optimizer::registeredOptimizers();
+
   for (size_t i = 0; i < numOptSteps; ++i) {
     const QString queueInterface =
       settings->value("queue/" + QString::number(i) + "/interface", defaultQueueInterface).toString().trimmed();
@@ -804,16 +805,62 @@ bool readStructureStateWorkflow(Xtal& xtal, const QString& filename)
     }
     settings->endArray();
 
+    // Optimization steps: if not present (an older file) it's set "-1=unknown" below.
+    QList<int> histOptSteps;
+    size = settings->beginReadArray("optSteps");
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      histOptSteps.append(settings->value("value").toInt());
+    }
+    settings->endArray();
+
     xtal.clearHistory();
     const int entries = histEnergies.size();
     for (int i = 0; i < entries; ++i) {
       xtal.appendHistoryEntry(i < histNums.size() ? histNums.at(i) : QList<unsigned int>(),
                               i < histCoords.size() ? histCoords.at(i) : QList<Common::Vector3>(),
                               histEnergies.at(i), i < histEnthalpies.size() ? histEnthalpies.at(i) : 0.0,
-                              i < histCells.size() ? histCells.at(i) : Common::Matrix3());
+                              i < histCells.size() ? histCells.at(i) : Common::Matrix3(),
+                              i < histOptSteps.size() ? histOptSteps.at(i) : -1);
     }
 
     settings->endGroup(); // history
+
+    // The structure as it was generated or imported (ie, a seed structure).
+    // Older file that lack this entry, will just have none.
+    settings->beginGroup("initial");
+    QList<unsigned int> initNums;
+    size = settings->beginReadArray("atomicNums");
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      initNums.append(settings->value("value").toUInt());
+    }
+    settings->endArray();
+
+    QList<Common::Vector3> initCoords;
+    size = settings->beginReadArray("coords");
+    for (int i = 0; i < size; i++) {
+      settings->setArrayIndex(i);
+      initCoords.append(Common::Vector3(settings->value("x").toDouble(),
+                                        settings->value("y").toDouble(),
+                                        settings->value("z").toDouble()));
+    }
+    settings->endArray();
+
+    if (!initNums.isEmpty() && initNums.size() == initCoords.size()) {
+      Common::Matrix3 initCell;
+      initCell(0, 0) = settings->value("cell/00").toDouble();
+      initCell(0, 1) = settings->value("cell/01").toDouble();
+      initCell(0, 2) = settings->value("cell/02").toDouble();
+      initCell(1, 0) = settings->value("cell/10").toDouble();
+      initCell(1, 1) = settings->value("cell/11").toDouble();
+      initCell(1, 2) = settings->value("cell/12").toDouble();
+      initCell(2, 0) = settings->value("cell/20").toDouble();
+      initCell(2, 1) = settings->value("cell/21").toDouble();
+      initCell(2, 2) = settings->value("cell/22").toDouble();
+      xtal.setInitialGeometry(initNums, initCoords, initCell);
+    }
+    settings->endGroup(); // initial
   }
   settings->endGroup();
 
@@ -893,18 +940,18 @@ bool readStructureStateGeometry(Xtal& xtal, const QString& filename)
   Common::Matrix3 cellMatrix;
   if (hasCellInfo) {
     settings->beginGroup("cell");
-    bool cellIsValid = true;
+    bool cellIsOk = true;
     for (size_t row = 0; row < 3; ++row) {
       for (size_t column = 0; column < 3; ++column) {
         bool ok = false;
         cellMatrix(row, column) = settings->value(QString("%1%2").arg(row).arg(column)).toDouble(&ok);
         if (!ok || GS_IS_NAN_OR_INF(cellMatrix(row, column)))
-          cellIsValid = false;
+          cellIsOk = false;
       }
     }
     settings->endGroup();
 
-    if (!cellIsValid || !Atoms::Geometry::isCellMatrixUsable(cellMatrix)) {
+    if (!cellIsOk || !Atoms::UnitCell::isCellValid(cellMatrix)) {
       Common::error(QString("Current structure cell info in %1 is invalid.")
                     .arg(filename));
       settings->endGroup();
@@ -1071,6 +1118,7 @@ bool XtalOpt::savePendingStateFiles(const QString& filename, bool saveAll, bool 
 
   QList<Structure*> structures = trackedStructuresSnapshot();
 
+  // A full session save writes every structure, not only changed ones.
   if (saveAll) {
     structuresToSave.clear();
     for (Structure* structure : structures)
@@ -1088,7 +1136,7 @@ bool XtalOpt::savePendingStateFiles(const QString& filename, bool saveAll, bool 
 
     failedStructures = saveStructureStateFiles(structures, structuresToSave, showProgress);
 
-    // Finally, the state file.
+    // Finally, the main state file (after all structure states are written).
     if (saveSettings) {
       if (failedStructures.isEmpty())
         settingsFailed = !saveStateFile(filename);
@@ -1100,7 +1148,7 @@ bool XtalOpt::savePendingStateFiles(const QString& filename, bool saveAll, bool 
   if (failedStructures.isEmpty() && !settingsFailed)
     return true;
 
-  // Re-try the failed writes after a wait.
+  // Put failed writings into pending set; and re-try them after a wait.
   {
     std::lock_guard<std::mutex> guard(x_filesNeedingSaveMutex);
     x_structuresNeedingSave.unite(failedStructures);
@@ -1111,98 +1159,6 @@ bool XtalOpt::savePendingStateFiles(const QString& filename, bool saveAll, bool 
   return false;
 }
 
-bool XtalOpt::saveRequestedOutputFiles(bool saveAll, bool showProgress)
-{
-  Common::ScopedTimer _timer("XtalOpt::saveRequestedOutputFiles");
-
-  // Take the collected save requests and clear the markers.
-  bool saveResults = saveAll;
-  bool saveHull = saveAll;
-  QList<QPair<QString, QString>> snapshots;
-  {
-    std::lock_guard<std::mutex> guard(x_filesNeedingSaveMutex);
-    saveResults = saveResults || x_resultsFileNeedsSave;
-    x_resultsFileNeedsSave = false;
-    saveHull = saveHull || x_hullFileNeedsSave;
-    x_hullFileNeedsSave = false;
-    snapshots = x_pendingHullSnapshots;
-    x_pendingHullSnapshots.clear();
-  }
-
-  if (!saveResults && !saveHull && snapshots.isEmpty())
-    return true;
-
-  QList<Structure*> structures = trackedStructuresSnapshot();
-  if (structures.isEmpty()) {
-    // Nothing for the results/hull files; queued movie frames still might be there!
-    saveResults = false;
-    saveHull = false;
-    if (snapshots.isEmpty())
-      return true;
-  }
-
-  bool resultsFailed = false;
-  bool hullFailed = false;
-  bool frontsChanged = false;
-  QList<QPair<QString, QString>> failedSnapshots;
-  {
-    // One "write" each time! We pass on failed writings.
-    std::lock_guard<std::mutex> saveGuard(x_outputSaveMutex);
-
-    // Track the whole pass's duration (fronts and both files); so we can set the writing pace.
-    const qint64 passStart = x_saveClock.elapsed();
-    x_lastOutputWriteEndMs.store(passStart);
-
-    // Fill in the display fronts from the latest parent selection data
-    frontsChanged = applyParentSelectionFronts();
-
-    if (saveResults && !writeResultsFile(structures, showProgress))
-      resultsFailed = true;
-
-    // Check if we have local work dir set for hull file
-    if (saveHull && !getLocWorkDir().isEmpty() &&
-        !writeHullFile(structures, Common::localPath(getLocWorkDir(), "hull.txt")))
-      hullFailed = true;
-
-    // Write the queued hull movie frames to disk
-    for (int i = 0; i < snapshots.size(); ++i) {
-      const QString& snapshotFilename = snapshots.at(i).first;
-      QDir().mkpath(QFileInfo(snapshotFilename).absolutePath());
-      QFile file(snapshotFilename);
-      bool written = file.open(QIODevice::WriteOnly);
-      if (written) {
-        QTextStream out(&file);
-        out << snapshots.at(i).second;
-        out.flush();
-        file.close();
-        written = file.error() == QFile::NoError;
-      }
-      if (!written)
-        failedSnapshots.append(snapshots.at(i));
-    }
-
-    x_lastOutputWriteMs.store(x_saveClock.elapsed() - passStart);
-    x_lastOutputWriteEndMs.store(x_saveClock.elapsed());
-  }
-
-  // To update the front properly in GUI progress tab (results and hull files are fine)
-  if (frontsChanged)
-    emit structureViewDataChanged();
-
-  if (!resultsFailed && !hullFailed && failedSnapshots.isEmpty())
-    return true;
-
-  // Re-try the failed writes after a wait.
-  {
-    std::lock_guard<std::mutex> guard(x_filesNeedingSaveMutex);
-    x_resultsFileNeedsSave = x_resultsFileNeedsSave || resultsFailed;
-    x_hullFileNeedsSave = x_hullFileNeedsSave || hullFailed;
-    x_pendingHullSnapshots = failedSnapshots + x_pendingHullSnapshots;
-  }
-
-  (void)QMetaObject::invokeMethod(x_saveRetryTimer, "start", Qt::QueuedConnection);
-  return false;
-}
 
 bool XtalOpt::saveSessionState(QString filename, bool notify)
 {
@@ -1212,7 +1168,8 @@ bool XtalOpt::saveSessionState(QString filename, bool notify)
   }
 
   if (isSessionStarting() || isReadOnly()) {
-    Common::error(QString("%1: cannot save while search is %2.").arg(__func__).arg(isSessionStarting() ? "starting" : "read-only"));
+    Common::error(QString("%1: cannot save while search is %2.").arg(__func__)
+                  .arg(isSessionStarting() ? "starting" : "read-only"));
     return false;
   }
 
@@ -1246,7 +1203,7 @@ QSet<Structure*> XtalOpt::saveStructureStateFiles(const QList<Search::Structure*
     const QString structureStateFileName =
       Common::localPath(structure->getLocpath(), "structure.state");
 
-    // 1) write to a local scratch file.
+    // 1) Write to a local scratch file.
     QString scratchFileName;
     {
       QReadLocker structureLocker(&structure->lock());
@@ -1272,7 +1229,7 @@ QSet<Structure*> XtalOpt::saveStructureStateFiles(const QList<Search::Structure*
       writeStructureStateFile(*xtal, scratchFileName);
     }
 
-    // 2) save file in final location.
+    // 2) Save file in its final location.
     if (showProgress) {
       updateProgressValue(-1, tr("Saving: Writing %1...").arg(structureStateFileName));
     }
@@ -1473,6 +1430,7 @@ void writeStructureStateFile(Xtal& xtal, const QString& filename)
   QList<double> histEnergies;
   QList<double> histEnthalpies;
   QList<Common::Matrix3> histCells;
+  QList<int> histOptSteps;
   for (unsigned int i = 0; i < historySize; ++i) {
     QList<unsigned int> nums;
     QList<Common::Vector3> coords;
@@ -1485,6 +1443,7 @@ void writeStructureStateFile(Xtal& xtal, const QString& filename)
     histEnergies.append(energy);
     histEnthalpies.append(enthalpy);
     histCells.append(cell);
+    histOptSteps.append(xtal.getHistoryOptStep(i));
   }
 
   settings->beginGroup("history");
@@ -1529,6 +1488,15 @@ void writeStructureStateFile(Xtal& xtal, const QString& filename)
   }
   settings->endArray();
 
+  // Optimization steps
+  settings->remove("optSteps");
+  settings->beginWriteArray("optSteps");
+  for (int i = 0; i < histOptSteps.size(); i++) {
+    settings->setArrayIndex(i);
+    settings->setValue("value", histOptSteps.at(i));
+  }
+  settings->endArray();
+
   // Enthalpies
   settings->remove("enthalpies");
   settings->beginWriteArray("enthalpies");
@@ -1557,6 +1525,44 @@ void writeStructureStateFile(Xtal& xtal, const QString& filename)
   settings->endArray();
 
   settings->endGroup(); // history
+
+  // The structure as it was generated.
+  if (xtal.hasInitialGeometry()) {
+    settings->beginGroup("initial");
+    const QList<unsigned int>& initNums = xtal.getInitialAtomicNums();
+    const QList<Common::Vector3>& initCoords = xtal.getInitialCoords();
+    const Common::Matrix3& initCell = xtal.getInitialCell();
+
+    settings->remove("atomicNums");
+    settings->beginWriteArray("atomicNums");
+    for (int i = 0; i < initNums.size(); i++) {
+      settings->setArrayIndex(i);
+      settings->setValue("value", initNums.at(i));
+    }
+    settings->endArray();
+
+    settings->remove("coords");
+    settings->beginWriteArray("coords");
+    for (int i = 0; i < initCoords.size(); i++) {
+      settings->setArrayIndex(i);
+      settings->setValue("x", initCoords.at(i).x());
+      settings->setValue("y", initCoords.at(i).y());
+      settings->setValue("z", initCoords.at(i).z());
+    }
+    settings->endArray();
+
+    settings->setValue("cell/00", initCell(0, 0));
+    settings->setValue("cell/01", initCell(0, 1));
+    settings->setValue("cell/02", initCell(0, 2));
+    settings->setValue("cell/10", initCell(1, 0));
+    settings->setValue("cell/11", initCell(1, 1));
+    settings->setValue("cell/12", initCell(1, 2));
+    settings->setValue("cell/20", initCell(2, 0));
+    settings->setValue("cell/21", initCell(2, 1));
+    settings->setValue("cell/22", initCell(2, 2));
+    settings->endGroup(); // initial
+  }
+
   settings->endGroup(); // structure
 
   // Crystal-specific extras in the same group.
@@ -1587,7 +1593,8 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
   if (readOnlyLoad)
     Common::message(QString("%1 xtals were found!").arg(xtalDirs.size()));
 
-  // Xtals
+  // Load all structures before adding any of them to the tracker. Parent links
+  //   refer to tags and can be restored only after every saved structure exists.
   if (!readOnlyLoad)
     updateProgressValue(-1, QString(), -1, xtalDirs.size());
 
@@ -1680,8 +1687,7 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
 
     QString parentStructureString = readStructureStateParentTag(xtalStateFileName);
     if (!parentStructureString.isEmpty())
-      parentRequests.append(qMakePair(qobject_cast<Structure*>(xtal),
-                                      parentStructureString));
+      parentRequests.append(qMakePair(qobject_cast<Structure*>(xtal), parentStructureString));
 
     if (!readOnlyLoad) {
       QWriteLocker locker(&xtal->lock());
@@ -1707,11 +1713,11 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
       }
       // Objective/constraint script launches are basically "direct" runs; too.
       if (state == Structure::ConstraintCalculation) {
-        state = Structure::Postprocessing;
+        state = Structure::ScriptCalculation;
         xtal->resetStrucConstraint();
       }
       if (state == Structure::ObjectiveCalculation) {
-        state = Structure::Postprocessing;
+        state = Structure::ScriptCalculation;
         xtal->resetStrucObj();
       }
       QDateTime endtime = xtal->getOptTimerEnd();
@@ -1739,7 +1745,9 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
     updateProgressValue(0, "Updating structure indices...", 0, loadedStructures.size());
   }
 
+  // Restore the generation order before putting structures back into the tracker.
   sortStructuresByStateIndex(loadedStructures);
+
   // Parent links are saved by tag; rebuild them once all structures are loaded.
   restoreStructureParentLinks(parentRequests, loadedStructures);
 
@@ -1763,7 +1771,7 @@ bool XtalOpt::restorePopulation(const QString& stateFile,
     addRestoredStructure(s, !readOnlyLoad);
   }
 
-  // Refresh hull-derived values after rebuilding memory with the current loaded data.
+  // Rebuild hull-derived values after rebuilding memory with the current loaded data.
   QList<Structure*> structures = queue()->getAllStructures();
   const bool refreshed = refreshStructureEvaluationData();
   resetSimilarities_();
@@ -1801,6 +1809,8 @@ bool XtalOpt::readStateFile(const QString& filename, bool fullState,
     return false;
   }
 
+  // We always read the "current" state scheme; any conversion from old
+  //   inputs are handled in legacy layer.
   QString readFilename;
   const bool keepCompatibilityCopy = !isReadOnly();
   if (!Legacy::convertStateFile(filename, fullState, keepCompatibilityCopy,
@@ -1810,6 +1820,7 @@ bool XtalOpt::readStateFile(const QString& filename, bool fullState,
   if (stateWasConverted)
     *stateWasConverted = readFilename != filename;
 
+  // Read shared input data before the per-step scheme which depends on it.
   bool readOk = true;
   {
     QSETTINGS_FILE(readFilename);

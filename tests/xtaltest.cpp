@@ -22,7 +22,7 @@
 #include <common/fileutils.h>
 #include <common/output.h>
 #include <atoms/eleminfo.h>
-#include <atoms/formats/poscarformat.h>
+#include <atoms/formats/vaspformat.h>
 #include <common/compatibility/platform_compat.h>
 #include <common/random.h>
 
@@ -310,7 +310,7 @@ void XtalTest::niggliReduceTest()
     const double gamma = Common::getRandDouble() * (maxAngle - minAngle) + minAngle;
 
     // is the cell valid?
-    Atoms::UnitCell tmp(alpha, beta, gamma, a, b, c);
+    Atoms::UnitCell tmp(a, b, c, alpha, beta, gamma);
     if (tmp.cellMatrix().determinant() <= 0 ||
         GS_IS_NAN_OR_INF(tmp.cellMatrix().determinant())) {
       i--;
@@ -381,7 +381,7 @@ void XtalTest::fixAnglesTest()
     const double gamma = Common::getRandDouble() * (maxAngle - minAngle) + minAngle;
 
     // is the cell valid?
-    Atoms::UnitCell tmp(alpha, beta, gamma, a, b, c);
+    Atoms::UnitCell tmp(a, b, c, alpha, beta, gamma);
     if (tmp.cellMatrix().determinant() <= 0 ||
         GS_IS_NAN_OR_INF(tmp.cellMatrix().determinant())) {
       --iter;

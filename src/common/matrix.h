@@ -359,10 +359,11 @@ inline std::ostream& operator<<(std::ostream& out, const Matrix3& matrix)
   return out;
 }
 
-inline bool fuzzyCompare(const Matrix3& v1, const Matrix3& v2, double tol = ZERO08)
+// Two matrices match if all their components (row vectors) match within the tolerance.
+inline bool eq(const Matrix3& v1, const Matrix3& v2, double tol = ZERO08)
 {
-  return fuzzyCompare(v1.row(0), v2.row(0), tol) && fuzzyCompare(v1.row(1), v2.row(1), tol) &&
-         fuzzyCompare(v1.row(2), v2.row(2), tol);
+  return eq(v1.row(0), v2.row(0), tol) && eq(v1.row(1), v2.row(1), tol) &&
+         eq(v1.row(2), v2.row(2), tol);
 }
 
 } // namespace Common

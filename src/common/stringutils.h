@@ -78,6 +78,7 @@ inline bool textToValue(const QString& text, bool& out)
   }
   return false;
 }
+
 inline bool textToValue(const QString& text, int& out)
 {
   bool ok = false;
@@ -87,6 +88,7 @@ inline bool textToValue(const QString& text, int& out)
   out = value;
   return true;
 }
+
 inline bool textToValue(const QString& text, unsigned int& out)
 {
   bool ok = false;
@@ -96,6 +98,7 @@ inline bool textToValue(const QString& text, unsigned int& out)
   out = value;
   return true;
 }
+
 inline bool textToValue(const QString& text, double& out)
 {
   bool ok = false;
@@ -105,6 +108,7 @@ inline bool textToValue(const QString& text, double& out)
   out = value;
   return true;
 }
+
 inline bool textToValue(const QString& text, QString& out)
 {
   out = text;

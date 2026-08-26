@@ -77,7 +77,7 @@ bool distAboveHull(const std::vector<double>& input_data_ref, int input_num, int
     for(int j = 0; j < input_dim; j++)
       input_data[i * input_dim + j] /= tot_com;
     for(int j = 0; j < input_dim - 1; j++)
-      if (Common::fuzzyCompare(input_data[i * input_dim + j], 1.0, ZERO06))
+      if (Common::eq(input_data[i * input_dim + j], 1.0, ZERO06))
         if(input_data[i * input_dim + input_dim - 1] < min_ele[j])
           min_ele[j] = input_data[i * input_dim + input_dim - 1];
   }

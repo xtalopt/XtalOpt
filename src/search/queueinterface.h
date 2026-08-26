@@ -428,8 +428,7 @@ private:
    * Create a queue interface by its registered name.
    * @return The new interface, or nullptr if name is unknown.
    */
-  static std::unique_ptr<QueueInterface> createRegisteredQueueInterface(
-    const QString& name, SearchBase* parent);
+  static std::unique_ptr<QueueInterface> createRegisteredQueueInterface(const QString& name, SearchBase* parent);
 };
 }
 

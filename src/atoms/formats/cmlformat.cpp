@@ -323,7 +323,7 @@ bool CmlFormat::write(const Atoms::Geometry& s, std::ostream& out)
       xml.writeStartElement("scalar");
       xml.writeAttribute("title", title);
       xml.writeAttribute("units", units);
-      xml.writeCharacters(QString::number(val));
+      xml.writeCharacters(QString::number(val, 'f', 8));
       xml.writeEndElement();
     };
     writeScalar("a",     "units:angstrom", cell.a());
@@ -346,13 +346,13 @@ bool CmlFormat::write(const Atoms::Geometry& s, std::ostream& out)
         Atoms::ElementInfo::getAtomicSymbol(atom.atomicNumber())));
     if (cell.is3D()) {
       Common::Vector3 frac = cell.toFractional(atom.pos());
-      xml.writeAttribute("xFract", QString::number(frac.x()));
-      xml.writeAttribute("yFract", QString::number(frac.y()));
-      xml.writeAttribute("zFract", QString::number(frac.z()));
+      xml.writeAttribute("xFract", QString::number(frac.x(), 'f', 8));
+      xml.writeAttribute("yFract", QString::number(frac.y(), 'f', 8));
+      xml.writeAttribute("zFract", QString::number(frac.z(), 'f', 8));
     } else {
-      xml.writeAttribute("x3", QString::number(atom.pos().x()));
-      xml.writeAttribute("y3", QString::number(atom.pos().y()));
-      xml.writeAttribute("z3", QString::number(atom.pos().z()));
+      xml.writeAttribute("x3", QString::number(atom.pos().x(), 'f', 8));
+      xml.writeAttribute("y3", QString::number(atom.pos().y(), 'f', 8));
+      xml.writeAttribute("z3", QString::number(atom.pos().z(), 'f', 8));
     }
     xml.writeEndElement(); // atom
   }

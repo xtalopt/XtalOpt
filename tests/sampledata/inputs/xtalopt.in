@@ -104,19 +104,19 @@
   # Number of failures for a job before we take action
     jobFailLimit = 1
   # What to do after a job has failed too many times
-  # Options: keepTrying, kill, replaceWithRandom, replaceWithOffspring
-    jobFailAction = replaceWithRandom
+  # Options: fail, keepTrying, replaceWithRandom, replaceWithOffspring
+    jobFailAction = fail
 
   # Mutation operators
   # Percent chances of producing a supercell after genetic operations
     #randomSuperCell = 0
 
   # Relative weight of applying genetic operations - need to be integers
-    weightCrossover = 35
-    weightStripple = 25
-    weightPermustrain = 25
-    weightPermutomic = 15
-    weightPermucomp = 5
+    weightCrossover = 20
+    weightStripple = 20
+    weightPermustrain = 20
+    weightPermutomic = 20
+    weightPermucomp = 10
 
   # Stripple options
     strippleAmplitudeMin = 0.5

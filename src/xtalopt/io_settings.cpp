@@ -1,5 +1,6 @@
 /**********************************************************************
-  io_text - Reading and applying xtalopt.in, runtime options, and structured inputs.
+  io_settings - Reading, writing, and applying xtalopt.in, runtime options,
+                and structured inputs.
 
   Copyright (C) 2009-2011 by David C. Lonie
   Copyright (C) 2017 by Patrick S. Avery
@@ -57,7 +58,7 @@ namespace {
 // Functions for reading and writing input files
 
 bool inputOptimizerTemplateKeywords(const Optimizer* optimizer, QStringList& keywords,
-                                     QString* err = nullptr)
+                                    QString* err = nullptr)
 {
   keywords.clear();
   if (!optimizer)
@@ -79,7 +80,7 @@ bool inputOptimizerTemplateKeywords(const Optimizer* optimizer, QStringList& key
 }
 
 bool inputQueueTemplateKeywords(const QueueInterface* queue, QStringList& keywords,
-                                 QString* err = nullptr)
+                                QString* err = nullptr)
 {
   keywords.clear();
   if (!queue)
@@ -104,7 +105,7 @@ bool inputQueueTemplateKeywords(const QueueInterface* queue, QStringList& keywor
 }
 
 QString queueTemplateKeywordToFilename(const QueueInterface* queue, const QString& keyword,
-                                        QString* err = nullptr)
+                                       QString* err = nullptr)
 {
   if (err)
     err->clear();
@@ -323,8 +324,8 @@ bool inputTextHasRequiredKeyword(const QString& parserText)
 }
 
 bool readInputFile(const QString& filename, QHash<QString, QString>& options,
-                           QHash<QString, QStringList>& multiInput, bool bestEffort,
-                           bool keepCompatibilityCopy)
+                   QHash<QString, QStringList>& multiInput, bool bestEffort,
+                   bool keepCompatibilityCopy)
 {
   QString inputText;
   if (!Common::readFileToQString(filename, &inputText)) {
@@ -342,7 +343,7 @@ bool readInputFile(const QString& filename, QHash<QString, QString>& options,
 
   if (!bestEffort && !inputTextHasRequiredKeyword(parserText)) {
     Common::error(QString("The input file '%1' does not look like an XtalOpt input file")
-                    .arg(filename));
+                  .arg(filename));
     return false;
   }
 
@@ -610,8 +611,8 @@ QStringList sortedCompositionSymbols(const QList<uint>& atomicNums)
 }
 
 bool applyInputOptimizerAssets(XtalOpt& xtalopt, size_t optStep,
-                                      const QHash<QString, QStringList>& multiInput,
-                                      const QString& sourceDir)
+                               const QHash<QString, QStringList>& multiInput,
+                               const QString& sourceDir)
 {
   Optimizer* optimizer = xtalopt.optimizer(optStep);
   if (!optimizer)
@@ -705,7 +706,7 @@ bool applyInputOptimizerAssets(XtalOpt& xtalopt, size_t optStep,
 }
 
 bool hasRequiredInputTemplates(const QStringList& templateKeywords, const QString& optQueueName,
-                                      const QHash<QString, QString>& options)
+                               const QHash<QString, QString>& options)
 {
   for (const auto& templateKeyword : templateKeywords) {
     if (options[templateKeyword].isEmpty()) {
@@ -803,9 +804,9 @@ bool applyInputQueueTemplate(XtalOpt& xtalopt, const QueueInterface* queue,
 }
 
 bool applyInputOptimizer(XtalOpt& xtalopt, size_t optStep,
-                                         const QHash<QString, QString>& options,
-                                         const QHash<QString, QStringList>& multiInput,
-                                         const QString& sourceDir)
+                         const QHash<QString, QString>& options,
+                         const QHash<QString, QStringList>& multiInput,
+                         const QString& sourceDir)
 {
   Optimizer* optimizer = xtalopt.optimizer(optStep);
 
@@ -829,8 +830,9 @@ bool applyInputOptimizer(XtalOpt& xtalopt, size_t optStep,
 }
 
 bool applyInputOptimizerAndQueue(QHash<QString, QString>& options,
-                                         const QHash<QString, QStringList>& multiInput, XtalOpt& xtalopt,
-                                         const QString& sourceDir, bool loadAndVerifyAssets, bool bestEffort)
+                                 const QHash<QString, QStringList>& multiInput,
+                                 XtalOpt& xtalopt, const QString& sourceDir,
+                                 bool loadAndVerifyAssets, bool bestEffort)
 {
   size_t numOptSteps = options.value("numOptimizationSteps").toUInt();
   // Zero (or an unreadable value) would leave the run with no
@@ -989,7 +991,7 @@ bool applyInputSettings(QHash<QString, QString> options, const QHash<QString,
     xtalopt.seedList() = resolvedSeeds;
   }
 
-  // Process the single-line inputs (eg, compositions and radii).
+  // Process the derived settings from the inputs (eg, compositions and radii).
   if (!xtalopt.rebuildDerivedSettings()) {
     Common::error("Input compositions were not read in successfully.");
     return false;
@@ -999,10 +1001,12 @@ bool applyInputSettings(QHash<QString, QString> options, const QHash<QString,
   if (!applyInputRepeatedEntries(multiInput, xtalopt))
     return false;
 
+  // The repeated entries were cleared and re-read; with no objective
+  //   entry nothing recreated the built-in objective. So restore it.
   xtalopt.refreshBuiltinObjectiveWeight();
 
   if (!applyInputOptimizerAndQueue(options, multiInput, xtalopt, sourceDir,
-                                           loadAndVerifyAssets, bestEffort))
+                                   loadAndVerifyAssets, bestEffort))
     return false;
 
   if (!applyInputWorkDir(options, xtalopt, bestEffort))
@@ -1187,6 +1191,29 @@ void applyRuntimeSettings(const QHash<QString, QString>& options,
 
 } // namespace
 
+bool XtalOpt::similarityKeywordInUse(const QString& keyword) const
+{
+  // The RDF tolerance selects the comparator, so it always matters.
+  if (keyword == "rdfTolerance")
+    return true;
+  if (usingRdfSimilarity())
+    return keyword == "rdfCutoff" || keyword == "rdfNumBins" || keyword == "rdfSigma";
+  // XtalComp reduces both cells to primitive with the spglib tolerance.
+  return keyword == "xtalcompToleranceLength" ||
+         keyword == "xtalcompToleranceAngle" || keyword == "spglibTolerance";
+}
+
+bool XtalOpt::spacegroupKeywordInUse(const QString& keyword) const
+{
+  return keyword == "spglibTolerance";
+}
+
+bool XtalOpt::selectionKeywordInUse(const QString& keyword) const
+{
+  return keyword == "objectivePrecision" || keyword == "optimizationType" ||
+         keyword == "crowdingDistance"   || keyword == "paretoFilterZeroWeights";
+}
+
 // Write the runtime file with the current value of every
 //   runtime-changeable setting, one "keyword = value" per line.
 void XtalOpt::saveRuntimeFile()
@@ -1308,8 +1335,8 @@ bool XtalOpt::loadInputFile(const QString& filename, bool bestEffort,
     return false;
 
   // Apply all parsed options to this XtalOpt instance.
-  if (!applyInputSettings(options, multiInput, *this,
-                      sourceDir, loadAndVerifyAssets, bestEffort, &verboseReport))
+  if (!applyInputSettings(options, multiInput, *this, sourceDir,
+                          loadAndVerifyAssets, bestEffort, &verboseReport))
     return false;
 
   // A GUI import tolerates missing required keywords while applying the rest,
@@ -1763,6 +1790,95 @@ bool XtalOpt::processInputMoleculeUnit(QString s)
   return true;
 }
 
+// Check the output file name of a script (ie, an objective or a constraint).
+// It must be a simple relative name so the output stays in the structure
+//   directory; and it must not collide with another script's output, since
+//   they are all written in the same folder.
+bool XtalOpt::validateScriptFilename(const QString& out, const QString& owner,
+                                     QString* errorMessage) const
+{
+  const QString trimmed = out.trimmed();
+
+  if (trimmed.isEmpty()) {
+    if (errorMessage)
+      *errorMessage = QString("%1 output filename cannot be empty").arg(owner);
+    return false;
+  }
+
+  // Note: on Windows a drive prefix (eg, "C:name") doesn't have slash, so the
+  //   plain file name of the path is compared with the input to catch it.
+  if (trimmed != out || trimmed == "." || trimmed == ".." ||
+      trimmed.contains('/') || trimmed.contains('\\') ||
+      trimmed.contains(QChar::fromLatin1('\0')) ||
+      QFileInfo(trimmed).fileName() != trimmed ||
+      // These are filenames used by the code itself in every structure directory
+      trimmed.compare("structure.state", Qt::CaseInsensitive) == 0 ||
+      trimmed.compare("output.POSCAR", Qt::CaseInsensitive) == 0) {
+    if (errorMessage)
+      *errorMessage = QString("%1 output filename must be a simple relative filename "
+                              "that the code does not write itself").arg(owner);
+    return false;
+  }
+
+  bool inUse = false;
+  for (int i = 0; i < getObjectivesNum() && !inUse; ++i)
+    inUse = (getObjectivesOut(i).compare(trimmed, Qt::CaseInsensitive) == 0);
+
+  for (int i = 0; i < getConstraintsNum() && !inUse; ++i)
+    inUse = (getConstraintOut(i).compare(trimmed, Qt::CaseInsensitive) == 0);
+
+  if (inUse) {
+    if (errorMessage)
+      *errorMessage = QString("%1 output filename is already in use").arg(owner);
+    return false;
+  }
+
+  return true;
+}
+
+bool XtalOpt::validateUserObjectiveDefinition(ObjType objtyp, const QString& objexe,
+                                              const QString& objout, double objwgt,
+                                              QString* errorMessage) const
+{
+  if (objtyp != ObjType::Ot_Min && objtyp != ObjType::Ot_Max) {
+    if (errorMessage)
+      *errorMessage = "objective type is invalid";
+    return false;
+  }
+
+  if (objexe.trimmed().isEmpty()) {
+    if (errorMessage)
+      *errorMessage = "objective executable path cannot be empty";
+    return false;
+  }
+
+  if (!validateScriptFilename(objout, "objective", errorMessage))
+    return false;
+
+  if (!GS_ISFINITE(objwgt) || objwgt < 0.0 || objwgt > 1.0) {
+    if (errorMessage)
+      *errorMessage = "objective weight should be a finite number in [0,1]";
+    return false;
+  }
+
+  return true;
+}
+
+bool XtalOpt::validateConstraintDefinition(const QString& exe, const QString& out,
+                                           QString* errorMessage) const
+{
+  if (exe.trimmed().isEmpty()) {
+    if (errorMessage)
+      *errorMessage = "constraint executable path cannot be empty";
+    return false;
+  }
+
+  if (!validateScriptFilename(out, "constraint", errorMessage))
+    return false;
+
+  return true;
+}
+
 bool XtalOpt::processInputObjectives(QString s)
 {
   // This function processes the objective entries from a string
@@ -1829,6 +1945,9 @@ bool XtalOpt::processInputObjectives(QString s)
 
   // We're good! Add the objective
   addObjective(objtyp, objexe, objout, objwgt);
+
+  // Re-adjust the built-in objective (above hull) weight
+  refreshBuiltinObjectiveWeight();
 
   return true;
 }
@@ -1941,7 +2060,7 @@ QStringList XtalOpt::customIADLines() const
   QStringList out;
   for (const auto& pair : pairCustomDistances().getPairs())
     out << customIADEntryToText(pair.first, pair.second,
-                               pairCustomDistances().getPairDistance(pair.first, pair.second));
+                                pairCustomDistances().getPairDistance(pair.first, pair.second));
   out.sort();
   return out;
 }
@@ -1949,4 +2068,76 @@ QStringList XtalOpt::customIADLines() const
 QStringList XtalOpt::molUnitLines() const
 {
   return moleculeUnitInputs();
-}} // namespace XtalOpt
+}
+
+QString XtalOpt::failActionText() const
+{
+  switch (getFailAction()) {
+    case Search::SearchBase::FA_DoNothing:
+      return "keepTrying";
+    case Search::SearchBase::FA_FailIt:
+      return "fail";
+    case Search::SearchBase::FA_Randomize:
+      return "replaceWithRandom";
+    case Search::SearchBase::FA_NewOffspring:
+      return "replaceWithOffspring";
+  }
+  return "unknown";
+}
+
+bool XtalOpt::setFailActionText(const QString& v)
+{
+  const QString n = v.trimmed().toLower();
+  if (n == "keeptrying")
+    setFailAction(Search::SearchBase::FA_DoNothing);
+  else if (n == "fail")
+    setFailAction(Search::SearchBase::FA_FailIt);
+  else if (n == "replacewithrandom")
+    setFailAction(Search::SearchBase::FA_Randomize);
+  else if (n == "replacewithoffspring")
+    setFailAction(Search::SearchBase::FA_NewOffspring);
+  else
+    return false;
+  return true;
+}
+
+QString XtalOpt::optimizationTypeText() const
+{
+  switch (getOptimizationType()) {
+    case Search::SearchBase::OT_Basic:
+      return "basic";
+    case Search::SearchBase::OT_Pareto:
+      return "pareto";
+  }
+  return "unknown";
+}
+
+bool XtalOpt::setOptimizationTypeText(const QString& v)
+{
+  const QString n = v.trimmed().toLower();
+  if (n == "basic")
+    setOptimizationType(Search::SearchBase::OT_Basic);
+  else if (n == "pareto")
+    setOptimizationType(Search::SearchBase::OT_Pareto);
+  else
+    return false;
+  return true;
+}
+
+QString XtalOpt::seedStructuresText() const
+{
+  return seedList().join(",");
+}
+
+void XtalOpt::setSeedStructuresText(const QString& v)
+{
+  seedList().clear();
+  const QStringList parts = v.split(',');
+  for (const QString& part : parts) {
+    const QString trimmed = part.simplified();
+    if (!trimmed.isEmpty())
+      seedList().append(trimmed);
+  }
+}
+
+} // namespace XtalOpt

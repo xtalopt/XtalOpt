@@ -60,11 +60,11 @@ QList<Structure::State> allStructureStates()
          << Structure::Updating
          << Structure::Error
          << Structure::Submitted
-         << Structure::Killed
+         << Structure::Failed
          << Structure::Removed
          << Structure::Restart
+         << Structure::ScriptCalculation
          << Structure::ObjectiveCalculation
-         << Structure::Postprocessing
          << Structure::ConstraintCalculation
          << Structure::Dismissed
          << Structure::ObjcFailed
@@ -451,7 +451,7 @@ void StructureTest::stateHelpersClassifyStates()
   QList<Structure::State> expected;
 
   expected << Structure::Optimized
-           << Structure::Killed
+           << Structure::Failed
            << Structure::Removed
            << Structure::Dismissed
            << Structure::ObjcFailed
@@ -470,8 +470,8 @@ void StructureTest::stateHelpersClassifyStates()
   expected.clear();
   expected << Structure::ObjectiveCalculation
            << Structure::ConstraintCalculation;
-  checkState(static_cast<StateCheck>(&Structure::isPostOptimizationCalculationState),
-    static_cast<MemberStateCheck>(&Structure::isPostOptimizationCalculationState), expected);
+  checkState(static_cast<StateCheck>(&Structure::isScriptCalculationState),
+    static_cast<MemberStateCheck>(&Structure::isScriptCalculationState), expected);
 
   expected.clear();
   expected << Structure::Optimized;
@@ -481,22 +481,22 @@ void StructureTest::stateHelpersClassifyStates()
   expected.clear();
   expected << Structure::ObjcFailed
            << Structure::ConsFailed;
-  checkState(static_cast<StateCheck>(&Structure::isFailedFinalState),
-    static_cast<MemberStateCheck>(&Structure::isFailedFinalState), expected);
+  checkState(static_cast<StateCheck>(&Structure::isScriptFailedState),
+    static_cast<MemberStateCheck>(&Structure::isScriptFailedState), expected);
 
   expected.clear();
   expected << Structure::Dismissed;
-  checkState(static_cast<StateCheck>(&Structure::isDismissedFinalState),
-    static_cast<MemberStateCheck>(&Structure::isDismissedFinalState), expected);
+  checkState(static_cast<StateCheck>(&Structure::isScriptDismissedState),
+    static_cast<MemberStateCheck>(&Structure::isScriptDismissedState), expected);
 
   expected.clear();
-  expected << Structure::Killed
+  expected << Structure::Failed
            << Structure::Removed;
-  checkState(static_cast<StateCheck>(&Structure::isKilledOrRemovedState),
-    static_cast<MemberStateCheck>(&Structure::isKilledOrRemovedState), expected);
+  checkState(static_cast<StateCheck>(&Structure::isFailedOrRemovedState),
+    static_cast<MemberStateCheck>(&Structure::isFailedOrRemovedState), expected);
 
   expected.clear();
-  expected << Structure::Killed
+  expected << Structure::Failed
            << Structure::Removed
            << Structure::Dismissed
            << Structure::ObjcFailed
@@ -522,22 +522,19 @@ void StructureTest::workflowStateStatusText()
 
   const StatusTextExpectation expectations[] = {
     { Structure::Optimized, "Optimized", "Optimized" },
-    { Structure::StepOptimized, "Checking", "Checking status..." },
-    { Structure::WaitingForOptimization, "Waiting",
-      "Waiting for optimization" },
+    { Structure::StepOptimized, "Checking", "Checking status" },
+    { Structure::WaitingForOptimization, "Waiting", "Waiting for optimization" },
     { Structure::InProcess, "InProcess", "In process" },
-    { Structure::Empty, "Empty", "Structure empty..." },
-    { Structure::Updating, "Updating", "Updating structure..." },
+    { Structure::Empty, "Empty", "Structure empty" },
+    { Structure::Updating, "Updating", "Updating structure" },
     { Structure::Error, "Error", "Job error" },
     { Structure::Submitted, "Submitted", "Job submitted" },
-    { Structure::Killed, "Killed", "Killed" },
+    { Structure::Failed, "Failed", "Failed" },
     { Structure::Removed, "Removed", "Removed" },
-    { Structure::Restart, "Restart", "Restarting job..." },
-    { Structure::ObjectiveCalculation, "ObjcCalcs",
-      "Calculating objectives..." },
-    { Structure::Postprocessing, "Postproc", "Postprocessing..." },
-    { Structure::ConstraintCalculation, "ConsCalcs",
-      "Calculating constraints..." },
+    { Structure::Restart, "Restart", "Restarting job" },
+    { Structure::ScriptCalculation, "ScriptCalcs", "Script Calculation" },
+    { Structure::ObjectiveCalculation, "ObjcCalcs", "Calculating objectives" },
+    { Structure::ConstraintCalculation, "ConsCalcs", "Calculating constraints" },
     { Structure::Dismissed, "Dismissed", "Dismissed" },
     { Structure::ObjcFailed, "ObjcFailed", "Objective failed" },
     { Structure::ConsFailed, "ConsFailed", "Constraint failed" }
@@ -558,7 +555,7 @@ void StructureTest::workflowStateStatusText()
   similar.setStatus(Structure::Optimized);
   similar.setSimilarityString("1x2");
   QVERIFY(similar.isSimilar());
-  QCOMPARE(similar.statusText(false), QString("Sim(1x2)"));
+  QCOMPARE(similar.statusText(false), QString("Sim:1x2"));
   QCOMPARE(similar.statusText(true), QString("Similar to 1x2"));
   similar.setStatus(Structure::Restart);
   QVERIFY(!similar.isSimilar());

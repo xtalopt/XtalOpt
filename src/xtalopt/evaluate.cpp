@@ -26,11 +26,7 @@
 #include <common/timing.h>
 #include <search/queuemanager.h>
 
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
 #include <QList>
-#include <QTextStream>
 
 #include <cmath>
 #include <limits>
@@ -56,40 +52,6 @@ Xtal* xtalOrFlagged(Structure* structure, const char* context)
   return xtal;
 }
 
-// Refresh the ".old" backup, then rewrite the output file in place. The
-//   file is never removed or renamed, so a "tail -f" on it keeps working.
-bool writeOutputFileWithBackup(const QString& filename, const QString& contents,
-                               const char* caller)
-{
-  if (QFile::exists(filename)) {
-    const QString oldFilename = filename + ".old";
-    if ((QFile::exists(oldFilename) && !QFile::remove(oldFilename)) ||
-        !QFile::copy(filename, oldFilename)) {
-      Common::error(QString("%1: could not write backup file %2.")
-                    .arg(caller).arg(oldFilename));
-      return false;
-    }
-  }
-
-  QFile file(filename);
-  if (!file.open(QIODevice::WriteOnly)) {
-    Common::error(QString("%1: could not open file %2 for writing...")
-                    .arg(caller).arg(file.fileName()));
-    return false;
-  }
-
-  QTextStream out(&file);
-  out << contents;
-
-  // A failed write must report it for a retry
-  out.flush();
-  file.close();
-  if (file.error() != QFile::NoError) {
-    Common::error(QString("%1: could not write file %2.").arg(caller).arg(filename));
-    return false;
-  }
-  return true;
-}
 
 } // namespace
 
@@ -380,6 +342,43 @@ bool XtalOpt::refreshStructureEvaluationData()
   return true;
 }
 
+double XtalOpt::getFormationEnergyPerAtom(Structure* s) const
+{
+  if (!s || s->numAtoms() == 0)
+    return std::numeric_limits<double>::quiet_NaN();
+
+  const QList<QString> chemSystem = getChemicalSystem();
+  if (chemSystem.isEmpty())
+    return std::numeric_limits<double>::quiet_NaN();
+
+  // The lowest per atom energy of each element's reference entries.
+  std::vector<double> minEleEnergy(chemSystem.size(), PINF);
+  for (int i = 0; i < refEnergies().size(); i++) {
+    const CellComp& cell = refEnergies()[i].cell;
+    if (cell.getNumTypes() != 1 || cell.getNumAtoms() == 0)
+      continue;
+    const int index = chemSystem.indexOf(cell.getCompositionSymbols().at(0));
+    if (index == -1)
+      continue;
+    const double perAtom = refEnergies()[i].energy / static_cast<double>(cell.getNumAtoms());
+    if (perAtom < minEleEnergy[index])
+      minEleEnergy[index] = perAtom;
+  }
+
+  // A structure can be a sub-system: an absent element just adds nothing.
+  double reference = 0.0;
+  for (int i = 0; i < chemSystem.size(); i++) {
+    const double count = static_cast<double>(s->getNumberOfAtomsOfSymbol(chemSystem[i]));
+    if (count == 0.0)
+      continue;
+    if (minEleEnergy[i] >= PINF)
+      return std::numeric_limits<double>::quiet_NaN();
+    reference += count * minEleEnergy[i];
+  }
+
+  return (s->getEnthalpy() - reference) / static_cast<double>(s->numAtoms());
+}
+
 void XtalOpt::resetSpacegroups()
 {
   if (!isSessionActive() || isSessionStarting() || isReadOnly()) {
@@ -562,29 +561,6 @@ bool XtalOpt::usingRdfSimilarity() const
   return getTolRdf() > 0.0 && getTolRdf() <= 1.0;
 }
 
-bool XtalOpt::similarityKeywordInUse(const QString& keyword) const
-{
-  // The RDF tolerance selects the comparator, so it always matters.
-  if (keyword == "rdfTolerance")
-    return true;
-  if (usingRdfSimilarity())
-    return keyword == "rdfCutoff" || keyword == "rdfNumBins" || keyword == "rdfSigma";
-  // XtalComp reduces both cells to primitive with the spglib tolerance.
-  return keyword == "xtalcompToleranceLength" ||
-         keyword == "xtalcompToleranceAngle" || keyword == "spglibTolerance";
-}
-
-bool XtalOpt::spacegroupKeywordInUse(const QString& keyword) const
-{
-  return keyword == "spglibTolerance";
-}
-
-bool XtalOpt::selectionKeywordInUse(const QString& keyword) const
-{
-  return keyword == "objectivePrecision" || keyword == "optimizationType" ||
-         keyword == "crowdingDistance"   || keyword == "paretoFilterZeroWeights";
-}
-
 Xtal* XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, const QList<QString>& bSymbols)
 {
   // Timed per screen-passing pair: the call count tracks how many pairs
@@ -701,113 +677,6 @@ Xtal* XtalOpt::checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, 
   }
 
   return marked;
-}
-
-void XtalOpt::queueHullSnapshot()
-{
-  if (isReadOnly() || getLocWorkDir().isEmpty())
-    return;
-
-  // Collect the frame data now after a fresh hull
-  const QString path = Common::localPath(getLocWorkDir(), "movie");
-  const unsigned long long sequence = x_hullSnapshotSequence.fetch_add(1) + 1;
-  const QString filename = Common::localPath(path, Common::uniqueTimestampString(QString::number(sequence)));
-  const QString contents = hullFileContents(queue()->getAllStructures());
-
-  std::lock_guard<std::mutex> guard(x_filesNeedingSaveMutex);
-  x_pendingHullSnapshots.append(QPair<QString, QString>(filename, contents));
-}
-
-bool XtalOpt::writeResultsFile(const QList<Structure*>& structures, bool notify)
-{
-  Common::ScopedTimer _timer("XtalOpt::writeResultsFile");
-  if (getLocWorkDir().isEmpty())
-    return true;
-
-  if (!QDir().mkpath(getLocWorkDir())) {
-    Common::error(QString("%1: could not create local work directory %2...")
-                    .arg(__func__).arg(getLocWorkDir()));
-    return false;
-  }
-
-  const QString resultsFilename = Common::localPath(getLocWorkDir(), "results.txt");
-  if (notify)
-    updateProgressValue(-1, tr("Saving: Writing %1...").arg(resultsFilename));
-
-  QString contents;
-  QTextStream out(&contents);
-  QList<Structure*> sortedStructures(structures);
-  const int objectiveOffset = (getObjectivesNum() > 0) ? getFirstUserObjectiveIndex() : 0;
-  const int userObjectivesNum = getUserObjectivesNum();
-  const int constraintsNum = getConstraintsNum();
-  if (!sortedStructures.isEmpty()) {
-    Structure::sortAndRankStructures(&sortedStructures);
-    out << sortedStructures.first()->getResultsHeader(userObjectivesNum, objectiveOffset,
-                                                      constraintsNum)
-        << QtCompat::endl;
-  }
-
-
-  for (auto* structure : sortedStructures) {
-    if (!structure)
-      continue;
-    QReadLocker structureLocker(&structure->lock());
-    out << structure->getResultsEntry(userObjectivesNum, structure->getCurrentOptStep(),
-                                      objectiveOffset, constraintsNum)
-        << QtCompat::endl;
-  }
-
-  return writeOutputFileWithBackup(resultsFilename, contents, __func__);
-}
-
-QString XtalOpt::hullFileContents(const QList<Structure*>& structures)
-{
-  QString contents;
-  QTextStream out(&contents);
-
-  const QList<QString> chemSystem = getChemicalSystem();
-  out << Xtal::getHullHeader(chemSystem) << "\n";
-
-  for (auto* structure : structures) {
-    Xtal* xtal = qobject_cast<Xtal*>(structure);
-    if (!xtal) {
-      Common::error(QString("%1: non-Xtal structure in hull file: %2")
-                    .arg(__func__).arg(structure->getTag()));
-      continue;
-    }
-
-    QReadLocker structureLocker(&xtal->lock());
-    if (GS_ISNAN(xtal->getDistAboveHull()))
-      continue;
-    out << xtal->getHullEntry(chemSystem) << "\n";
-  }
-
-  const std::vector<double> refData = getReferenceEnergiesVector();
-  const int refCount = static_cast<int>(refData.size()) / (chemSystem.size() + 1);
-  for (int i = 0; i < refCount; ++i) {
-    for (int j = 0; j < chemSystem.size(); ++j)
-      out << QString(" %1")
-             .arg(refData[i * (chemSystem.size() + 1) + j], 7);
-    out << QString(" %1")
-             .arg(refData[i * (chemSystem.size() + 1) + chemSystem.size()], 14, 'f', 6);
-    out << QString("  # %1 %2 %3  %4")
-             .arg("ref", 14).arg("ref", 7).arg("ref", 7).arg("ref")
-        << "\n";
-  }
-
-  return contents;
-}
-
-bool XtalOpt::writeHullFile(const QList<Structure*>& structures, const QString& filename)
-{
-  // Make sure the destination directory exists.
-  const QString hullDir = QFileInfo(filename).absolutePath();
-  if (!QDir().mkpath(hullDir)) {
-    Common::error(QString("%1: could not create directory %2...").arg(__func__).arg(hullDir));
-    return false;
-  }
-
-  return writeOutputFileWithBackup(filename, hullFileContents(structures), __func__);
 }
 
 } // namespace XtalOpt

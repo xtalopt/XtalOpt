@@ -30,8 +30,9 @@
 
 namespace Atoms {
 
-// The same CFG format is used by the MTP input and output files. A file may
-//   hold a series of configurations; the last complete block is read.
+// The same CFG format is used by the MTP input and output files. A file
+//   may hold a series of frames; the last frame is read; and the read is
+//   considered ok only if that last frame is complete.
 bool MtpFormat::read(Atoms::Geometry& s, const QString& filename)
 {
   std::string text;

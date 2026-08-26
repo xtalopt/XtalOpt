@@ -46,21 +46,22 @@ extern "C" {
 namespace Atoms {
 
 // Functions for generate a geometry (structures). RandSpg makes symmetric cells,
-// while the other functions make random cells or molecular crystals.
+//   while the other functions make random cells or molecular crystals.
 
 namespace {
 
 bool randomLatticeIsAcceptable(const Geometry& structure,
-  const Generators::CrystalGenerationOptions& options)
+                               const Generators::CrystalGenerationOptions& options)
 {
   if (!structure.is3D())
     return false;
 
-  if (!GS_ISFINITE(structure.getA()) || std::fabs(structure.getA()) < ZERO08 ||
-      !GS_ISFINITE(structure.getB()) || std::fabs(structure.getB()) < ZERO08 ||
-      !GS_ISFINITE(structure.getC()) || std::fabs(structure.getC()) < ZERO08 ||
+  // clang-format off
+  if (!GS_ISFINITE(structure.getA())     || std::fabs(structure.getA())     < ZERO08 ||
+      !GS_ISFINITE(structure.getB())     || std::fabs(structure.getB())     < ZERO08 ||
+      !GS_ISFINITE(structure.getC())     || std::fabs(structure.getC())     < ZERO08 ||
       !GS_ISFINITE(structure.getAlpha()) || std::fabs(structure.getAlpha()) < ZERO08 ||
-      !GS_ISFINITE(structure.getBeta()) || std::fabs(structure.getBeta()) < ZERO08 ||
+      !GS_ISFINITE(structure.getBeta())  || std::fabs(structure.getBeta())  < ZERO08 ||
       !GS_ISFINITE(structure.getGamma()) || std::fabs(structure.getGamma()) < ZERO08) {
     return false;
   }
@@ -76,28 +77,27 @@ bool randomLatticeIsAcceptable(const Geometry& structure,
       return false;
     }
 
-    if (structure.getAlpha() * cutoff < structure.getBeta() ||
+    if (structure.getAlpha() * cutoff < structure.getBeta()  ||
         structure.getAlpha() * cutoff < structure.getGamma() ||
-        structure.getBeta() * cutoff < structure.getAlpha() ||
-        structure.getBeta() * cutoff < structure.getGamma() ||
+        structure.getBeta()  * cutoff < structure.getAlpha() ||
+        structure.getBeta()  * cutoff < structure.getGamma() ||
         structure.getGamma() * cutoff < structure.getAlpha() ||
         structure.getGamma() * cutoff < structure.getBeta()) {
       return false;
     }
   }
 
-  // clang-format off
   return !Common::lt(structure.getA(),     options.aMin,     LATT_LEN_COMP_TOL) &&
          !Common::gt(structure.getA(),     options.aMax,     LATT_LEN_COMP_TOL) &&
          !Common::lt(structure.getB(),     options.bMin,     LATT_LEN_COMP_TOL) &&
          !Common::gt(structure.getB(),     options.bMax,     LATT_LEN_COMP_TOL) &&
          !Common::lt(structure.getC(),     options.cMin,     LATT_LEN_COMP_TOL) &&
          !Common::gt(structure.getC(),     options.cMax,     LATT_LEN_COMP_TOL) &&
-         !Common::lt(structure.getAlpha(), options.alphaMin, LATT_ANG_COMP_TOL)  &&
-         !Common::gt(structure.getAlpha(), options.alphaMax, LATT_ANG_COMP_TOL)  &&
-         !Common::lt(structure.getBeta(),  options.betaMin,  LATT_ANG_COMP_TOL)  &&
-         !Common::gt(structure.getBeta(),  options.betaMax,  LATT_ANG_COMP_TOL)  &&
-         !Common::lt(structure.getGamma(), options.gammaMin, LATT_ANG_COMP_TOL)  &&
+         !Common::lt(structure.getAlpha(), options.alphaMin, LATT_ANG_COMP_TOL) &&
+         !Common::gt(structure.getAlpha(), options.alphaMax, LATT_ANG_COMP_TOL) &&
+         !Common::lt(structure.getBeta(),  options.betaMin,  LATT_ANG_COMP_TOL) &&
+         !Common::gt(structure.getBeta(),  options.betaMax,  LATT_ANG_COMP_TOL) &&
+         !Common::lt(structure.getGamma(), options.gammaMin, LATT_ANG_COMP_TOL) &&
          !Common::gt(structure.getGamma(), options.gammaMax, LATT_ANG_COMP_TOL);
   // clang-format on
 }
@@ -116,7 +116,7 @@ double maxRequiredDistance(const Generators::CrystalGenerationOptions& options,
 
   auto r = options.atomicRadii.find(atomicNumber);
   if (r == options.atomicRadii.end())
-    return std::numeric_limits<double>::infinity();
+    return PINF;
 
   double maxRadius = 0.0;
   for (const auto& entry : options.atomicRadii)
@@ -126,7 +126,7 @@ double maxRequiredDistance(const Generators::CrystalGenerationOptions& options,
 }
 
 double minPairDistance(const Generators::CrystalGenerationOptions& options,
-  unsigned int atomicNumber1, unsigned int atomicNumber2)
+                       unsigned int atomicNumber1, unsigned int atomicNumber2)
 {
   // Check the distance for this ordered atom pair.
   const auto key = std::make_pair(atomicNumber1, atomicNumber2);
@@ -138,7 +138,7 @@ double minPairDistance(const Generators::CrystalGenerationOptions& options,
     auto r1 = options.atomicRadii.find(atomicNumber1);
     auto r2 = options.atomicRadii.find(atomicNumber2);
     if (r1 == options.atomicRadii.end() || r2 == options.atomicRadii.end())
-      return std::numeric_limits<double>::infinity();
+      return PINF;
     return r1->second + r2->second;
   }
 
@@ -166,6 +166,9 @@ bool atomPositionIsAllowed(const Geometry& structure, const Common::Vector3& car
 
     const double minDistance =
       minPairDistance(options, atomicNumber, structure.atom(i).atomicNumber());
+    // No minimum distance on file for this pair: reject the position.
+    if (minDistance >= PINF)
+      return false;
     const double minDistanceWithTol = std::max(0.0, minDistance - ZERO08);
     if (Common::lt(squaredDists[i], minDistanceWithTol * minDistanceWithTol, 0.0))
       return false;
@@ -175,7 +178,7 @@ bool atomPositionIsAllowed(const Geometry& structure, const Common::Vector3& car
 }
 
 bool addAtomRandomlyWithOptions(Geometry& structure, unsigned int atomicNumber,
-  const Generators::CrystalGenerationOptions& options)
+                                const Generators::CrystalGenerationOptions& options)
 {
   Common::Vector3 cartCoords;
   if (structure.numAtoms() == 0) {
@@ -232,11 +235,13 @@ bool Generators::canGenerateRandSpg(unsigned int spaceGroup, const std::vector<u
 
 std::unique_ptr<Geometry> Generators::generateRandSpg(const Generators::CrystalGenerationOptions& options)
 {
+  // Prepare the randSpg input from the caller information.
   latticeStruct latticeMins(options.aMin, options.bMin, options.cMin,
                             options.alphaMin, options.betaMin, options.gammaMin);
   latticeStruct latticeMaxes(options.aMax, options.bMax, options.cMax,
                              options.alphaMax, options.betaMax, options.gammaMax);
   randSpgInput input(options.spaceGroup, options.atomicNumbers, latticeMins, latticeMaxes);
+
   input.minRadius = options.minRadius;
   input.IADScalingFactor = options.iadScalingFactor;
   for (const auto& radius : options.atomicRadii)
@@ -249,6 +254,7 @@ std::unique_ptr<Geometry> Generators::generateRandSpg(const Generators::CrystalG
 
   const size_t attempts = options.generationAttempts > 0
                           ? options.generationAttempts : 1;
+
   for (size_t i = 0; i < attempts; ++i) {
     Crystal crystal = RandSpg::randSpgCrystal(input);
     if (crystal.getVolume() == 0)
@@ -265,6 +271,7 @@ std::unique_ptr<Geometry> Generators::generateRandSpg(const Generators::CrystalG
       structure->addAtom(atomData.atomicNum, structure->fracToCart(frac));
     }
 
+    // Check the symmetry of generated cell if asked by the caller.
     if (options.verifyWithSpglib) {
       structure->findSpaceGroup(options.spglibTolerance);
       if (structure->getSpaceGroupNumber() != options.spaceGroup) {
@@ -278,12 +285,12 @@ std::unique_ptr<Geometry> Generators::generateRandSpg(const Generators::CrystalG
   return nullptr;
 }
 
-std::unique_ptr<Geometry> Generators::generateRandom(
-  const Generators::CrystalGenerationOptions& options)
+std::unique_ptr<Geometry> Generators::generateRandom(const Generators::CrystalGenerationOptions& options)
 {
   if (options.atomicNumbers.empty())
     return nullptr;
 
+  // Start by making a "reasonable" lattice cell.
   std::unique_ptr<Geometry> structure;
   for (int i = 0; i < options.maxLatticeAttempts; ++i) {
     structure = make_unique<Geometry>();
@@ -292,11 +299,11 @@ std::unique_ptr<Geometry> Generators::generateRandom(
     const double b = Common::getRandDouble() * (options.bMax - options.bMin) + options.bMin;
     const double c = Common::getRandDouble() * (options.cMax - options.cMin) + options.cMin;
     const double alpha = Common::getRandDouble() * (options.alphaMax - options.alphaMin) +
-      options.alphaMin;
+                         options.alphaMin;
     const double beta = Common::getRandDouble() * (options.betaMax - options.betaMin) +
-      options.betaMin;
+                        options.betaMin;
     const double gamma = Common::getRandDouble() * (options.gammaMax - options.gammaMin) +
-      options.gammaMin;
+                         options.gammaMin;
 
     structure->setCellInfo(a, b, c, alpha, beta, gamma);
     if (options.reduceCell)
@@ -310,10 +317,13 @@ std::unique_ptr<Geometry> Generators::generateRandom(
     return nullptr;
   }
 
+  // Apply target volume limits if provided by the caller.
   if (options.minVolume >= 0.0 && options.maxVolume >= options.minVolume) {
     structure->setVolume(Common::getRandDouble(options.minVolume, options.maxVolume));
   }
 
+  // Place larger atoms first (if radii are given); so the smaller atoms have
+  //   more room for finding an acceptable position in the cell.
   std::vector<unsigned int> atomicNumbers = options.atomicNumbers;
   if (!options.atomicRadii.empty()) {
     std::stable_sort(atomicNumbers.begin(), atomicNumbers.end(),
@@ -336,7 +346,8 @@ std::unique_ptr<Geometry> Generators::generateRandom(
 }
 
 std::unique_ptr<Geometry> Generators::generateMolecularCrystal(int spaceGroup,
-  const Geometry& molecule, QString& error, double symprec, double distanceScale)
+                                                               const Geometry& molecule, QString& error,
+                                                               double symprec, double distanceScale)
 {
   // Make a molecular crystal and keep the smallest allowed cell.
 
@@ -377,6 +388,7 @@ std::unique_ptr<Geometry> Generators::generateMolecularCrystal(int spaceGroup,
     return nullptr;
   }
 
+  // Keep a copy of molecule composition for later verification of the cell.
   std::map<unsigned short, size_t> moleculeComposition;
   std::vector<MolAtom> asym;
   asym.reserve(molecule.atoms().size());
@@ -427,6 +439,7 @@ std::unique_ptr<Geometry> Generators::generateMolecularCrystal(int spaceGroup,
     return UnitCell(1.0, 1.0, 1.0, 90.0, 90.0, 90.0);
   };
 
+  // Use spglib's Hall setting to obtain operations for the requested group.
   int hallNumber = 0;
   for (int hall = 1; hall <= 530; ++hall) {
     const SpglibSpacegroupType type = spg_get_spacegroup_type(hall);
@@ -457,6 +470,9 @@ std::unique_ptr<Geometry> Generators::generateMolecularCrystal(int spaceGroup,
     }
   }
 
+  // Start with a generic cell shape that is consistent with the target crystal system.
+  // It will be rescaled below to make sure molecule images are separated consistent
+  //   with the supplied limits.
   const UnitCell baseCellShape = chooseGenericCell(spaceGroup);
   const Common::Vector3 refCart = asym[0].cart;
   double minimumScale = 1.0;
@@ -604,6 +620,8 @@ std::unique_ptr<Geometry> Generators::generateMolecularCrystal(int spaceGroup,
     return moleculeCount > 0;
   };
 
+  // Try multiple assymetric-unit anchors. Keep the one that produces smallest valid
+  //   cell; and has the exact desired symmetry compared to ones with higher symmetry.
   Geometry bestStructure;
   bool haveBest = false;
   bool bestMatchesRequested = false;
@@ -619,6 +637,8 @@ std::unique_ptr<Geometry> Generators::generateMolecularCrystal(int spaceGroup,
           static_cast<double>(iy) / static_cast<double>(anchorGrid + 1),
           static_cast<double>(iz) / static_cast<double>(anchorGrid + 1));
 
+        // First expand until we get a non-overlapping cell; then re-scale to
+        //   the smallest possible scale for this anchor.
         double lo = minimumScale;
         double hi = minimumScale;
         double minClearance = updateSitesForScale(anchor, hi);

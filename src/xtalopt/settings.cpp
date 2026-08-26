@@ -90,9 +90,15 @@ Row repeated(const char* kw, const char* def, bool req, bool rt, ListM listFn, A
 }
 
 // Call a setting's setter function
-template <class S, class T> bool callSetter(XtalOpt& o, S s, const T& v, std::true_type) { return (o.*s)(v); }
+template <class S, class T> bool callSetter(XtalOpt& o, S s, const T& v, std::true_type)
+{
+  return (o.*s)(v);
+}
 
-template <class S, class T> bool callSetter(XtalOpt& o, S s, const T& v, std::false_type) { (o.*s)(v); return true; }
+template <class S, class T> bool callSetter(XtalOpt& o, S s, const T& v, std::false_type)
+{
+  (o.*s)(v); return true;
+}
 
 template <class S, class T> bool callSetter(XtalOpt& o, S s, const T& v)
 {
@@ -189,7 +195,7 @@ const QList<Row>& rows()
     t << scalar("runningJobLimit", "1", false, true, &XtalOpt::getRunningJobLimit, &XtalOpt::setRunningJobLimit);
     t << scalar("continuousStructures", "15", false, true, &XtalOpt::getContStructs, &XtalOpt::setContStructs);
     t << scalar("jobFailLimit", "1", false, true, &XtalOpt::getFailLimit, &XtalOpt::setFailLimit);
-    t << scalar("jobFailAction", "kill", false, true, &XtalOpt::failActionText, &XtalOpt::setFailActionText);
+    t << scalar("jobFailAction", "fail", false, true, &XtalOpt::failActionText, &XtalOpt::setFailActionText);
     t << scalar("maxNumStructures", "100", false, true, &XtalOpt::getMaxNumStructures, &XtalOpt::setMaxNumStructures);
     t << scalar("softExit", "false", false, true, &XtalOpt::isSoftExit, &XtalOpt::setSoftExit);
     t << scalar("hardExit", "false", false, true, &XtalOpt::isHardExit, &XtalOpt::setHardExit);
@@ -206,11 +212,11 @@ const QList<Row>& rows()
     t << repeated("constraint", "", false, false, &XtalOpt::constraintLines, &XtalOpt::processInputConstraint, &XtalOpt::resetConstraints);
 
     //  Operator weights
-    t << scalar("weightPermutomic", "15", false, true, &XtalOpt::getPAtomic, &XtalOpt::setPAtomic);
-    t << scalar("weightPermucomp", "5", false, true, &XtalOpt::getPComp, &XtalOpt::setPComp);
-    t << scalar("weightStripple", "25", false, true, &XtalOpt::getPStrip, &XtalOpt::setPStrip);
-    t << scalar("weightPermustrain", "25", false, true, &XtalOpt::getPPerm, &XtalOpt::setPPerm);
-    t << scalar("weightCrossover", "35", false, true, &XtalOpt::getPCross, &XtalOpt::setPCross);
+    t << scalar("weightPermutomic", "20", false, true, &XtalOpt::getPAtomic, &XtalOpt::setPAtomic);
+    t << scalar("weightPermucomp", "10", false, true, &XtalOpt::getPComp, &XtalOpt::setPComp);
+    t << scalar("weightStripple", "20", false, true, &XtalOpt::getPStrip, &XtalOpt::setPStrip);
+    t << scalar("weightPermustrain", "20", false, true, &XtalOpt::getPPerm, &XtalOpt::setPPerm);
+    t << scalar("weightCrossover", "20", false, true, &XtalOpt::getPCross, &XtalOpt::setPCross);
     t << scalar("randomSuperCell", "0", false, true, &XtalOpt::getPSupercell, &XtalOpt::setPSupercell);
 
     //  Operator parameters
@@ -316,7 +322,7 @@ const Row* findRow(const QString& keyword)
   return idx < 0 ? nullptr : &rows().at(idx);
 }
 
-// Conversion of an optimizer keyword and a file name
+// An optimizer keyword and its file name
 struct OptimizerFileKeyword
 {
   const char* keyword;
@@ -582,6 +588,7 @@ void applyDefaultSettings(XtalOpt& opt)
 
 ScalarSnapshot captureScalarSettings(const XtalOpt& opt)
 {
+  // Store the text values so a runtime edit can be restored if a validation fails
   ScalarSnapshot snapshot;
   for (const auto& row : rows()) {
     if (row.get)
@@ -600,22 +607,26 @@ bool validateSettings(XtalOpt& opt, InvalidSettingAction invalidAction, const Sc
 
   // Absolute volume limits should be both positive and max >= min.
   if (opt.getVolMin() < ZERO06 || opt.getVolMax() < ZERO06 || opt.getVolMax() < opt.getVolMin()) {
-    if (!handleInvalidSetting(opt, invalidAction, base, "Absolute volume limits are invalid "
-                 "(both must be positive and max >= min).", { "minVolume", "maxVolume" }))
+    if (!handleInvalidSetting(opt, invalidAction, base,
+                               "Absolute volume limits are invalid "
+                               "(both must be positive and max >= min).",
+                               {"minVolume", "maxVolume"}))
       valid = false;
   }
 
   // Scaled volume limits should always have min >= 0 (0 disables them) and max >= min.
   if (opt.getVolScaleMin() < 0.0 || opt.getVolScaleMax() < opt.getVolScaleMin()) {
-    if (!handleInvalidSetting(opt, invalidAction, base, "Scaled volume limits are invalid (min >= 0 and max >= min).",
-                 { "minVolumeScale", "maxVolumeScale" }))
+    if (!handleInvalidSetting(opt, invalidAction, base,
+                               "Scaled volume limits are invalid (min >= 0 and max >= min).",
+                               {"minVolumeScale", "maxVolumeScale"}))
       valid = false;
   }
 
   // Atom limits should always have min >= 1 and min <= max.
   if (opt.getMinAtoms() < 1 || opt.getMinAtoms() > opt.getMaxAtoms()) {
-    if (!handleInvalidSetting(opt, invalidAction, base, "Atom limits are invalid (min >= 1 and min <= max).",
-                 { "minAtoms", "maxAtoms" }))
+    if (!handleInvalidSetting(opt, invalidAction, base,
+                               "Atom limits are invalid (min >= 1 and min <= max).",
+                               {"minAtoms", "maxAtoms"}))
       valid = false;
   }
 
@@ -626,7 +637,7 @@ bool validateSettings(XtalOpt& opt, InvalidSettingAction invalidAction, const Sc
                                "maxAtoms is too small to include "
                                "one atom of every element in the composition (must be >= "
                                "the number of element types).",
-                               {"maxAtoms" }))
+                               {"maxAtoms"}))
       valid = false;
   }
 
@@ -634,7 +645,7 @@ bool validateSettings(XtalOpt& opt, InvalidSettingAction invalidAction, const Sc
   if (opt.getUsingScaledIAD() && opt.getUsingCustomIAD()) {
     if (!handleInvalidSetting(opt, invalidAction, base,
                                "usingScaledIADs and usingCustomIADs cannot both be true.",
-                               {"usingCustomIADs" }))
+                               {"usingCustomIADs"}))
       valid = false;
   }
 
@@ -664,11 +675,12 @@ bool validateSettings(XtalOpt& opt, InvalidSettingAction invalidAction, const Sc
 
       if (!handleInvalidSetting(opt, invalidAction, base,
                                  QString("%1 lattice limits are invalid (%2 and min <= max).").arg(lim.axis, condition),
-                                 {lim.kwMin, lim.kwMax }))
+                                 {lim.kwMin, lim.kwMax}))
         valid = false;
     }
   }
 
+  // Sanity check the remaining limits
   if (opt.getScaleFactor() < 0.0 || opt.getScaleFactor() > 1.0) {
     if (!handleInvalidSetting(opt, invalidAction, base,
                                "radiiScalingFactor is invalid (must be between 0 and 1).",

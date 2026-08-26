@@ -1331,7 +1331,7 @@ void LegacyCompatTest::legacyWorkflowStatusesNormalizeOnRead()
     { Version14Updating, Structure::Updating },
     { Version14Error, Structure::Error },
     { Version14Submitted, Structure::Submitted },
-    { Version14Killed, Structure::Killed },
+    { Version14Killed, Structure::Failed },
     { Version14Removed, Structure::Removed },
     { Version14Similar, Structure::Optimized },
     { Version14Restart, Structure::Restart },

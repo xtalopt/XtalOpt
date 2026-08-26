@@ -19,6 +19,7 @@
 #define COMMON_NUMERICUTILS_H
 
 #include <common/constants.h>
+#include <common/compatibility/platform_compat.h>
 
 #include <algorithm>
 #include <cmath>
@@ -36,6 +37,7 @@ inline int findMinIndex(const std::vector<double>& list)
   }
 
   auto min_it = std::min_element(list.begin(), list.end());
+
   return std::distance(list.begin(), min_it);
 }
 
@@ -47,51 +49,55 @@ inline double roundToDecimalPlaces(double d, int n)
   if (n < 0)
     return d;
   double prec = std::pow(10.0, n);
+
   return std::round(d * prec) / prec;
 }
 
-inline bool lt(double v1, double v2, double prec = STABLE_TOL)
+// About a "not a number" value: it is neither smaller than, equal to, nor
+//   larger than anything else. The two tests just below answer "no" for it on
+//   their own, because any direct comparison with it is false. But "eq", "leq"
+//   and "geq" are written as negations, which would turn that into a "yes",
+//   so they check for it first.
+// For any "nan" present in arguments; they all return "false" except than
+//   "neq" which (correctly!) returns true.
+// Overall, it is always assumed that the caller would check for "nan".
+
+inline bool lt(double v1, double v2, double prec = ZERO08)
 {
   return (v1 < (v2 - prec));
 }
 
-inline bool gt(double v1, double v2, double prec = STABLE_TOL)
+inline bool gt(double v1, double v2, double prec = ZERO08)
 {
   return (v2 < (v1 - prec));
 }
 
-inline bool eq(double v1, double v2, double prec = STABLE_TOL)
+inline bool eq(double v1, double v2, double prec = ZERO08)
 {
-  return (!(lt(v1, v2, prec) || gt(v1, v2, prec)));
+  return (!GS_ISNAN(v1) && !GS_ISNAN(v2) &&
+          !(lt(v1, v2, prec) || gt(v1, v2, prec)));
 }
 
-inline bool neq(double v1, double v2, double prec = STABLE_TOL)
+inline bool neq(double v1, double v2, double prec = ZERO08)
 {
   return (!(eq(v1, v2, prec)));
 }
 
-inline bool leq(double v1, double v2, double prec = STABLE_TOL)
+inline bool leq(double v1, double v2, double prec = ZERO08)
 {
-  return (!gt(v1, v2, prec));
+  return (!GS_ISNAN(v1) && !GS_ISNAN(v2) && !gt(v1, v2, prec));
 }
 
-inline bool geq(double v1, double v2, double prec = STABLE_TOL)
+inline bool geq(double v1, double v2, double prec = ZERO08)
 {
-  return (!lt(v1, v2, prec));
-}
-
-inline bool fuzzyCompare(double a1, double a2, double tol = ZERO08)
-{
-  return std::fabs(a1 - a2) < tol;
+  return (!GS_ISNAN(v1) && !GS_ISNAN(v2) && !lt(v1, v2, prec));
 }
 
 inline double sign(double v)
 {
-  // consider 0 to be positive
-  if (v >= 0)
-    return 1.0;
-  else
-    return -1.0;
+  // Consider 0 to be positive.
+  // Note: this is not guarded against NaN, etc!
+  return (v >= 0) ? 1.0 : -1.0;
 }
 
 } // namespace Common

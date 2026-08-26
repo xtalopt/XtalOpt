@@ -112,6 +112,7 @@ public:
     x_runMode = mode;
     setReadOnly(mode == RunModeReadOnly);
   }
+
   RunMode getRunMode() const { return x_runMode; }
 
   //
@@ -383,6 +384,10 @@ public:
   // Get the sorted full list of chemical element in the current run (reference chemical system)
   QList<QString> getChemicalSystem() const;
 
+  // Formation energy per atom, relative to the input reference energies.
+  // The caller must hold the structure's read lock.
+  double getFormationEnergyPerAtom(Search::Structure* s) const;
+
   // If composition is Ti1O2, returns {22, 8, 8}
   QList<uint> getListOfAtomsComp(CellComp incomp);
 
@@ -438,7 +443,8 @@ private:
   Xtal* checkIfSimilar(Xtal* a, Xtal* b, const QList<QString>& aSymbols, const QList<QString>& bSymbols);
 
   void ensureBuiltinObjective();
-  bool outputFilenameInUse(const QString& out) const;
+  bool validateScriptFilename(const QString& out, const QString& owner,
+                              QString* errorMessage) const;
   bool validateUserObjectiveDefinition(ObjType objtyp, const QString& objexe, const QString& objout,
                                        double objwgt, QString* errorMessage = nullptr) const;
   bool validateConstraintDefinition(const QString& exe, const QString& out, QString* errorMessage = nullptr) const;
@@ -460,7 +466,7 @@ private:
                                                    bool showProgress);
   void finishSearch();
   void requestFullEvaluation();
-  void requestEvaluationAfterKill(Search::Structure* structure);
+  void requestEvaluationAfterFail(Search::Structure* structure);
   bool evaluateStructuresIncrementally(const QSet<Search::Structure*>& structures);
   // Write all XtalOpt state groups to filename.
   bool writeStateFileContents(const QString& filename);
@@ -482,6 +488,9 @@ private:
   //
 
   std::unique_ptr<QMutex> x_xtalInitMutex;
+
+  // Pending file work is collected under x_filesNeedingSaveMutex. State and
+  //   output writes have separate locks, so either one may retry on its own.
   std::mutex x_stateSaveMutex;
   std::mutex x_outputSaveMutex;
 
@@ -513,6 +522,7 @@ private:
 
   QTimer* x_resultsSaveTimer;
 
+  // Retry pending state or output work after a failed disk operation.
   QTimer* x_saveRetryTimer;
 
   QTimer* x_runtimeTimer;
@@ -562,18 +572,18 @@ private:
   uint x_pCross = 0;                 // Relative weight of new structures by crossover
   uint x_pSupercell = 0;             // Percent chances of expanding to a random supercell
   // Operator parameters
-  double x_stripAmpMin = 0.0;        // Minimum amplitude of periodic displacement
-  double x_stripAmpMax = 0.0;        // Maximum amplitude of periodic displacement
-  uint x_stripPer1 = 0;              // Number of cosine waves in direction 1
-  uint x_stripPer2 = 0;              // Number of cosine waves in direction 2
-  double x_stripStrainStdevMin = 0.0; // Minimum standard deviation of epsilon in the
-                                      // stripple strain matrix
-  double x_stripStrainStdevMax = 0.0; // Maximum standard deviation of epsilon in the
-                                      // stripple strain matrix
-  uint x_permEx = 0;                 // Number of times atoms are swapped in permustrain
-  double x_permStrainStdevMax = 0.0; // Max standard deviation of epsilon in the
-                                     // permustrain strain matrix
-  uint x_crossNcuts = 0;             // Number of cut points in crossover
+  double x_stripAmpMin = 0.0;          // Minimum amplitude of periodic displacement
+  double x_stripAmpMax = 0.0;          // Maximum amplitude of periodic displacement
+  uint x_stripPer1 = 0;                // Number of cosine waves in direction 1
+  uint x_stripPer2 = 0;                // Number of cosine waves in direction 2
+  double x_stripStrainStdevMin = 0.0;  // Minimum standard deviation of epsilon in the
+                                       //   stripple strain matrix
+  double x_stripStrainStdevMax = 0.0;  // Maximum standard deviation of epsilon in the
+                                       //   stripple strain matrix
+  uint x_permEx = 0;                   // Number of times atoms are swapped in permustrain
+  double x_permStrainStdevMax = 0.0;   // Max standard deviation of epsilon in the
+                                       //   permustrain strain matrix
+  uint x_crossNcuts = 0;               // Number of cut points in crossover
   uint x_crossMinimumContribution = 0; // Minimum contribution each parent in crossover
   // Tolerances
   double x_tolXcLength = 0.0;  // XtalComp similarity tolerance: length

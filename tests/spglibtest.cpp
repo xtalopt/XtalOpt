@@ -13,7 +13,7 @@
   limitations under the License.
  ***********************************************************************/
 
-#include <atoms/formats/poscarformat.h>
+#include <atoms/formats/vaspformat.h>
 
 #include <common/fileutils.h>
 #include <xtalopt/structures/xtal.h>
@@ -135,7 +135,7 @@ void SPGLibTest::diamondPrimitiveFile()
                       "diamond-primitive.POSCAR");
   std::ifstream in(filename.toStdString());
   QVERIFY(in.is_open());
-  QVERIFY(Atoms::PoscarFormat::read(*m_xtal, in));
+  QVERIFY(Atoms::VaspFormat::read(*m_xtal, in));
 
   m_xtal->findSpaceGroup();
   QCOMPARE(m_xtal->getSpaceGroupNumber(), 227U);
@@ -148,7 +148,7 @@ void SPGLibTest::rutileFile()
                       "rutile.POSCAR");
   std::ifstream in(filename.toStdString());
   QVERIFY(in.is_open());
-  QVERIFY(Atoms::PoscarFormat::read(*m_xtal, in));
+  QVERIFY(Atoms::VaspFormat::read(*m_xtal, in));
 
   m_xtal->findSpaceGroup();
   QCOMPARE(m_xtal->getSpaceGroupNumber(), 136U);

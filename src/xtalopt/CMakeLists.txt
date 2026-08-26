@@ -11,8 +11,9 @@ set(xtalopt_core_SRCS
     legacy/queue_command_compat.cpp
     xtalopt.cpp
     structuregen.cpp
-    io_text.cpp
+    io_settings.cpp
     io_state.cpp
+    io_results.cpp
     evaluate.cpp
     genetic.cpp
     settings.cpp
@@ -172,12 +173,12 @@ if(BUILD_TESTS)
            COMMAND xtalopt --input "${_structuretool_sample}" --conventional)
   add_test(NAME structuretool_info
            COMMAND xtalopt --input "${_structuretool_sample}"
-                   --symmetry --volume --shortest-distance --formula)
+                   --symmetry --volume --lattice --shortest-distance --formula)
   add_test(NAME structuretool_transform_output
            COMMAND xtalopt --input "${_structuretool_sample}"
                    --niggli --standard-orient --rescale-volume 100
                    --output "${CMAKE_CURRENT_BINARY_DIR}/structuretool-test.POSCAR"
-                   --output-format POSCAR)
+                   --output-format VASP)
   add_test(NAME structuretool_cml_output
            COMMAND xtalopt --input "${_structuretool_sample}"
                    --output "${CMAKE_CURRENT_BINARY_DIR}/structuretool-test.cml"
@@ -198,7 +199,7 @@ if(BUILD_TESTS)
            COMMAND xtalopt --molcrystal 19
                    "C 1.20 2.10 0.80, H 0.70 1.60 0.40"
                    --output "${CMAKE_CURRENT_BINARY_DIR}/structuretool-molcrystal-test.POSCAR"
-                   --output-format POSCAR)
+                   --output-format VASP)
   add_test(NAME structuretool_molunit_xyz_output
            COMMAND xtalopt --molunit H 2 linear_2_pair
                    --output "${CMAKE_CURRENT_BINARY_DIR}/structuretool-molunit-test.xyz")

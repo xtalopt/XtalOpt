@@ -33,9 +33,6 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="toolTip">
-      <string>Command used to submit jobs to the SGE queue. Usually qsub.</string>
-     </property>
      <property name="text">
       <string>Path to qsub:</string>
      </property>
@@ -47,7 +44,7 @@
    <item row="3" column="1" colspan="2">
     <widget class="QLineEdit" name="edit_qsub">
      <property name="toolTip">
-      <string>Command used to submit jobs to the SGE queue. Usually qsub.</string>
+      <string>Command used to submit jobs to the queue. Usually qsub.</string>
      </property>
      <property name="text">
       <string>qsub</string>
@@ -62,9 +59,6 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="toolTip">
-      <string>Command used to delete jobs from the queue. Usually qdel.</string>
-     </property>
      <property name="text">
       <string>Path to qdel:</string>
      </property>
@@ -76,7 +70,7 @@
    <item row="5" column="1" colspan="2">
     <widget class="QLineEdit" name="edit_qstat">
      <property name="toolTip">
-      <string>Command used to check the SGE queue. Use qstat.</string>
+      <string>Command used to check the queue. Usually qstat.</string>
      </property>
      <property name="text">
       <string>qstat</string>
@@ -90,9 +84,6 @@
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
-     </property>
-     <property name="toolTip">
-      <string>Command used to check the SGE queue. Use qstat.</string>
      </property>
      <property name="text">
       <string>Path to qstat:</string>

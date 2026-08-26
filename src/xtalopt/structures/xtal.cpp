@@ -164,10 +164,10 @@ bool Xtal::fixAngles(int attempts)
 {
   // Perform niggli reduction
   if (!niggliReduce(attempts)) {
-    Common::error(QString("Unable to perform cell reduction on Xtal %1"
-                         " (%2,%3,%4,%5,%6,%7)")
-                 .arg(getTag()).arg(getA()).arg(getB()).arg(getC())
-                 .arg(getAlpha()).arg(getBeta()).arg(getGamma()));
+    Common::debug(QString("Unable to perform cell reduction on Xtal %1"
+                          " (%2,%3,%4,%5,%6,%7)")
+                  .arg(getTag()).arg(getA()).arg(getB()).arg(getC())
+                  .arg(getAlpha()).arg(getBeta()).arg(getGamma()));
     return false;
   }
 
@@ -223,7 +223,8 @@ bool Xtal::addAtomRandomly(uint atomicNumber, double minIAD, int maxAttempts)
   return true;
 }
 
-bool Xtal::addAtomRandomlyScaledIAD(unsigned int atomicNumber, const EleScaledRadii& limits, int maxAttempts)
+bool Xtal::addAtomRandomlyScaledIAD(unsigned int atomicNumber, const EleScaledRadii& limits,
+                                    int maxAttempts)
 {
   Common::Vector3 cartCoords;
   bool success;
@@ -273,6 +274,14 @@ bool Xtal::addAtomRandomlyScaledIAD(unsigned int atomicNumber, const EleScaledRa
         }
         // Compare distance to minimum:
         const double minDist = newMinRadius + limits.getMinRadius(this->atom(dist_ind).atomicNumber());
+        if (minDist >= PINF) {
+          Common::error(QString("%1: missing scaled radius "
+                                "for atomic numbers %2 and %3.")
+                       .arg(__func__)
+                       .arg(atomicNumber)
+                       .arg(this->atom(dist_ind).atomicNumber()));
+          return false;
+        }
         const double minDistWithTol = std::max(0.0, minDist - ZERO08);
         const double minDistSquared = minDistWithTol * minDistWithTol;
 
@@ -295,7 +304,8 @@ bool Xtal::addAtomRandomlyScaledIAD(unsigned int atomicNumber, const EleScaledRa
 }
 
 bool Xtal::moveAtomRandomlyScaledIAD(unsigned int atomicNumber,
-  const EleScaledRadii& limits, int maxAttempts, Atoms::Atom* atom)
+                                     const EleScaledRadii& limits,
+                                     int maxAttempts, Atoms::Atom* atom)
 {
   Q_UNUSED(atomicNumber);
   if (!atom)
@@ -352,6 +362,14 @@ bool Xtal::moveAtomRandomlyScaledIAD(unsigned int atomicNumber,
 
         double minDist = limits.getMinRadius(movingAtomicNumber);
         minDist = limits.getMinRadius(a2.atomicNumber()) + minDist;
+        if (minDist >= PINF) {
+          Common::error(QString("%1: missing scaled radius "
+                                "for atomic numbers %2 and %3.")
+                       .arg(__func__)
+                       .arg(movingAtomicNumber)
+                       .arg(a2.atomicNumber()));
+          return false;
+        }
         const double minDistWithTol = std::max(0.0, minDist - ZERO08);
         const double minDistSquared = minDistWithTol * minDistWithTol;
 
@@ -376,7 +394,8 @@ bool Xtal::moveAtomRandomlyScaledIAD(unsigned int atomicNumber,
 }
 
 bool Xtal::addAtomRandomlyCustomIAD(unsigned int atomicNumber,
-  const PairCustomDistances& limitsIAD, int maxAttempts)
+                                    const PairCustomDistances& limitsIAD,
+                                    int maxAttempts)
 {
   Common::Vector3 cartCoords;
   bool success;
@@ -440,7 +459,8 @@ bool Xtal::addAtomRandomlyCustomIAD(unsigned int atomicNumber,
 }
 
 bool Xtal::moveAtomRandomlyCustomIAD(unsigned int atomicNumber,
-  const PairCustomDistances& limitsIAD, int maxAttempts, Atoms::Atom* atom)
+                                     const PairCustomDistances& limitsIAD,
+                                     int maxAttempts, Atoms::Atom* atom)
 {
   if (!atom)
     return false;
@@ -647,6 +667,20 @@ bool Xtal::checkInterAtomicDistancesScaled(const EleScaledRadii& limits, int* at
       // Calculate the minimum distance for the atom pair
       const double minDist =
         limits.getMinRadius(a2.atomicNumber()) + minA1Radius;
+      if (minDist >= PINF) {
+        if (atom1 != nullptr && atom2 != nullptr) {
+          *atom1 = a1Index;
+          *atom2 = i;
+          if (IAD != nullptr)
+            *IAD = sqrt(curDistSquared);
+        }
+        Common::error(QString("%1: missing scaled radius "
+                              "for atomic numbers %2 and %3.")
+                     .arg(__func__)
+                     .arg((*a1).atomicNumber())
+                     .arg(a2.atomicNumber()));
+        return false;
+      }
       const double minDistWithTol = std::max(0.0, minDist - ZERO08);
       const double minDistSquared = minDistWithTol * minDistWithTol;
 
@@ -682,10 +716,17 @@ QString Xtal::getResultsEntry(int objectives_num, int optstep, int objective_off
   QString status = statusText(false);
   const State state = getStatus();
   switch (state) {
-    case InProcess:
-    case Submitted:
-      status = "Step" + QString::number(optstep+1);
+    case WaitingForOptimization:
+      status = "Step" + QString::number(optstep+1) + ":Waiting";
       break;
+    case InProcess:
+    case Submitted: {
+      // The queue text, or "Submitted" while the queue has nothing to say yet.
+      const QString queue = getQueueStatusText();
+      status = "Step" + QString::number(optstep+1) + ":"
+               + (queue.isEmpty() ? QString("Submitted") : queue);
+      break;
+    }
     default:
       break;
   }
@@ -834,7 +875,7 @@ Xtal* Xtal::getRandomRepresentation() const
   // Set the new cell matrix (no transpose).
   nxtal->setCellInfo(mix * unitCell().cellMatrix());
 
-  Q_ASSERT_X(Common::eq(origVolume, nxtal->getVolume()), Q_FUNC_INFO,
+  Q_ASSERT_X(Common::eq(origVolume, nxtal->getVolume(), ZERO05), Q_FUNC_INFO,
              "Randomized cell volume not "
              "equal to original structure.");
 

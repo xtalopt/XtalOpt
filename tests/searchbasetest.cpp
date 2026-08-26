@@ -169,7 +169,7 @@ public:
   using QueueManager::handleRestartStructure;
 
   // Slots for this test.
-  static const int kKilledSlot = QueueManager::KilledHandler;
+  static const int kFailedSlot = QueueManager::FailedHandler;
   static const int kErrorSlot = QueueManager::ErrorHandler;
 
   bool tryEnterForTest(Structure* s, int slot)
@@ -1109,22 +1109,22 @@ void SearchBaseTest::dispatchDedupesPerStructureAndSlot()
   Structure b;
 
   // Do not run the same work twice.
-  QVERIFY(queueManager.tryEnterForTest(&a, TestQueueManager::kKilledSlot));
-  QVERIFY(!queueManager.tryEnterForTest(&a, TestQueueManager::kKilledSlot));
+  QVERIFY(queueManager.tryEnterForTest(&a, TestQueueManager::kFailedSlot));
+  QVERIFY(!queueManager.tryEnterForTest(&a, TestQueueManager::kFailedSlot));
 
   // Different work may run at the same time.
   QVERIFY(queueManager.tryEnterForTest(&a, TestQueueManager::kErrorSlot));
   QVERIFY(queueManager.hasAnyForTest(&a));
   QVERIFY(!queueManager.hasAnyForTest(&b));
 
-  queueManager.leaveForTest(&a, TestQueueManager::kKilledSlot);
+  queueManager.leaveForTest(&a, TestQueueManager::kFailedSlot);
   QVERIFY(queueManager.hasAnyForTest(&a)); // ErrorSlot still in flight
   queueManager.leaveForTest(&a, TestQueueManager::kErrorSlot);
   QVERIFY(!queueManager.hasAnyForTest(&a));
 
   // Run the work again.
-  QVERIFY(queueManager.tryEnterForTest(&a, TestQueueManager::kKilledSlot));
-  queueManager.leaveForTest(&a, TestQueueManager::kKilledSlot);
+  QVERIFY(queueManager.tryEnterForTest(&a, TestQueueManager::kFailedSlot));
+  queueManager.leaveForTest(&a, TestQueueManager::kFailedSlot);
 }
 
 void SearchBaseTest::abortedSessionStaysIdle()

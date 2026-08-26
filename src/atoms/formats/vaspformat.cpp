@@ -1,5 +1,5 @@
 /**********************************************************************
-  PoscarFormat - Handlers for POSCAR format structure files.
+  VaspFormat - Handlers for VASP format structure files.
 
   Copyright (C) 2017 by Patrick Avery
 
@@ -12,7 +12,7 @@
   limitations under the License.
  ***********************************************************************/
 
-#include <atoms/formats/poscarformat.h>
+#include <atoms/formats/vaspformat.h>
 
 #include <atoms/eleminfo.h>
 #include <common/fileutils.h>
@@ -35,7 +35,7 @@ using std::vector;
 
 namespace Atoms {
 
-bool PoscarFormat::read(Atoms::Geometry& s, const QString& filename)
+bool VaspFormat::read(Atoms::Geometry& s, const QString& filename)
 {
   std::string text;
   if (!Common::readFileToString(filename, &text)) {
@@ -53,7 +53,7 @@ bool PoscarFormat::read(Atoms::Geometry& s, const QString& filename)
 }
 
 // This is for reading a POSCAR
-bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
+bool VaspFormat::read(Atoms::Geometry& s, std::istream& in)
 {
   // First, clear the structure
   s.clear();
@@ -308,7 +308,7 @@ bool PoscarFormat::read(Atoms::Geometry& s, std::istream& in)
   return true;
 }
 
-bool PoscarFormat::write(const Atoms::Geometry& s, std::ostream& out, const QString& comment)
+bool VaspFormat::write(const Atoms::Geometry& s, std::ostream& out, const QString& comment)
 {
   if (!s.is3D() || s.numAtoms() < 1) {
     Common::error("POSCAR writer requires a periodic structure with atoms.");
@@ -366,7 +366,7 @@ bool PoscarFormat::write(const Atoms::Geometry& s, std::ostream& out, const QStr
   return true;
 }
 
-QString PoscarFormat::writeToString(const Atoms::Geometry& s, const QString& comment)
+QString VaspFormat::writeToString(const Atoms::Geometry& s, const QString& comment)
 {
   std::ostringstream out;
   if (!write(s, out, comment))
@@ -374,7 +374,7 @@ QString PoscarFormat::writeToString(const Atoms::Geometry& s, const QString& com
   return QString::fromStdString(out.str());
 }
 
-void PoscarFormat::reorderAtomsToMatchPoscar(Atoms::Geometry& s)
+void VaspFormat::reorderAtomsToMatchPoscar(Atoms::Geometry& s)
 {
   // Sort by symbols
   const auto& symbols = s.getSymbols();

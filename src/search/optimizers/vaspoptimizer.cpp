@@ -17,7 +17,7 @@
 #include <search/optimizers/vaspoptimizer.h>
 
 #include <atoms/eleminfo.h>
-#include <atoms/formats/poscarformat.h>
+#include <atoms/formats/vaspformat.h>
 #include <common/fileutils.h>
 #include <common/output.h>
 #include <common/stringutils.h>
@@ -126,7 +126,7 @@ bool VASPOptimizer::addOptimizerInputFiles(Structure* s, int optStep,
                                            QHash<QString, QString>& files) const
 {
   std::stringstream poscar;
-  if (Atoms::PoscarFormat::write(*s, poscar, s->getLocpath()))
+  if (Atoms::VaspFormat::write(*s, poscar, s->getLocpath()))
     files.insert("POSCAR", QString::fromStdString(poscar.str()));
 
   const OptimizerInputAssetMap potcarAssets =
@@ -172,7 +172,7 @@ bool VASPOptimizer::readOutput(Structure* s, const QString& filename) const
 
   // First, read the POSCAR file
   Atoms::Geometry structure;
-  if (!Atoms::PoscarFormat::read(structure, ifs)) {
+  if (!Atoms::VaspFormat::read(structure, ifs)) {
     Common::error("VASPOptimizer: failed to read POSCAR file!");
     return false;
   }

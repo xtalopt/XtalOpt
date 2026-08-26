@@ -145,6 +145,7 @@ public:
   {
     return m_transformationMatrices;
   }
+
   static const QList<Common::Matrix3>& mixMatrices()
   {
     return m_mixMatrices;

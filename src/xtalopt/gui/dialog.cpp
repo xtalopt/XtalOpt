@@ -197,7 +197,7 @@ void XtalOptDialog::beginPlotOnlyMode()
   // Thus, we need to set the parent to nullptr.
   m_tab_plot->getTabWidget()->setParent(nullptr);
 
-  m_tab_plot->getTabWidget()->setWindowTitle("XtalOpt Plot");
+  m_tab_plot->getTabWidget()->setWindowTitle("XtalOpt (Plot)");
   m_tab_plot->getTabWidget()->show();
   m_tab_plot->refreshPlot();
 }

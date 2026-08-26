@@ -156,11 +156,15 @@ void AbstractDialog::lockGUI()
 
 void AbstractDialog::updateGUI()
 {
-  setWindowTitle(QString("%1 - %2 @ %3%4")
+  QString mode;
+  if (m_search->isReadOnly())
+    mode = " (Read-Only)";
+  else if (m_search->isSessionActive())
+    mode = " (Search)";
+
+  setWindowTitle(QString("%1%2")
                    .arg(m_search->getIDString())
-                   .arg(m_search->getDescription())
-                   .arg(m_search->getHost())
-                   .arg(m_search->isReadOnly() ? " (Read-Only mode)" : ""));
+                   .arg(mode));
   emit tabsUpdateGUI();
 }
 

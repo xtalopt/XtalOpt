@@ -134,12 +134,6 @@ void Geometry::setCellInfo(const Common::Vector3& a, const Common::Vector3& b,
   clearGeometryCaches();
 }
 
-bool Geometry::isCellMatrixUsable(const Common::Matrix3& matrix)
-{
-  const double determinant = matrix.determinant();
-  return GS_ISFINITE(determinant) && std::fabs(determinant) > ZERO08;
-}
-
 void Geometry::setVolume(double volume)
 {
   // 3D only.
@@ -154,16 +148,16 @@ void Geometry::setVolume(double volume)
     fracCoordsList.append(cartToFrac(atm.pos()));
 
   // Scale cell
-  setCellInfo(factor * getA(), factor * getB(), factor * getC(), getAlpha(),
-              getBeta(), getGamma());
+  setCellInfo(factor * getA(), factor * getB(), factor * getC(),
+              getAlpha(), getBeta(), getGamma());
 
   // Recalculate coordinates:
   for (int i = 0; i < static_cast<int>(atomList.size()); i++)
     atomList.at(i).setPos(fracToCart(fracCoordsList.at(i)));
 }
 
-void Geometry::rescaleCell(double a, double b, double c, double alpha,
-                            double beta, double gamma)
+void Geometry::rescaleCell(double a, double b, double c,
+                           double alpha, double beta, double gamma)
 {
   // 3D only.
   if (!is3D()) return;
@@ -357,7 +351,7 @@ bool Geometry::rotateCellAndCoordsToStandardOrientation(Common::Matrix3& cell,
   //  - an empty zero matrix,
   //  - any singular or nearly singular matrix,
   //  - a non-finite determinant.
-  if (!isCellMatrixUsable(cell))
+  if (!UnitCell::isCellValid(cell))
     return false;
 
   if (positiveHandedness && cell.determinant() < 0.0) {
@@ -428,7 +422,7 @@ Common::Matrix3 Geometry::getCellMatrixInStandardOrientation() const
   newMat(1, 1) =
     std::sqrt(x2 * x2 * sqrdnorm1yz + detv1v2yz * detv1v2yz -
               2 * x1 * x2 * dotv1v2yz + x1 * x1 * sqrdnorm2yz) /
-    denom;
+         denom;
 
   // Set components of new v3
   // denom is still L1
@@ -622,7 +616,7 @@ bool Geometry::getNearestNeighborDistance(double x, double y, double z, double& 
 }
 
 bool Geometry::getSquaredAtomicDistancesToPoint(const Common::Vector3& coord,
-                                                 QList<double>* distances) const
+                                                QList<double>* distances) const
 {
   // 3D or 0D.
   if (!is3D() && !is0D()) return false;
@@ -772,8 +766,8 @@ bool Geometry::compareXtalComp(const Geometry& other, double lengthTol, double a
 }
 
 bool Geometry::generateIADHistogram(std::vector<double>* distance,
-                                     std::vector<double>* frequency, double min,
-                                     double max, double step, const Atom& atom) const
+                                    std::vector<double>* frequency, double min,
+                                    double max, double step, const Atom& atom) const
 {
   // 3D or 0D.
   if (!is3D() && !is0D()) return false;
@@ -843,7 +837,7 @@ bool Geometry::generateIADHistogram(std::vector<double>* distance,
 
       for (int k = 0; k < static_cast<int>(distance->size()); k++) {
         double radius = distance->at(k);
-        if (diff != 0 && Common::fuzzyCompare(diff, radius, halfstep))
+        if (diff != 0 && std::fabs(diff - radius) < halfstep)
           (*frequency)[k]++;
       }
 
@@ -853,7 +847,7 @@ bool Geometry::generateIADHistogram(std::vector<double>* distance,
         diff = std::fabs((v1 - (v2 + translations.at(t))).norm());
         for (int k = 0; k < static_cast<int>(distance->size()); k++) {
           double radius = distance->at(k);
-          if (Common::fuzzyCompare(diff, radius, halfstep))
+          if (std::fabs(diff - radius) < halfstep)
             (*frequency)[k]++;
         }
       }
@@ -864,21 +858,21 @@ bool Geometry::generateIADHistogram(std::vector<double>* distance,
 }
 
 bool Geometry::compareIADDistributions(const std::vector<double>& d,
-                                        const std::vector<double>& f1,
-                                        const std::vector<double>& f2,
-                                        double decay, double smear,
-                                        double* error)
+                                       const std::vector<double>& f1,
+                                       const std::vector<double>& f2,
+                                       double decay, double smear,
+                                       double* error)
 {
   // Check that smearing is possible
   if (smear != 0 && d.size() <= 1) {
     Common::error(QString("%1: Cannot smear with 1 or fewer points.")
-                   .arg(__func__));
+                  .arg(__func__));
     return false;
   }
   // Check sizes
   if (d.size() != f1.size() || f1.size() != f2.size()) {
     Common::error(QString("%1: Vectors are not the same size.")
-                   .arg(__func__));
+                  .arg(__func__));
     return false;
   }
 
@@ -889,7 +883,7 @@ bool Geometry::compareIADDistributions(const std::vector<double>& d,
 
   if (boxSize > static_cast<int>(d.size())) {
     Common::error(QString("%1: Smear length is greater then d vector range.")
-                   .arg(__func__));
+                  .arg(__func__));
     return false;
   }
   // Smear
@@ -1221,7 +1215,7 @@ bool Geometry::calculateNormalizedRDF(int nbins, double cutoff, double sigma)
 }
 
 bool Geometry::calculateTotalNormalizedRDF(int nbins, double cutoff, double sigma,
-                                            std::vector<double>& total)
+                                           std::vector<double>& total)
 {
   // 3D or 0D.
   if (!is3D() && !is0D()) return false;
@@ -1245,8 +1239,8 @@ bool Geometry::calculateTotalNormalizedRDF(int nbins, double cutoff, double sigm
   return true;
 }
 
-bool Geometry::compareRDF(Geometry& other, int nbins, double cutoff, double sigma, double tolerance,
-                                       double& dotProduct)
+bool Geometry::compareRDF(Geometry& other, int nbins, double cutoff, double sigma,
+                          double tolerance, double& dotProduct)
 {
   // 3D or 0D, and both must have the same dimension: a cluster and a
   //   crystal are never similar.
@@ -1279,6 +1273,13 @@ bool Geometry::niggliReduce(const unsigned int iterations, double lenTol)
     Common::error("Niggli reduction is applicable only to a crystal");
     return false;
   }
+
+  // Check if input cell is valid
+  if (!UnitCell::isCellValid(unitCell().cellMatrix())) {
+    Common::error("Input cell to Niggli reduction is not valid");
+    return false;
+  }
+
   // Cache volume for later sanity checks
   const double origVolume = getVolume();
 
@@ -1529,12 +1530,12 @@ bool Geometry::isNiggliReduced(double lenTol) const
   // 3D only.
   if (!is3D()) return false;
   return Geometry::isNiggliReduced(getA(), getB(), getC(), getAlpha(),
-                                    getBeta(), getGamma(), lenTol);
+                                   getBeta(), getGamma(), lenTol);
 }
 
 bool Geometry::isNiggliReduced(const double a, const double b, const double c,
-                                const double alpha, const double beta,
-                                const double gamma, double lenTol)
+                               const double alpha, const double beta,
+                               const double gamma, double lenTol)
 {
   // Calculate characteristic
   double A = a * a;
@@ -1650,8 +1651,8 @@ bool Geometry::reduceToPrimitive(const double prec)
 }
 
 unsigned int Geometry::reduceToPrimitive(QList<Common::Vector3>* fcoords,
-                                          QList<unsigned int>* atomicNums,
-                                          Common::Matrix3* cellMatrix, const double prec)
+                                         QList<unsigned int>* atomicNums,
+                                         Common::Matrix3* cellMatrix, const double prec)
 {
   Q_ASSERT(fcoords->size() == atomicNums->size());
 
@@ -1784,10 +1785,11 @@ bool Geometry::standardizeToConventionalCell(const double prec)
   UnitCell conventionalCell(standardizedCell);
   std::vector<Atom> standardizedAtomsList;
   standardizedAtomsList.reserve(static_cast<size_t>(standardizedAtoms));
+
   for (int i = 0; i < standardizedAtoms; ++i) {
     const Common::Vector3 frac(positions[i][0], positions[i][1], positions[i][2]);
     standardizedAtomsList.push_back(Atom(static_cast<unsigned short>(types[i]),
-           conventionalCell.toCartesian(frac)));
+                                         conventionalCell.toCartesian(frac)));
   }
 
   delete[] positions;
@@ -1839,7 +1841,7 @@ QString Geometry::getHMName(unsigned short spg)
 {
   if (spg >= 231 || spg < 1) {
     Common::error(QString("%1: an invalid spg number of %2 was entered!")
-                 .arg(__func__).arg(spg));
+                  .arg(__func__).arg(spg));
     return QString();
   }
   return QString::fromStdString(Atoms::_HMNames[spg]);
@@ -2249,9 +2251,11 @@ void Geometry::perceiveBonds()
   // The cutoff tolerance to be used
   const double tol = 0.1;
   const auto& atomList = atoms();
+
   double cutoff = 0.0;
   for (const Atom& atom : atomList)
     cutoff = std::max(cutoff, Atoms::ElementInfo::getCovalentRadius(atom.atomicNumber()));
+
   cutoff = 2.0 * cutoff + tol;
 
   if (!calculateNearestNeighborLists(cutoff))
@@ -2285,6 +2289,7 @@ QList<QString> Geometry::getSymbols() const
       list.append(symbol);
   }
   std::sort(list.begin(), list.end());
+
   return list;
 }
 
@@ -2292,11 +2297,13 @@ unsigned int Geometry::getNumberOfAtomsOfSymbol(const QString& s) const
 {
   // Retruns the number of atoms of a symbol (0 if that type
   //   doesn't exist; e.g., sub-system seed).
-  QList<QString> symbols = getSymbols();
-  int index = symbols.indexOf(s);
-  if (index == -1)
-    return 0;
-  return getNumberOfAtomsAlpha().at(index);
+  const unsigned int atomicNumber = Atoms::ElementInfo::getAtomicNum(s.toStdString());
+  unsigned int count = 0;
+  for (const auto& atom : atoms())
+    if (atom.atomicNumber() == atomicNumber)
+      ++count;
+
+  return count;
 }
 
 std::vector<uint> Geometry::getNumberOfAtomsAlpha() const
@@ -2306,12 +2313,25 @@ std::vector<uint> Geometry::getNumberOfAtomsAlpha() const
   QList<QString> symbols = getSymbols();
   std::vector<uint> list(symbols.size(), 0);
 
+  // With the list of symbol ready; we count atoms by their atomic numbers.
+  std::vector<unsigned int> symbolNumbers(symbols.size(), 0);
+  for (int i = 0; i < symbols.size(); ++i)
+    symbolNumbers[i] = Atoms::ElementInfo::getAtomicNum(symbols.at(i).toStdString());
+
   for (const auto& atom : atoms()) {
-    QString symbol = Atoms::ElementInfo::getAtomicSymbol(atom.atomicNumber()).c_str();
-    Q_ASSERT_X(symbols.contains(symbol), Q_FUNC_INFO,
+    int index = -1;
+    for (int i = 0; i < static_cast<int>(symbolNumbers.size()); ++i) {
+      if (symbolNumbers[i] == atom.atomicNumber()) {
+        index = i;
+        break;
+      }
+    }
+    Q_ASSERT_X(index != -1, Q_FUNC_INFO,
                "getNumberOfAtomsAlpha found a symbol not in getSymbols.");
-    ++list[symbols.indexOf(symbol)];
+    if (index != -1)
+      ++list[index];
   }
+
   return list;
 }
 
@@ -2325,6 +2345,7 @@ QString Geometry::getChemicalFormula() const
   QString formula;
   for (int i = 0; i < symbols.size(); ++i)
     formula += QString("%1%2").arg(symbols.at(i)).arg(counts.at(i));
+
   return formula;
 }
 
@@ -2334,6 +2355,7 @@ unsigned int Geometry::getFormulaUnits() const
   std::vector<uint> counts = getNumberOfAtomsAlpha();
   if (counts.empty())
     return 0;
+
   return std::accumulate(counts.begin(), counts.end(), counts[0], gcd);
 }
 
@@ -2363,8 +2385,8 @@ double Geometry::angle(const Common::Vector3& A, const Common::Vector3& B, const
   return acos(AB.dot(BC) / (AB.norm() * BC.norm())) * RAD2DEG;
 }
 
-double Geometry::dihedral(const Common::Vector3& A, const Common::Vector3& B, const Common::Vector3& C,
-                           const Common::Vector3& D)
+double Geometry::dihedral(const Common::Vector3& A, const Common::Vector3& B,
+                          const Common::Vector3& C, const Common::Vector3& D)
 {
   const Common::Vector3& AB = B - A;
   const Common::Vector3& BC = C - B;

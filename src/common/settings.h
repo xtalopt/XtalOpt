@@ -25,8 +25,8 @@
 //   application QSettings would write to the platform-global preferences.
 #define QSETTINGS_FILE(f)                                                      \
   const QString qsFilename = QString(f);                                       \
-  Q_ASSERT_X(!qsFilename.isEmpty(), "QSETTINGS_FILE",                         \
-             "Explicit settings filename required");                          \
+  Q_ASSERT_X(!qsFilename.isEmpty(), "QSETTINGS_FILE",                          \
+             "Explicit settings filename required");                           \
   QSettings qsFile(qsFilename, QSettings::IniFormat);                          \
   QSettings* settings = &qsFile;
 

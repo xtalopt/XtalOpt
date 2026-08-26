@@ -20,7 +20,7 @@
 #include <common/fileutils.h>
 #include <common/output.h>
 #include <common/random.h>
-#include <atoms/formats/poscarformat.h>
+#include <atoms/formats/vaspformat.h>
 
 #include <QString>
 #include <QtTest>
@@ -96,13 +96,13 @@ int numSwaps(const std::vector<Atoms::Atom>& atoms1, const std::vector<Atoms::At
   for (size_t i = 0; i < atoms1.size(); ++i) {
     for (size_t j = 0; j < atoms2.size(); ++j) {
 
-      if (Common::fuzzyCompare(atoms1[i].pos(), atoms2[j].pos(), tol) &&
+      if (Common::eq(atoms1[i].pos(), atoms2[j].pos(), tol) &&
           atoms1[i].atomicNumber() == atoms2[j].atomicNumber()) {
         ++numStayed;
         break;
       }
 
-      if (Common::fuzzyCompare(atoms1[i].pos(), atoms2[j].pos(), tol) &&
+      if (Common::eq(atoms1[i].pos(), atoms2[j].pos(), tol) &&
           atoms1[i].atomicNumber() != atoms2[j].atomicNumber()) {
         ++numSwapped;
         break;
@@ -131,7 +131,7 @@ void GeneticTest::exchange()
   QVERIFY(in.is_open());
 
   Xtal xtal;
-  QVERIFY(Atoms::PoscarFormat::read(xtal, in));
+  QVERIFY(Atoms::VaspFormat::read(xtal, in));
 
   Atoms::UnitCell oldUC = xtal.unitCell();
   std::vector<Atoms::Atom> oldAtoms = xtal.atoms();
@@ -148,7 +148,7 @@ void GeneticTest::exchange()
 
   // Check the cell: it should be unchanged.
   QVERIFY(
-    Common::fuzzyCompare(oldUC.cellMatrix(), newUC.cellMatrix(), tol));
+    Common::eq(oldUC.cellMatrix(), newUC.cellMatrix(), tol));
 
   // Check the atoms: two atoms should be swapped.
   size_t numSwappedAtoms = numSwaps(oldAtoms, newAtoms, tol);
@@ -158,7 +158,7 @@ void GeneticTest::exchange()
   // Try two exchanges (swap two atoms).
   in.clear();
   in.seekg(0, std::ios::beg);
-  QVERIFY(Atoms::PoscarFormat::read(xtal, in));
+  QVERIFY(Atoms::VaspFormat::read(xtal, in));
 
   numExchanges = 2;
   result.reset(XtalOptGenetic::permustrain(&xtal, 0.0, numExchanges, sigma_lattice));
@@ -169,7 +169,7 @@ void GeneticTest::exchange()
 
   // Check the cell to see if it's unchanged.
   QVERIFY(
-    Common::fuzzyCompare(oldUC.cellMatrix(), newUC.cellMatrix(), tol));
+    Common::eq(oldUC.cellMatrix(), newUC.cellMatrix(), tol));
 
   numSwappedAtoms = numSwaps(oldAtoms, newAtoms, tol);
 
@@ -186,7 +186,7 @@ static void loadRutile(Xtal& xtal)
     Common::warning(QString("%1: cannot open %2").arg(__func__).arg(path));
     return;
   }
-  if (!Atoms::PoscarFormat::read(xtal, in))
+  if (!Atoms::VaspFormat::read(xtal, in))
     Common::warning(QString("%1: failed for reading %2").arg(__func__).arg(path));
 }
 
@@ -219,7 +219,7 @@ void GeneticTest::strain()
     QVERIFY(fabs(result->getVolume() - origVolume) / origVolume < 1e-9);
 
     // Check the cell (strain should have done somthing!).
-    QVERIFY(!Common::fuzzyCompare(origCell, result->unitCell().cellMatrix(), 1e-6));
+    QVERIFY(!Common::eq(origCell, result->unitCell().cellMatrix(), 1e-6));
     return;
   }
   QFAIL("All tested seeds produced degenerate cells from extreme Gaussian draws");
@@ -247,12 +247,12 @@ void GeneticTest::ripple()
 
   // Check the atoms count and cell to be unchanged.
   QCOMPARE(static_cast<int>(result->numAtoms()), origAtomCount);
-  QVERIFY(Common::fuzzyCompare(origCell, result->unitCell().cellMatrix(), 1e-6));
+  QVERIFY(Common::eq(origCell, result->unitCell().cellMatrix(), 1e-6));
   QVERIFY(fabs(result->getVolume() - origVolume) < 1e-4);
 
   bool atomMoved = false;
   for (size_t i = 0; i < origAtoms.size(); ++i) {
-    if (!Common::fuzzyCompare(origAtoms[i].pos(), result->atom(i).pos(), 1e-6)) {
+    if (!Common::eq(origAtoms[i].pos(), result->atom(i).pos(), 1e-6)) {
       atomMoved = true;
       break;
     }

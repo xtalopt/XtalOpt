@@ -34,8 +34,6 @@ public:
   static bool read(Atoms::Geometry& s, const QString& filename, const QString& format);
   static bool write(const Atoms::Geometry& s, std::ostream& out, const QString& format,
                     double symprec = SPGLIB_TOL);
-  // The names a user may type for a format, mapped to the ones used here.
-  static QString normalizedFormatName(const QString& format);
 };
 
 } // namespace Atoms

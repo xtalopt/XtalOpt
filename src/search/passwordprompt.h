@@ -31,8 +31,7 @@ public:
   /**
    * Prompt on the terminal and return the entered password.
    */
-  static std::string getPassword(
-    const std::string& prompt = "Enter password: ");
+  static std::string getPassword(const std::string& prompt = "Enter password: ");
 };
 
 } // namespace Search
