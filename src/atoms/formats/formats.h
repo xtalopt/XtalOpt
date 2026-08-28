@@ -16,8 +16,6 @@
 #ifndef ATOMS_FORMATS_H
 #define ATOMS_FORMATS_H
 
-#include <common/constants.h>
-
 #include <iosfwd>
 
 class QString;
@@ -32,8 +30,7 @@ class Formats
 public:
   static bool read(Atoms::Geometry& s, const QString& filename);
   static bool read(Atoms::Geometry& s, const QString& filename, const QString& format);
-  static bool write(const Atoms::Geometry& s, std::ostream& out, const QString& format,
-                    double symprec = SPGLIB_TOL);
+  static bool write(const Atoms::Geometry& s, std::ostream& out, const QString& format);
 };
 
 } // namespace Atoms

@@ -326,15 +326,14 @@ bool Formats::read(Atoms::Geometry& s, const QString& filename, const QString& f
   return readWithFormat(s, filename, DetectedFormat(format, ReadStructure));
 }
 
-bool Formats::write(const Atoms::Geometry& s, std::ostream& out, const QString& format,
-                    double symprec)
+bool Formats::write(const Atoms::Geometry& s, std::ostream& out, const QString& format)
 {
   if (format == "VASP")
     return VaspFormat::write(s, out);
   if (format == "CML")
     return CmlFormat::write(s, out);
   if (format == "CIF")
-    return CifFormat::write(s, out, symprec);
+    return CifFormat::write(s, out);
   if (format == "XYZ")
     return XyzFormat::write(s, out);
   if (format == "MTP")

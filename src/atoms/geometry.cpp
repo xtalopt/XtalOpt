@@ -1603,8 +1603,8 @@ bool Geometry::isPrimitive(const double cartTol)
 
   // Get unit cell
   Common::Matrix3 cellMatrix = unitCell().cellMatrix();
-  // Returns an unsigned int of the space group (in case we ever need it)
-  reduceToPrimitive(&fcoords, &atomicNums, &cellMatrix, cartTol);
+  if (!reduceToPrimitive(&fcoords, &atomicNums, &cellMatrix, cartTol))
+    return false;
 
   return originalFCoordsSize == static_cast<size_t>(fcoords.size());
 }
@@ -1627,10 +1627,7 @@ bool Geometry::reduceToPrimitive(const double prec)
 
   // Get unit cell
   Common::Matrix3 cellMatrix = unitCell().cellMatrix();
-  unsigned int spg = reduceToPrimitive(&fcoords, &atomicNums, &cellMatrix, prec);
-
-  // spg == 0 implies that reduceToPrimitive() failed
-  if (spg == 0)
+  if (!reduceToPrimitive(&fcoords, &atomicNums, &cellMatrix, prec))
     return false;
 
   setCellInfo(cellMatrix);
@@ -1650,27 +1647,25 @@ bool Geometry::reduceToPrimitive(const double prec)
   return true;
 }
 
-unsigned int Geometry::reduceToPrimitive(QList<Common::Vector3>* fcoords,
-                                         QList<unsigned int>* atomicNums,
-                                         Common::Matrix3* cellMatrix, const double prec)
+bool Geometry::reduceToPrimitive(QList<Common::Vector3>* fcoords,
+                                 QList<unsigned int>* atomicNums,
+                                 Common::Matrix3* cellMatrix, const double prec)
 {
   Q_ASSERT(fcoords->size() == atomicNums->size());
 
   const int numberOfAtoms = fcoords->size();
 
   if (numberOfAtoms < 1) {
-    Common::warning("Cannot determine spacegroup of empty cell.");
-    return 0;
+    Common::warning("Primitive-cell conversion requires at least one atom.");
+    return false;
   }
 
   // Spglib expects column vecs, so fill with transpose
   double lattice[3][3];
   cellToColumnLatticeArray(*cellMatrix, lattice);
 
-  // Build position list. Include space for 4*numAtoms for the
-  // cell refinement
-  double(*positions)[3] = new double[4 * numberOfAtoms][3];
-  int* types = new int[4 * numberOfAtoms];
+  double(*positions)[3] = new double[numberOfAtoms][3];
+  int* types = new int[numberOfAtoms];
   const Common::Vector3* fracCoord;
   for (int i = 0; i < numberOfAtoms; ++i) {
     fracCoord = &(*fcoords)[i];
@@ -1680,40 +1675,13 @@ unsigned int Geometry::reduceToPrimitive(QList<Common::Vector3>* fcoords,
     positions[i][2] = fracCoord->z();
   }
 
-  // find spacegroup for return value
-  int spg;
-  SpglibDataset* dataset = spg_get_dataset(lattice, positions, types, numberOfAtoms, prec);
-  if (dataset == nullptr) {
-    spg = 0;
-  } else {
-    spg = dataset->spacegroup_number;
-    spg_free_dataset(dataset);
-  }
-
-  // Refine the structure
-  int numBravaisAtoms = spg_refine_cell(lattice, positions, types, numberOfAtoms, prec);
-
-  // if spglib cannot refine the cell, return 0.
-  if (numBravaisAtoms <= 0) {
-    delete[] positions;
-    delete[] types;
-    return 0;
-  }
-
-  // Find primitive cell. This updates lattice, positions, types
-  // to primitive
-  int numPrimitiveAtoms = spg_find_primitive(lattice, positions, types, numBravaisAtoms, prec);
-
-  // If the cell was already a primitive cell, reset
-  // numPrimitiveAtoms.
-  if (numPrimitiveAtoms == 0)
-    numPrimitiveAtoms = numBravaisAtoms;
-
-  // Bail if everything failed
+  // Change to a primitive basis without idealizing the structure.
+  const int numPrimitiveAtoms =
+    spg_standardize_cell(lattice, positions, types, numberOfAtoms, 1, 1, prec);
   if (numPrimitiveAtoms <= 0) {
     delete[] positions;
     delete[] types;
-    return 0;
+    return false;
   }
 
   // Update passed objects
@@ -1724,10 +1692,6 @@ unsigned int Geometry::reduceToPrimitive(QList<Common::Vector3>* fcoords,
   while (fcoords->size() > numPrimitiveAtoms) {
     fcoords->removeLast();
     atomicNums->removeLast();
-  }
-  while (fcoords->size() < numPrimitiveAtoms) {
-    fcoords->append(Common::Vector3());
-    atomicNums->append(0);
   }
 
   // Update
@@ -1741,10 +1705,7 @@ unsigned int Geometry::reduceToPrimitive(QList<Common::Vector3>* fcoords,
   delete[] positions;
   delete[] types;
 
-  if (spg >= 231 || spg < 0)
-    spg = 0;
-
-  return static_cast<unsigned int>(spg);
+  return true;
 }
 
 bool Geometry::standardizeToConventionalCell(const double prec)
@@ -1773,7 +1734,7 @@ bool Geometry::standardizeToConventionalCell(const double prec)
   }
 
   const int standardizedAtoms =
-    spg_standardize_cell(lattice, positions, types, numberOfAtoms, 0, 0, prec);
+    spg_standardize_cell(lattice, positions, types, numberOfAtoms, 0, 1, prec);
   if (standardizedAtoms <= 0) {
     delete[] positions;
     delete[] types;

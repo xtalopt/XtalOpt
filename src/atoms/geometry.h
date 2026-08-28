@@ -834,8 +834,8 @@ private:
     g_spgSymbol = "Unknown";
   }
 
-  unsigned int reduceToPrimitive(QList<Common::Vector3>* fcoords, QList<unsigned int>* atomicNums,
-                                 Common::Matrix3* cellMatrix, const double prec = SPGLIB_TOL);
+  bool reduceToPrimitive(QList<Common::Vector3>* fcoords, QList<unsigned int>* atomicNums,
+                         Common::Matrix3* cellMatrix, const double prec = SPGLIB_TOL);
 };
 
 static_assert(std::is_nothrow_move_constructible<Geometry>::value,

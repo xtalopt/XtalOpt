@@ -216,13 +216,47 @@ void FormatsTest::writeCifWithAtoms()
   Atoms::Geometry diamond;
   QVERIFY(Atoms::CifFormat::read(diamond, filename));
 
+  diamond.atom(0).setPos(diamond.atom(0).pos() + diamond.unitCell().aVector());
+
   std::stringstream out;
   QVERIFY(Atoms::CifFormat::write(diamond, out));
 
   const std::string cif = out.str();
   QVERIFY(cif.find("_chemical_formula_sum") != std::string::npos);
-  QVERIFY(cif.find("_symmetry_Int_Tables_number") != std::string::npos);
+  QVERIFY(cif.find("1 'x,y,z'") != std::string::npos);
   QVERIFY(cif.find("_atom_site_fract_x") != std::string::npos);
+  QVERIFY(cif.find("C1 C ") != std::string::npos);
+  QVERIFY(cif.find("C2 C ") != std::string::npos);
+  QVERIFY(cif.find("C3 C ") == std::string::npos);
+  QVERIFY(cif.find("_atom_site_Wyckoff_label") == std::string::npos);
+  QVERIFY(cif.find("_atom_site_symmetry_multiplicity") == std::string::npos);
+
+  bool foundSpaceGroup = false;
+  bool foundFirstAtom = false;
+  std::istringstream lines(cif);
+  std::string line;
+  while (std::getline(lines, line)) {
+    const QString simplified = QString::fromStdString(line).simplified();
+    if (simplified.startsWith("_space_group_IT_number")) {
+      QCOMPARE(simplified, QString("_space_group_IT_number 1"));
+      foundSpaceGroup = true;
+    } else if (simplified.startsWith("C1 C ")) {
+      std::istringstream atomLine(simplified.toStdString());
+      std::string label;
+      std::string symbol;
+      double x = 0.0;
+      double y = 0.0;
+      double z = 0.0;
+      double occupancy = 0.0;
+      QVERIFY(atomLine >> label >> symbol >> x >> y >> z >> occupancy);
+      QVERIFY(std::fabs(x - 0.75) < 1.e-12);
+      QVERIFY(std::fabs(y - 0.75) < 1.e-12);
+      QVERIFY(std::fabs(z - 0.75) < 1.e-12);
+      foundFirstAtom = true;
+    }
+  }
+  QVERIFY(foundSpaceGroup);
+  QVERIFY(foundFirstAtom);
 }
 
 void FormatsTest::writeXyzWithAtoms()

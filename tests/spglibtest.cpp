@@ -46,8 +46,7 @@ private slots:
   // Tests
   void emptyStructure();
   void atomsWithoutCell();
-  //  Simple test to make sure that nothing is seriously broken
-  void idealBCC();
+  void cellConversionsPreserveSymmetry();
   void idealFCC();
   void diamondPrimitiveFile();
   void rutileFile();
@@ -86,25 +85,30 @@ void SPGLibTest::atomsWithoutCell()
   QCOMPARE(m_xtal->getSpaceGroupSymbol(), QString("Unknown"));
 }
 
-void SPGLibTest::idealBCC()
+void SPGLibTest::cellConversionsPreserveSymmetry()
 {
-  m_xtal->setCellInfo(3.0, 3.0, 3.0, 90.0, 90.0, 90.0);
+  const QString filename = Common::localPath(Common::localPath(QString(TESTDATADIR), "formats"),
+                                             "symmetry-conversion.POSCAR");
+  std::ifstream in(filename.toStdString());
+  QVERIFY(in.is_open());
+  QVERIFY(Atoms::VaspFormat::read(*m_xtal, in));
 
-  Atoms::Atom& atom1 = m_xtal->addAtom();
-  atom1.setPos(Common::Vector3(0.0, 0.0, 0.0));
-  atom1.setAtomicNumber(1);
+  m_xtal->findSpaceGroup(1.0e-2);
+  QCOMPARE(m_xtal->numAtoms(), static_cast<size_t>(6));
+  QCOMPARE(m_xtal->getSpaceGroupNumber(), 10U);
 
-  Atoms::Atom& atom2 = m_xtal->addAtom();
-  atom2.setPos(Common::Vector3(1.5, 1.5, 1.5));
-  atom2.setAtomicNumber(1);
+  Atoms::Geometry primitive(*m_xtal);
+  QVERIFY(primitive.isPrimitive(1.0e-2));
+  QVERIFY(primitive.reduceToPrimitive(1.0e-2));
+  primitive.findSpaceGroup(1.0e-2);
+  QCOMPARE(primitive.numAtoms(), static_cast<size_t>(6));
+  QCOMPARE(primitive.getSpaceGroupNumber(), 10U);
 
-  m_xtal->findSpaceGroup();
-  QCOMPARE(m_xtal->getSpaceGroupNumber(), 229U);
-  QCOMPARE(m_xtal->getSpaceGroupSymbol(), QString("Im-3m"));
-  QCOMPARE(
-    m_xtal->getHTMLSpaceGroupSymbol(),
-    QString(
-      "<HTML>Im<span style=\"text-decoration: overline\">3</span>m</HTML>"));
+  Atoms::Geometry conventional(*m_xtal);
+  QVERIFY(conventional.standardizeToConventionalCell(1.0e-2));
+  conventional.findSpaceGroup(1.0e-2);
+  QCOMPARE(conventional.numAtoms(), static_cast<size_t>(6));
+  QCOMPARE(conventional.getSpaceGroupNumber(), 10U);
 }
 
 void SPGLibTest::idealFCC()

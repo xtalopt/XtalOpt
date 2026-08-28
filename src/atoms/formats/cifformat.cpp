@@ -29,13 +29,13 @@
 
 #include <cmath>
 #include <iomanip>
+#include <limits>
 #include <map>
 #include <ostream>
 #include <vector>
 
 // read() gets the cell and atom sites, applies the symmetry operations,
-//   and checks the formula and space group. write() uses the conventional
-//   cell and prints one line for each symmetry-unique atom.
+//   and checks the formula and space group. write() stores every atom in P1.
 
 namespace Atoms {
 
@@ -450,37 +450,6 @@ QString formulaToString(const std::map<unsigned short, double>& counts, double s
   return parts.join(" ");
 }
 
-QString symOpText(const SymOp& op)
-{
-  QStringList coordinates;
-  const char variables[] = { 'x', 'y', 'z' };
-  for (int i = 0; i < 3; ++i) {
-    QString coordinate;
-    for (int j = 0; j < 3; ++j) {
-      const int coefficient = op.rot[i][j];
-      if (coefficient == 0)
-        continue;
-      if (!coordinate.isEmpty() && coefficient > 0)
-        coordinate += "+";
-      if (coefficient == -1)
-        coordinate += "-";
-      else if (coefficient != 1)
-        coordinate += QString::number(coefficient) + "*";
-      coordinate += QChar(variables[j]);
-    }
-    double translation = op.trans[i] - std::floor(op.trans[i]);
-    if (translation > ZERO12) {
-      if (!coordinate.isEmpty())
-        coordinate += "+";
-      coordinate += QString::number(translation, 'g', 12);
-    }
-    if (coordinate.isEmpty())
-      coordinate = "0";
-    coordinates.append(coordinate);
-  }
-  return coordinates.join(",");
-}
-
 } // namespace
 
 
@@ -778,11 +747,13 @@ bool CifFormat::read(Geometry& s, const QString& filename)
                                "could not detect symmetry.")
                        .arg(filename));
       } else {
+        const QString normalizedDeclaredHm = normalizeSpaceGroupText(declaredHm);
+        const bool declaredP1 = okNumber ? declaredNumber == 1
+                                         : normalizedDeclaredHm == "p1";
         const bool numberMismatch = okNumber && dataset->spacegroup_number != declaredNumber;
-        const bool symbolMismatch = !stripQuotes(declaredHm).isEmpty() &&
-          normalizeSpaceGroupText(dataset->international_symbol) !=
-            normalizeSpaceGroupText(declaredHm);
-        if (numberMismatch || (!okNumber && symbolMismatch)) {
+        const bool symbolMismatch = !normalizedDeclaredHm.isEmpty() &&
+          normalizeSpaceGroupText(dataset->international_symbol) != normalizedDeclaredHm;
+        if (!declaredP1 && (numberMismatch || (!okNumber && symbolMismatch))) {
           Common::warning(QString("CIF space-group check for %1 did not match. "
                                  "Declared: %2 %3; detected: %4 %5.")
                          .arg(filename)
@@ -809,123 +780,59 @@ bool CifFormat::read(Geometry& s, const QString& filename)
   return true;
 }
 
-bool CifFormat::write(const Geometry& s, std::ostream& out, double symprec)
+bool CifFormat::write(const Geometry& s, std::ostream& out)
 {
   if (!s.is3D() || s.numAtoms() < 1) {
     Common::error("CIF writer requires a periodic structure with atoms.");
     return false;
   }
 
-  // We write a conventional cell for consistent symmetry ops and unique sites.
-  Geometry conventional(s);
-  if (!conventional.standardizeToConventionalCell(symprec)) {
-    Common::error("CIF writer failed to standardize the structure.");
-    return false;
-  }
-
-  // Prepare spglib input info.
-  double lattice[3][3];
-  cellToColumnLatticeArray(conventional.unitCell().cellMatrix(), lattice);
-
-  std::vector<double> positionBuffer(conventional.numAtoms() * 3);
-  std::vector<int> types(conventional.numAtoms());
-  for (size_t i = 0; i < conventional.numAtoms(); ++i) {
-    const Common::Vector3 frac = conventional.unitCell().wrapFractional(conventional.cartToFrac(
-        conventional.atom(i).pos()));
-    positionBuffer[3 * i + 0] = frac.x();
-    positionBuffer[3 * i + 1] = frac.y();
-    positionBuffer[3 * i + 2] = frac.z();
-    types[i] = conventional.atom(i).atomicNumber();
-  }
-
-  const double (*positions)[3] = reinterpret_cast<const double (*)[3]>(positionBuffer.data());
-  SpglibDataset* dataset = spg_get_dataset(lattice, positions, types.data(),
-                    static_cast<int>(conventional.numAtoms()), symprec);
-  if (!dataset) {
-    Common::error("CIF writer failed to determine space-group data.");
-    return false;
-  }
-
-  // One per each equivalent atom set is written with its multiplicity.
-  std::map<int, int> representatives;
-  std::map<int, int> multiplicities;
-  for (int i = 0; i < dataset->n_atoms; ++i) {
-    const int equivalent = dataset->equivalent_atoms[i];
-    multiplicities[equivalent] += 1;
-    if (representatives.find(equivalent) == representatives.end())
-      representatives[equivalent] = i;
-  }
-
-  // Start the output with general cell and space group information.
   out << "data_generated\n";
   out << "_chemical_formula_sum           '"
-      << conventional.getChemicalFormula().toStdString() << "'\n";
-  out << std::fixed << std::setprecision(8);
-  out << "_cell_length_a                  " << conventional.getA() << "\n";
-  out << "_cell_length_b                  " << conventional.getB() << "\n";
-  out << "_cell_length_c                  " << conventional.getC() << "\n";
-  out << "_cell_angle_alpha               " << conventional.getAlpha() << "\n";
-  out << "_cell_angle_beta                " << conventional.getBeta() << "\n";
-  out << "_cell_angle_gamma               " << conventional.getGamma() << "\n";
-  out << "_cell_volume                    " << conventional.getVolume() << "\n";
-  out << "_symmetry_space_group_name_H-M  '"
-      << dataset->international_symbol << "'\n";
-  out << "_symmetry_Int_Tables_number     "
-      << dataset->spacegroup_number << "\n\n";
+      << s.getChemicalFormula().toStdString() << "'\n";
+  out << std::defaultfloat
+      << std::setprecision(std::numeric_limits<double>::max_digits10);
+  out << "_cell_length_a                  " << s.getA() << "\n";
+  out << "_cell_length_b                  " << s.getB() << "\n";
+  out << "_cell_length_c                  " << s.getC() << "\n";
+  out << "_cell_angle_alpha               " << s.getAlpha() << "\n";
+  out << "_cell_angle_beta                " << s.getBeta() << "\n";
+  out << "_cell_angle_gamma               " << s.getGamma() << "\n";
+  out << "_cell_volume                    " << s.getVolume() << "\n";
+  out << "_space_group_name_H-M_alt       'P 1'\n";
+  out << "_space_group_IT_number          1\n";
+  out << "_space_group_name_Hall          'P 1'\n\n";
 
-  const SpglibSpacegroupType groupType =
-    spg_get_spacegroup_type(dataset->hall_number);
-  if (groupType.number != 0)
-    out << "_space_group_name_Hall         '" << groupType.hall_symbol << "'\n\n";
-
-  // Use the same operation list for the symmetry loop and the atom sites.
-  const std::vector<SymOp> symmetry =
-    symmetryFromDatabase(dataset->hall_number);
-  if (symmetry.empty()) {
-    spg_free_dataset(dataset);
-    Common::error("CIF writer failed to obtain symmetry operations.");
-    return false;
-  }
   out << "loop_\n";
   out << "_space_group_symop_id\n";
   out << "_space_group_symop_operation_xyz\n";
-  for (size_t i = 0; i < symmetry.size(); ++i)
-    out << i + 1 << " '" << symOpText(symmetry.at(i)).toStdString() << "'\n";
-  out << "\n";
+  out << "1 'x,y,z'\n\n";
 
   out << "loop_\n";
   out << "_atom_site_label\n";
-  out << "_atom_site_Wyckoff_label\n";
-  out << "_atom_site_symmetry_multiplicity\n";
+  out << "_atom_site_type_symbol\n";
   out << "_atom_site_fract_x\n";
   out << "_atom_site_fract_y\n";
   out << "_atom_site_fract_z\n";
   out << "_atom_site_occupancy\n";
-  out << "_atom_site_type_symbol\n";
 
-  // Write symmetry-unique sites. Labels are counted by element to keep
-  //   the generated CIF easy to read.
-  const char wyckoffLetters[] = "abcdefghijklmnopqrstuvwxyz";
+  // Write every atom. P1 needs no symmetry expansion.
   std::map<QString, int> labelCounts;
-  for (const auto& representative : representatives) {
-    const int atomIndex = representative.second;
+  for (size_t atomIndex = 0; atomIndex < s.numAtoms(); ++atomIndex) {
     const QString symbol = QString::fromStdString(
-      Atoms::ElementInfo::getAtomicSymbol(types[atomIndex]));
+      Atoms::ElementInfo::getAtomicSymbol(s.atom(atomIndex).atomicNumber()));
     const int labelIndex = ++labelCounts[symbol];
-    const int wyckoff = dataset->wyckoffs[atomIndex];
-    const char wyckoffLetter = (wyckoff >= 0 && wyckoff < 26) ? wyckoffLetters[wyckoff] : '?';
+    const Common::Vector3 frac = s.unitCell().wrapFractional(
+      s.cartToFrac(s.atom(atomIndex).pos()));
 
     out << symbol.toStdString() << labelIndex << " "
-        << wyckoffLetter << " "
-        << multiplicities[representative.first] << " "
-        << positionBuffer[3 * atomIndex + 0] << " "
-        << positionBuffer[3 * atomIndex + 1] << " "
-        << positionBuffer[3 * atomIndex + 2] << " "
-        << "1.00000000 "
-        << symbol.toStdString() << "\n";
+        << symbol.toStdString() << " "
+        << frac.x() << " "
+        << frac.y() << " "
+        << frac.z() << " "
+        << "1\n";
   }
 
-  spg_free_dataset(dataset);
   return true;
 }
 

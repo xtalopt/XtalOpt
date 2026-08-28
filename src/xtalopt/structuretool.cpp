@@ -449,7 +449,7 @@ bool generateMoleculeFromFormulaRequest(const std::string& requestText, Atoms::G
 }
 
 bool writeStructure(Atoms::Geometry& structure, const std::string& outputFile,
-                    const QString& format, double symprec)
+                    const QString& format)
 {
   std::ostringstream text;
   std::ofstream file;
@@ -463,7 +463,7 @@ bool writeStructure(Atoms::Geometry& structure, const std::string& outputFile,
     out = &file;
   }
 
-  const bool written = Atoms::Formats::write(structure, *out, format, symprec);
+  const bool written = Atoms::Formats::write(structure, *out, format);
 
   if (written && outputFile.empty())
     Common::message(QString::fromStdString(text.str()));
@@ -482,7 +482,7 @@ int runMolUnit(const StructureToolOptions& options)
     return 1;
   }
 
-  return writeStructure(molecule, options.outputFile, "XYZ", SPGLIB_TOL) ? 0 : 1;
+  return writeStructure(molecule, options.outputFile, "XYZ") ? 0 : 1;
 }
 
 bool readMoleculeFromXyzFile(const std::string& inputFile, Atoms::Geometry& molecule, QString& error)
@@ -878,7 +878,7 @@ bool writeStructureOutputIfNeeded(Atoms::Geometry& structure, const StructureToo
                           ? outputFormatForFile(options.outputFile)
                           : QString::fromLocal8Bit(options.outputFormat.c_str()).toUpper();
 
-  if (!writeStructure(structure, options.outputFile, outFormat, options.symprec)) {
+  if (!writeStructure(structure, options.outputFile, outFormat)) {
     Common::error("Failed to write structure output");
     return false;
   }

@@ -292,9 +292,9 @@ void TabProgress::updateInfo_()
   static const QColor colScriptCalc   = QColor(255, 255,   0);
   // Transitions
   static const QColor colWaiting      = QColor(  0, 139, 139);
-  static const QColor colSubmitted    = QColor(160, 160, 160);
-  static const QColor colTransition   = QColor(160, 160, 160);
-  static const QColor colError        = QColor(160, 160, 160);
+  static const QColor colSubmitted    = QColor(120, 145, 145);
+  static const QColor colTransition   = QColor(120, 145, 145);
+  static const QColor colError        = QColor(120, 145, 145);
   // Failures and errors
   static const QColor colScriptFail   = QColor(220, 150, 150);
   static const QColor colTerminalFail = QColor(139,   0,   0);

@@ -142,6 +142,8 @@ void AtomsTest::crystallographyOperations()
   bcc.findSpaceGroup();
   QCOMPARE(bcc.getSpaceGroupNumber(), 229U);
   QCOMPARE(bcc.getSpaceGroupSymbol(), QString("Im-3m"));
+  QCOMPARE(bcc.getHTMLSpaceGroupSymbol(),
+          QString("<HTML>Im<span style=\"text-decoration: overline\">3</span>m</HTML>"));
   QCOMPARE(Atoms::Geometry::getHMName(229), QString("I m 3 m"));
   QVERIFY(!bcc.isPrimitive());
 
