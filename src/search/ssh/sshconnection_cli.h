@@ -16,6 +16,7 @@
 #define SSHCONNECTIONCLI_H
 
 
+#include <search/constants.h>
 #include <search/ssh/sshconnection.h>
 
 #include <QString>
@@ -159,10 +160,11 @@ public slots:
                              bool onlyDeleteContents = false) override;
 
 protected:
+  // Housekeeping calls use the default timeout; negative values wait until done.
   bool executeSSH(const QString& command,
                   const QStringList& args = QStringList(),
                   QString* stdout_str = nullptr, QString* stderr_str = nullptr,
-                  int* ec = nullptr, int timeoutMs = -1,
+                  int* ec = nullptr, int timeoutMs = CLISSH_RUN_TIMEOUT,
                   const std::atomic<bool>* cancel = nullptr);
   bool executeSCPTo(const QString& source, const QString& dest,
                     const QStringList& args = QStringList(),

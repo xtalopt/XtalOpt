@@ -134,7 +134,7 @@ DirectRunProcess* DirectRunProcessHost::startProcess(
                               "direct run in %2.")
                     .arg(__func__)
                     .arg(workDir));
-    proc->kill();
+    QtCompat::processKillCommand(*proc);
     proc->waitForFinished(PROCESS_KILL_TIMEOUT);
     delete proc;
     return nullptr;
@@ -549,7 +549,7 @@ QueueInterface::CommandResult DirectRunInterface::runACommand(
   if (stopped) {
     proc.terminate();
     if (!proc.waitForFinished(1000)) {
-      proc.kill();
+      QtCompat::processKillCommand(proc);
       proc.waitForFinished(PROCESS_KILL_TIMEOUT);
     }
   }

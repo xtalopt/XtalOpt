@@ -39,6 +39,7 @@ Added optimizer asset-file groups using <id> <file> entries and safe plain-text 
 Updated GUI settings import/export to use the current xtalopt.in format
 Improved state save/resume and old-format conversion for batch schemes, custom IADs and transient states
 Allowed GUI state files to be opened only to initialize entries; besides a normal resume
+Revised the OS-level persistence for GUI lookup paths
 Added 'initial' entry and 'optstep in history' to structure state files
 Rebuilt similarity, hull, Pareto-front and space-group information after loading a search
 Preserved structure order and parent links on resume
@@ -54,7 +55,7 @@ Updated and revised the output status text in results.txt and GUI
 
 Expanded seed structure reading to all supported formats regardless of optimizer
 Added xtalopt structure tools with shared format import and export
-Added CIF; revised CML, XYZ, MTP, POSCAR, PWSCF, CASTEP and SIESTA readers/detection
+Added CIF; revised CML, XYZ, MTP, VASP, PWSCF, CASTEP and SIESTA readers/detection
 Read the last geometry from multi-entry files (XYZ, CML, MTP, GULP); CIF stays single-block
 Validated optimizer geometry through a shared structure-update path
 Rejected invalid/non-finite structures and missing VASP energies without partial updates

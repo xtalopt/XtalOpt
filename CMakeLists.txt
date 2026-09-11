@@ -3,14 +3,16 @@ project(XtalOpt)
 
 set(XtalOpt_VERSION_MAJOR 15)
 set(XtalOpt_VERSION_MINOR 0)
-set(XtalOpt_VERSION_PATCH 0.rc11)
+set(XtalOpt_VERSION_PATCH 0.rc12)
 
 # Version definitions
 set(XtalOpt_VERSION "${XtalOpt_VERSION_MAJOR}.${XtalOpt_VERSION_MINOR}")
 set(XtalOpt_VERSION_FULL "${XtalOpt_VERSION}.${XtalOpt_VERSION_PATCH}")
 
-# Version definitions for the XtalOpt code itself ("XTALOPT_VER" can be used in src/ and tests/).
-list(APPEND XTALOPT_COMPILE_DEFINITIONS XTALOPT_VER="${XtalOpt_VERSION_FULL}")
+# Version definitions for the XtalOpt code itself (these can be used in src/ and tests/).
+list(APPEND XTALOPT_COMPILE_DEFINITIONS
+  XTALOPT_VER="${XtalOpt_VERSION_FULL}"
+  XTALOPT_VER_SERIES="${XtalOpt_VERSION}")
 
 list(APPEND CMAKE_MODULE_PATH ${XtalOpt_SOURCE_DIR}/cmake)
 

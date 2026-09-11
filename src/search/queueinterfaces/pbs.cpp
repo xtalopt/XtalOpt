@@ -26,7 +26,6 @@
 #include <common/compatibility/qt_compat.h>
 #include <QString>
 #include <QStringList>
-#include <QRegularExpression>
 
 namespace Search {
 
@@ -62,18 +61,9 @@ QueueInterface::QueueStatus PbsQueueInterface::parseQueueStatus(
   if (rawStatus)
     rawStatus->clear();
 
-  int statusColumn = -1;
-  const QRegularExpression statusHeader("(^|\\s)(S|State)(?=\\s|$)");
-  for (const QString& line : queueData) {
-    const QRegularExpressionMatch match = statusHeader.match(line);
-    if (match.hasMatch() && line.contains("Job", Qt::CaseInsensitive)) {
-      statusColumn = match.capturedStart(2);
-      break;
-    }
-  }
-  if (statusColumn < 0)
-    return QueueInterface::Unknown;
-
+  // The queue list is read with "qstat -u <user>", so each job line holds:
+  //   job id, user, queue, job name, session id, nodes, tasks, memory,
+  //   requested time, state, used time. The state is the tenth entry.
   for (const auto& line : queueData) {
     const QStringList entryList = line.split(' ', QtCompat::SkipEmptyParts);
     if (entryList.isEmpty())
@@ -84,13 +74,14 @@ QueueInterface::QueueStatus PbsQueueInterface::parseQueueStatus(
     if (!ok || curJobId != jobId)
       continue;
 
-    const QString statusText = line.mid(statusColumn).section(QRegularExpression("\\s+"), 0, 0, QString::SectionSkipEmpty);
-    if (statusText.isEmpty()) {
+    if (entryList.size() < 10) {
+      // Keep the raw line so this is not mistaken for a missing job.
       if (rawStatus)
         *rawStatus = line;
       return QueueInterface::Unknown;
     }
-    const QString status = statusText.left(1);
+
+    const QString status = entryList.at(9);
     if (rawStatus)
       *rawStatus = status;
     if (status == "B" || status == "E" || status == "R" || status == "S" ||

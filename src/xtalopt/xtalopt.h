@@ -311,6 +311,9 @@ public:
   // Check for changes to the runtime file.
   void checkRuntimeFile();
 
+  // True when a live (active) search in underway and we can save files to disk.
+  bool canRequestStateFileSave() const;
+
   // Request a state file save after a runtime setting change.
   void requestStateFileSave();
 
@@ -452,9 +455,7 @@ private:
   bool runSearch(const QString& stateFile, bool* onlyMainStateWasLoaded);
   bool checkLocalInputFiles(bool includeSeeds, QString* errorMessage) const;
   bool checkOptimizerAndQueue(const QString& readinessAction, QString* errorMessage);
-  bool canRequestStateFileSave() const;
   void requestStructureStateFileSave(Search::Structure* structure);
-  void requestStructureStateFileSave(const QList<Search::Structure*>& structures);
   void markResultsFileNeedsSave();
   void retryPendingFileSaves();
   void clearPendingRequests();

@@ -16,6 +16,7 @@
 #include <xtalopt/gui/tab_log.h>
 
 #include <xtalopt/gui/dialog.h>
+#include <xtalopt/settings.h>
 #include <xtalopt/xtalopt.h>
 
 #include <QFile>
@@ -87,11 +88,14 @@ void TabLog::newLog(const QString& info)
 void TabLog::saveLog()
 {
   const QString filename = QFileDialog::getSaveFileName(m_dialog, tr("Save Log"),
-                                 QDir::home().filePath("outlog_xtalopt.txt"),
+                                 QDir(Settings::recentLookupDirectory("log", QDir::homePath()))
+                                      .filePath("xtalopt.log"),
                                  tr("Log files (*.log *.txt);;All files (*.*)"),
                                  nullptr, QFileDialog::DontUseNativeDialog);
   if (filename.isEmpty())
     return;
+
+  Settings::saveRecentLookupDirectory("log", filename);
 
   QFile file(filename);
   if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {

@@ -19,7 +19,6 @@
 
 #include <search/structure.h>
 #include <search/optimizer.h>
-#include <search/tracker.h>
 #include <common/compatibility/platform_defs.h>
 #include <common/fileutils.h>
 #include <atoms/gui/structureviewdialog.h>
@@ -162,6 +161,16 @@ XtalOptDialog::~XtalOptDialog()
 
 void XtalOptDialog::closeEvent(QCloseEvent *e)
 {
+  // Do not close while a start or resume is using m_search.
+  if (m_sessionTaskRunning.load()) {
+    QMessageBox::information(
+      this, tr("Please wait"),
+      tr("XtalOpt is still starting or resuming a session.\n\n"
+         "Wait for that to finish before quitting."));
+    e->ignore();
+    return;
+  }
+
   // Show "quit" dialog before closing main window
   QMessageBox::StandardButton reply =
     QMessageBox::question(this, tr("Quit"), tr("Quit XtalOpt now?"),
@@ -211,9 +220,15 @@ QString XtalOptDialog::sessionStateFilePath() const
   return xtalopt->stateFilePath();
 }
 
+QString XtalOptDialog::resumeStartDirectory() const
+{
+  return Settings::recentLookupDirectory("stateLoad", defaultSaveDir());
+}
+
 bool XtalOptDialog::prepareResumeSession(const QString& filename)
 {
-  Q_UNUSED(filename);
+  Settings::saveRecentLookupDirectory("stateLoad", filename);
+
   auto* xo = qobject_cast<XtalOpt*>(m_search);
   if (!xo)
     return false;
@@ -233,28 +248,19 @@ bool XtalOptDialog::prepareResumeSession(const QString& filename)
 
 void XtalOptDialog::saveSession()
 {
-  // Notify if this was user requested.
-  bool notify = false;
-  if (sender() == ui->push_save)
-    notify = true;
-
   if (m_search->isSessionStarting()) {
     errorPromptWindow("Cannot save while the search is starting.");
     return;
   }
 
-  bool hasStructures = false;
-  {
-    QReadLocker locker(m_search->tracker()->rwLock());
-    hasStructures = !m_search->tracker()->list()->isEmpty();
-  }
+  XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
-  if (m_search->isReadOnly() || !hasStructures) {
-    XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
-
+  // Ask where to put the file when this is not a live (active) run.
+  if (!xtalopt || !xtalopt->canRequestStateFileSave()) {
     QString filename = QFileDialog::getSaveFileName(
       this, QString("Save search state file"),
-      QDir(defaultSaveDir()).filePath("xtalopt.state"), "XtalOpt state (*.state);;All files (*.*)",
+      Settings::recentLookupDirectory("stateSave", defaultSaveDir()),
+      "XtalOpt state (*.state);;All files (*.*)",
       0, QFileDialog::DontUseNativeDialog);
 
     if (filename.isEmpty())
@@ -262,6 +268,8 @@ void XtalOptDialog::saveSession()
 
     if (!filename.endsWith(".state", Qt::CaseInsensitive))
       filename.append(".state");
+
+    Settings::saveRecentLookupDirectory("stateSave", filename);
 
     if (!xtalopt || !xtalopt->saveStateFile(filename)) {
       errorPromptWindow(QString("Failed to save state file to:\n'%1'")
@@ -271,14 +279,12 @@ void XtalOptDialog::saveSession()
   }
 
   const QString filename = sessionStateFilePath();
-  QPointer<XtalOptDialog> self(this);
-  (void)QtConcurrent::run([self, notify, filename]() {
-    if (!self || filename.isEmpty())
-      return;
+  if (filename.isEmpty())
+    return;
 
-    XtalOpt* xtalopt = qobject_cast<XtalOpt*>(self->m_search);
-    if (xtalopt)
-      xtalopt->saveSessionState(filename, notify);
+  // XtalOpt waits for background saves, so this task does not need the dialog.
+  (void)QtConcurrent::run([xtalopt, filename]() {
+    xtalopt->saveSessionState(filename, true);
   });
 }
 
@@ -322,11 +328,19 @@ void XtalOptDialog::showXrdViewer(Search::Structure* structure)
 
 void XtalOptDialog::startSearch()
 {
+  // Block overlapping starts and resumes.
+  if (m_sessionTaskRunning.exchange(true))
+    return;
+
   auto* xo = qobject_cast<XtalOpt*>(m_search);
   QPointer<XtalOptDialog> self(this);
   (void)QtConcurrent::run([self, xo]() {
+    if (!self)
+      return;
+    xo->startSearch();
+    // The dialog may have been destroyed while the start ran.
     if (self)
-      xo->startSearch();
+      self->m_sessionTaskRunning.store(false);
   });
 }
 
@@ -367,10 +381,12 @@ bool XtalOptDialog::importSettings()
   // Launch file dialog
   QString newFilename = QFileDialog::getOpenFileName(
     this, QString("Import settings from XtalOpt CLI input file"),
-    defaultSaveDir(), "All files (*.*)", 0, QFileDialog::DontUseNativeDialog);
+    Settings::recentLookupDirectory("import", defaultSaveDir()), "All files (*.*)",
+    0, QFileDialog::DontUseNativeDialog);
 
   // If a valid file is selected
   if (!newFilename.isEmpty()) {
+    Settings::saveRecentLookupDirectory("import", newFilename);
     XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 
     bool read =
@@ -395,11 +411,13 @@ bool XtalOptDialog::exportSettings()
 
   // Launch file dialog
   QString newFilename = QFileDialog::getSaveFileName(
-    this, QString("Export settings to XtalOpt CLI input file"), defaultSaveDir(), "All files (*.*)",
+    this, QString("Export settings to XtalOpt CLI input file"),
+    Settings::recentLookupDirectory("export", defaultSaveDir()), "All files (*.*)",
       0, QFileDialog::DontUseNativeDialog);
 
   // If a valid file is selected
   if (!newFilename.isEmpty()) {
+    Settings::saveRecentLookupDirectory("export", newFilename);
     XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
     bool write = xtalopt->saveInputFile(newFilename);
     if (!write) {

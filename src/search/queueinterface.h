@@ -353,6 +353,13 @@ public slots:
   /** @return True if this interface submits through a batch scheduler. */
   virtual bool isBatchQueue() const { return false; }
 
+  /**
+   * @return True if the jobs of this interface run in the structure's local
+   * working directory. A direct run is always local; a batch job is local
+   * unless the jobs are submitted to a remote host.
+   */
+  bool executesLocally() const;
+
   /** Batch scheduler submit command, if supported by this interface. */
   virtual QString submitCommand() const { return QString(); }
   /** Set the batch scheduler submit command, if supported by this interface. */

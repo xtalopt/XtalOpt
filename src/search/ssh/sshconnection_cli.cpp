@@ -322,22 +322,27 @@ bool SSHConnectionCLI::executeSSH(const QString& command,
   // remote paths as arguments; quote them with the shared remote-path rule.
   fullArgs << quoteRemotePathArgs(args);
 
-  const int timeout_ms = timeoutMs < 0 ? CLISSH_RUN_TIMEOUT : timeoutMs;
-  const ProcessResult result = runCliSshCommand("ssh", fullArgs, timeout_ms, cancel);
+  // A negative timeout waits for completion or cancellation.
+  const ProcessResult result = runCliSshCommand("ssh", fullArgs, timeoutMs, cancel);
 
   if (!result.started) {
-    Common::warning(QString("Failed to start ssh command with args \"%1\" "
-                           "after %2 seconds.")
+    Common::warning(QString("Failed to start ssh command with args \"%1\": %2")
                    .arg(fullArgs.join(","))
-                   .arg(timeout_ms / 1000));
+                   .arg(result.errorString));
     return false;
   }
 
   if (!result.finished) {
-    Common::warning(QString("ssh command with args \"%1\" failed to finish "
-                           "within %2 seconds.")
-                   .arg(fullArgs.join(","))
-                   .arg(timeout_ms / 1000));
+    if (timeoutMs < 0) {
+      Common::warning(QString("ssh command with args \"%1\" was stopped before "
+                             "it finished.")
+                     .arg(fullArgs.join(",")));
+    } else {
+      Common::warning(QString("ssh command with args \"%1\" failed to finish "
+                             "within %2 seconds.")
+                     .arg(fullArgs.join(","))
+                     .arg(timeoutMs / 1000));
+    }
     return false;
   }
 
@@ -373,10 +378,8 @@ bool SSHConnectionCLI::executeSCPTo(const QString& source, const QString& dest,
   // Add source
   fullArgs << source;
 
-  // Add destination. The remote path is passed as-is, on purpose: legacy
-  // scp strips quotes through the remote shell, but SFTP-mode scp (the
-  // default since OpenSSH 9.0) would keep them as literal characters. A
-  // plain path, including a leading "~/", works in both modes.
+  // Pass the remote path unchanged. Legacy scp uses the remote shell, while
+  // SFTP-based scp treats the path directly.
   fullArgs << QString("%1%2%3:%4")
                 .arg(m_user)
                 .arg(m_user.isEmpty() ? "" : "@")

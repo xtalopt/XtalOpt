@@ -28,6 +28,7 @@
 #include <xtalopt/constants.h>
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/gui/dialog.h>
+#include <xtalopt/settings.h>
 #include <xtalopt/xtalopt.h>
 
 #include <QAbstractSpinBox>
@@ -721,6 +722,30 @@ void TabProgress::progressContextMenu(QPoint p)
   }
 }
 
+// Ask the user to handle a submitted job whose ID was not read.
+bool TabProgress::confirmUnconfirmedJob(Xtal* xtal, const QString& action)
+{
+  {
+    QReadLocker xtalLocker(&xtal->lock());
+    if (xtal->getStatus() != Xtal::Submitted || xtal->getJobID() != 0)
+      return true;
+  }
+
+  const QMessageBox::StandardButton answer = QMessageBox::question(
+    m_dialog, tr("Unconfirmed scheduler job"),
+    tr("The scheduler accepted this job, but XtalOpt could not read its job ID.\n\n"
+       "Inspect the scheduler and cancel the job manually before %1. "
+       "Continue only after doing that.").arg(action),
+    QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+
+  if (answer == QMessageBox::Yes)
+    return true;
+
+  QtCompat::MutexLocker contextLocker(m_context_mutex.get());
+  m_context_xtal = nullptr;
+  return false;
+}
+
 void TabProgress::restartJobProgress()
 {
   QPointer<Xtal> xtal;
@@ -731,6 +756,9 @@ void TabProgress::restartJobProgress()
   if (!xtal)
     return;
 
+  if (!confirmUnconfirmedJob(xtal, tr("restarting it")))
+    return;
+
   // Get info from xtal
   int optstep;
   QString tag;
@@ -738,22 +766,6 @@ void TabProgress::restartJobProgress()
     QReadLocker xtalLocker(&xtal->lock());
     optstep = xtal->getCurrentOptStep();
     tag = xtal->getTag();
-    if (xtal->getStatus() == Xtal::Submitted && xtal->getJobID() == 0) {
-      xtalLocker.unlock();
-
-      const QMessageBox::StandardButton answer = QMessageBox::question(
-        m_dialog, tr("Unconfirmed scheduler job"),
-        tr("The scheduler accepted this job, but XtalOpt could not read its job ID.\n\n"
-           "Inspect the scheduler and cancel the job manually before restarting it. "
-           "Continue only after doing that."),
-        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
-
-      if (answer != QMessageBox::Yes) {
-        QtCompat::MutexLocker contextLocker(m_context_mutex.get());
-        m_context_xtal = nullptr;
-        return;
-      }
-    }
   }
 
   // Choose which OptStep to use
@@ -820,25 +832,8 @@ void TabProgress::failXtalProgress()
   if (!xtal)
     return;
 
-  {
-    QReadLocker locker(&xtal->lock());
-    if (xtal->getStatus() == Xtal::Submitted && xtal->getJobID() == 0) {
-      locker.unlock();
-
-      const QMessageBox::StandardButton answer = QMessageBox::question(
-        m_dialog, tr("Unconfirmed scheduler job"),
-        tr("The scheduler accepted this job, but XtalOpt could not read its job ID.\n\n"
-           "Inspect the scheduler and cancel the job manually before stopping the "
-           "structure. Continue only after doing that."),
-        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
-
-      if (answer != QMessageBox::Yes) {
-        QtCompat::MutexLocker contextLocker(m_context_mutex.get());
-        m_context_xtal = nullptr;
-        return;
-      }
-    }
-  }
+  if (!confirmUnconfirmedJob(xtal, tr("stopping the structure")))
+    return;
 
   emit startingBackgroundProcessing();
   QPointer<TabProgress> self(this);
@@ -955,6 +950,17 @@ void TabProgress::resetFailureCountProgress_()
 
 void TabProgress::randomizeStructureProgress()
 {
+  QPointer<Xtal> xtal;
+  {
+    QtCompat::MutexLocker contextLocker(m_context_mutex.get());
+    xtal = m_context_xtal;
+  }
+  if (!xtal)
+    return;
+
+  if (!confirmUnconfirmedJob(xtal, tr("replacing the structure")))
+    return;
+
   emit startingBackgroundProcessing();
   QPointer<TabProgress> self(this);
   (void)QtConcurrent::run(&m_workerPool, [self]() {
@@ -977,24 +983,28 @@ void TabProgress::randomizeStructureProgress_()
 
   int jobID;
   int optStep;
+  QString tag;
   {
     QReadLocker locker(&xtal->lock());
     jobID = xtal->getJobID();
     optStep = xtal->getCurrentOptStep();
+    tag = xtal->getTag();
   }
 
-  // End job if currently running
-  if (jobID) {
-    QueueInterface* queue = m_search->queueInterface(optStep);
-    if (queue)
-      queue->stopJob(xtal);
+  // Cancel the old job before replacing files in its directory.
+  QueueInterface* queue = jobID ? m_search->queueInterface(optStep) : nullptr;
+  if (queue && !queue->stopJob(xtal)) {
+    Common::warning(tr("Structure %1 was not replaced because its scheduler "
+                       "job could not be cancelled.").arg(tag));
+    emit finishedBackgroundProcessing();
+    QtCompat::MutexLocker contextLocker(m_context_mutex.get());
+    m_context_xtal = 0;
+    return;
   }
 
   if (!m_search->replaceWithRandom(xtal, "manual")) {
-    QString tag;
     {
       QReadLocker locker(&xtal->lock());
-      tag = xtal->getTag();
       optStep = xtal->getCurrentOptStep();
     }
     Common::warning(tr("Manual random replacement failed for structure %1 in opt step %2.")
@@ -1013,6 +1023,17 @@ void TabProgress::randomizeStructureProgress_()
 
 void TabProgress::replaceWithOffspringProgress()
 {
+  QPointer<Xtal> xtal;
+  {
+    QtCompat::MutexLocker contextLocker(m_context_mutex.get());
+    xtal = m_context_xtal;
+  }
+  if (!xtal)
+    return;
+
+  if (!confirmUnconfirmedJob(xtal, tr("replacing the structure")))
+    return;
+
   emit startingBackgroundProcessing();
   QPointer<TabProgress> self(this);
   (void)QtConcurrent::run(&m_workerPool, [self]() {
@@ -1035,17 +1056,23 @@ void TabProgress::replaceWithOffspringProgress_()
 
   int jobID;
   int optStep;
+  QString tag;
   {
     QReadLocker locker(&xtal->lock());
     jobID = xtal->getJobID();
     optStep = xtal->getCurrentOptStep();
+    tag = xtal->getTag();
   }
 
-  // End job if currently running
-  if (jobID) {
-    QueueInterface* queue = m_search->queueInterface(optStep);
-    if (queue)
-      queue->stopJob(xtal);
+  // Cancel the old job before replacing files in its directory.
+  QueueInterface* queue = jobID ? m_search->queueInterface(optStep) : nullptr;
+  if (queue && !queue->stopJob(xtal)) {
+    Common::warning(tr("Structure %1 was not replaced because its scheduler "
+                       "job could not be cancelled.").arg(tag));
+    emit finishedBackgroundProcessing();
+    QtCompat::MutexLocker contextLocker(m_context_mutex.get());
+    m_context_xtal = 0;
+    return;
   }
 
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
@@ -1053,11 +1080,6 @@ void TabProgress::replaceWithOffspringProgress_()
                                               "XtalOpt.");
 
   if (!xtalopt->replaceWithOffspring(xtal, "manual")) {
-    QString tag;
-    {
-      QReadLocker locker(&xtal->lock());
-      tag = xtal->getTag();
-    }
     Common::warning(tr("Manual offspring replacement failed for structure %1.").arg(tag));
     emit finishedBackgroundProcessing();
     QtCompat::MutexLocker contextLocker(m_context_mutex.get());
@@ -1080,7 +1102,7 @@ void TabProgress::injectStructureProgress()
   }
 
   // Prompt for filename
-  QString filename = m_search->getLocWorkDir();
+  const QString filename = Settings::recentLookupDirectory("seed", m_search->getLocWorkDir());
 
   // Launch file dialog
   QString newFilename = QFileDialog::getOpenFileName(
@@ -1093,6 +1115,8 @@ void TabProgress::injectStructureProgress()
   // User canceled selection
   if (newFilename.isEmpty())
     return;
+
+  Settings::saveRecentLookupDirectory("seed", newFilename);
 
   // Load in background
   emit startingBackgroundProcessing();

@@ -76,6 +76,7 @@ signals:
 
 private:
   QString sessionStateFilePath() const;
+  QString resumeStartDirectory() const override;
   bool prepareResumeSession(const QString& filename) override;
   void resumeSession_(const QString& filename) override;
 

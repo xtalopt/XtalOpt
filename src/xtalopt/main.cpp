@@ -244,7 +244,7 @@ bool installLogHandler(const LaunchOptions& options, QString& error)
     return false;
   }
 
-  const QString logFilename = logDir.absoluteFilePath("outlog_xtalopt.txt");
+  const QString logFilename = logDir.absoluteFilePath("xtalopt.log");
   QFile initialLogFile(logFilename);
   if (!initialLogFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
     error = QString("Cannot write log file: %1").arg(logFilename);
@@ -305,7 +305,7 @@ void printHelp(const QString& argv0)
   out << "  -s, --start                         Start an XtalOpt search in CLI\n";
   out << "  -r, --resume                        Resume an XtalOpt search from <directory> in CLI\n";
   out << "  -p, --plot                          Show a plot of a XtalOpt search saved at <directory> (requires CLI+GUI binary)\n";
-  out << "  -l, --log                           Save output to <directory>/outlog_xtalopt.txt\n";
+  out << "  -l, --log                           Save output to <directory>/xtalopt.log\n";
   out << "  -d, --dir <directory>               Directory for resuming search, plotting data, or saving log\n";
   out << "  -i, --input <file>                  Input file for XtalOpt search in CLI (Default: xtalopt.in)\n";
   out << "\n";

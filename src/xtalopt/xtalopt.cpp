@@ -172,10 +172,7 @@ XtalOpt::XtalOpt(QObject* parent)
   connect(queue(), &QueueManager::structureFailed,
           this, &XtalOpt::requestEvaluationAfterFail);
   connect(this, &SearchBase::structureStateChanged,
-          this,
-          static_cast<void (XtalOpt::*)(Search::Structure*)>(
-              &XtalOpt::requestStructureStateFileSave),
-          Qt::DirectConnection);
+          this, &XtalOpt::requestStructureStateFileSave, Qt::DirectConnection);
   connect(this, &SearchBase::startingSession,
           this, &XtalOpt::clearPendingRequests, Qt::DirectConnection);
   connect(this, &SearchBase::structureEvaluationUpdateRequested,
@@ -312,29 +309,19 @@ void XtalOpt::requestStateFileSave()
 
 void XtalOpt::requestStructureStateFileSave(Search::Structure* structure)
 {
+  if (!structure || !canRequestStateFileSave())
+    return;
+
   // Objc/cons calculation statuses don't need a save operation
-  if (structure) {
+  {
     QReadLocker locker(&structure->lock());
     if (structure->isScriptCalculationState())
       return;
   }
 
-  QList<Search::Structure*> structures;
-  structures.append(structure);
-  requestStructureStateFileSave(structures);
-}
-
-void XtalOpt::requestStructureStateFileSave(const QList<Search::Structure*>& structures)
-{
-  if (structures.isEmpty() || !canRequestStateFileSave())
-    return;
-
   {
     std::lock_guard<std::mutex> guard(x_filesNeedingSaveMutex);
-    for (Search::Structure* structure : structures) {
-      if (structure)
-        x_structuresNeedingSave.insert(structure);
-    }
+    x_structuresNeedingSave.insert(structure);
   }
   x_fileSaveJob.request();
   // We must update results since it contains structures' data

@@ -179,6 +179,11 @@ DetectedFormat detectFormatFromContents(const QString& filename)
       (text.contains("CELL_PARAMETERS") || text.contains("!    total energy")))
     return DetectedFormat("PWSCF", ReadOptimizerOutput);
 
+  // This is to cover the "scf" case!
+  if (text.contains("Program PWSCF") && text.contains("lattice parameter (alat)") &&
+      text.contains("crystal axes:"))
+    return DetectedFormat("PWSCF", ReadOptimizerOutput);
+
   if (text.contains("outcell: Unit cell vectors") && text.contains("outcoor:"))
     return DetectedFormat("SIESTA", ReadOptimizerOutput);
 

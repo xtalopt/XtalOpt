@@ -292,7 +292,7 @@
     </widget>
    </item>
    <item row="2" column="0">
-    <widget class="QLabel" name="label_15">
+    <widget class="QLabel" name="label_templates">
      <property name="font">
       <font>
        <pointsize>11</pointsize>
@@ -382,21 +382,6 @@
     </widget>
    </item>
    <item row="5" column="0" colspan="3">
-    <widget class="QPushButton" name="push_saveScheme">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-      </font>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::StrongFocus</enum>
-     </property>
-     <property name="text">
-      <string>Save Opt Scheme</string>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="3" colspan="2">
     <widget class="QPushButton" name="push_loadScheme">
      <property name="font">
       <font>
@@ -408,6 +393,21 @@
      </property>
      <property name="text">
       <string>Load Opt Scheme</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="3" colspan="2">
+    <widget class="QPushButton" name="push_saveScheme">
+     <property name="font">
+      <font>
+       <pointsize>11</pointsize>
+      </font>
+     </property>
+     <property name="focusPolicy">
+      <enum>Qt::StrongFocus</enum>
+     </property>
+     <property name="text">
+      <string>Save Opt Scheme</string>
      </property>
     </widget>
    </item>
@@ -664,8 +664,8 @@
   <tabstop>push_add</tabstop>
   <tabstop>push_remove</tabstop>
   <tabstop>push_help</tabstop>
-  <tabstop>push_saveScheme</tabstop>
   <tabstop>push_loadScheme</tabstop>
+  <tabstop>push_saveScheme</tabstop>
   <tabstop>cb_cancelJobAfterTime</tabstop>
   <tabstop>spin_hoursForCancelJobAfterTime</tabstop>
   <tabstop>edit_user1</tabstop>

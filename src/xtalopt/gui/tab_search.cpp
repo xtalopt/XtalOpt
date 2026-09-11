@@ -16,6 +16,7 @@
 #include <xtalopt/gui/tab_search.h>
 
 #include <xtalopt/gui/dialog.h>
+#include <xtalopt/settings.h>
 #include <xtalopt/xtalopt.h>
 
 #include <common/fileutils.h>
@@ -480,7 +481,7 @@ void TabSearch::addSeed(QListWidgetItem* item)
   if (replace) {
     filename = item->text();
   } else {
-    filename = QDir::homePath();
+    filename = Settings::recentLookupDirectory("seed", QDir::homePath());
   }
 
   // Launch file dialog
@@ -494,6 +495,8 @@ void TabSearch::addSeed(QListWidgetItem* item)
   // User canceled
   if (newFilename.isEmpty())
     return;
+
+  Settings::saveRecentLookupDirectory("seed", newFilename);
 
   // Update text
   if (replace)

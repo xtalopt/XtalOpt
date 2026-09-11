@@ -26,6 +26,11 @@ class XtalOpt;
 
 namespace Settings {
 
+// Save and read the last directory used by an XtalOpt file dialog. These
+//   info are saved under a path marked with major-minor version series.
+QString recentLookupDirectory(const QString& name, const QString& fallback);
+void saveRecentLookupDirectory(const QString& name, const QString& selectedPath);
+
 // Return the "official" keyword name, or an empty string if it is unknown.
 QString findKeywordName(const QString& raw);
 

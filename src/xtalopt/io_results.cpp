@@ -44,8 +44,10 @@ namespace {
 bool writeOutputFileWithBackup(const QString& filename, const QString& contents,
                                const char* caller)
 {
-  if (QFile::exists(filename)) {
-    const QString oldFilename = filename + ".old";
+  const QString oldFilename = filename + ".old";
+  const bool haveBackup = QFile::exists(filename);
+
+  if (haveBackup) {
     if ((QFile::exists(oldFilename) && !QFile::remove(oldFilename)) ||
         !QFile::copy(filename, oldFilename)) {
       Common::error(QString("%1: could not write backup file %2.")
@@ -69,6 +71,12 @@ bool writeOutputFileWithBackup(const QString& filename, const QString& contents,
   file.close();
   if (file.error() != QFile::NoError) {
     Common::error(QString("%1: could not write file %2.").arg(caller).arg(filename));
+    // Restore the last complete output after a partial write.
+    if (haveBackup &&
+        (!QFile::remove(filename) || !QFile::copy(oldFilename, filename))) {
+      Common::error(QString("%1: could not restore file %2 from its backup.")
+                    .arg(caller).arg(filename));
+    }
     return false;
   }
   return true;

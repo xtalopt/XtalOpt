@@ -177,6 +177,13 @@ Optimizer* QueueInterface::getCurrentOptimizer(Structure* s) const
   return m_search->optimizer(s->getCurrentOptStep());
 }
 
+bool QueueInterface::executesLocally() const
+{
+  // Check if the run is performed locally: a direct run always works in the structure's local
+  //   directory. A batch job does too, unless submitted to a remote host.
+  return !isBatchQueue() || !m_search->isRemoteQueue();
+}
+
 bool QueueInterface::safeRelativeFilename(const QString& filename)
 {
   QString normalized = filename;

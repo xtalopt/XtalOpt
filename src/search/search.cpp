@@ -79,6 +79,17 @@ bool isRemoteAbsolutePath(const QString& path)
   return path.startsWith("/");
 }
 
+// True for paths accepted unchanged by legacy and SFTP-based scp.
+bool isSimpleRemotePath(const QString& path)
+{
+  for (int i = 0; i < path.size(); ++i) {
+    const QChar letter = path.at(i);
+    if (!letter.isLetterOrNumber() && !QString("/._-~").contains(letter))
+      return false;
+  }
+  return true;
+}
+
 }
 
 
@@ -592,7 +603,18 @@ bool SearchBase::createSSHConnections()
     Common::message(label);
     updateProgressValue(-1, label);
     m_ssh.reset(SSHManagerCLI::createConnections(this, getHost(), getUsername(), getPort(), error));
-    return m_ssh != nullptr;
+    if (m_ssh == nullptr)
+      return false;
+
+    // Older scp clients may pass complex paths through a remote shell.
+    if (!isSimpleRemotePath(getRemWorkDir())) {
+      Common::warning(tr("The remote working directory '%1' uses characters "
+                         "beyond letters, digits and '/._-~'. File transfers "
+                         "may fail with an older scp command. Use a simpler "
+                         "path, or the libssh method, if that happens.")
+                        .arg(getRemWorkDir()));
+    }
+    return true;
   };
 
   const auto reportFailure = [this](const QString& error) {
@@ -701,8 +723,8 @@ void SearchBase::launchSession()
   Q_ASSERT_X(isSessionStarting(), "SearchBase::launchSession",
              "launchSession() called without a matching beginSession()");
 
-  // Start the queue only after the structures and settings are ready.
-  if (!isReadOnly() && !m_queueThread->isRunning())
+  // Start the queue only after setup, and never during shutdown.
+  if (!isReadOnly() && !isShuttingDown() && !m_queueThread->isRunning())
     m_queueThread->start();
 
   // Start the session only after leaving the starting state.
@@ -1484,22 +1506,25 @@ bool SearchBase::checkObjectiveAndConstraintScripts(QString* err) const
   if (err)
     err->clear();
 
-  for (size_t optStep = 0; optStep < getNumOptSteps(); ++optStep) {
-    QueueInterface* queue = queueInterface(static_cast<int>(optStep));
-    if (!queue)
+  // The user scripts run only after the last optimization step; so we need
+  //   to only check against the queue of that step.
+  if (getNumOptSteps() == 0)
+    return true;
+
+  QueueInterface* queue = queueInterface(static_cast<int>(getNumOptSteps() - 1));
+  if (!queue)
+    return true;
+
+  for (int i = 0; i < getObjectivesNum(); ++i) {
+    if (!objectiveNeedsExternalCalculation(i))
       continue;
+    if (!checkScriptPath(getObjectivesExe(i), "objective", i, queue, err))
+      return false;
+  }
 
-    for (int i = 0; i < getObjectivesNum(); ++i) {
-      if (!objectiveNeedsExternalCalculation(i))
-        continue;
-      if (!checkScriptPath(getObjectivesExe(i), "objective", i, queue, err))
-        return false;
-    }
-
-    for (int i = 0; i < getConstraintsNum(); ++i) {
-      if (!checkScriptPath(getConstraintExe(i), "constraint", i, queue, err))
-        return false;
-    }
+  for (int i = 0; i < getConstraintsNum(); ++i) {
+    if (!checkScriptPath(getConstraintExe(i), "constraint", i, queue, err))
+      return false;
   }
 
   return true;
@@ -1509,7 +1534,7 @@ bool SearchBase::checkScriptPath(const QString& path, const QString& label, int 
                                  QueueInterface* queue, QString* err) const
 {
   const QString trimmed = path.trimmed();
-  const bool remoteScript = isRemoteQueue() && queue && queue->isBatchQueue();
+  const bool remoteScript = queue && !queue->executesLocally();
 
   if (remoteScript) {
     if (!isRemoteAbsolutePath(trimmed)) {

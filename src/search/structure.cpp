@@ -636,6 +636,7 @@ void Structure::deleteFromHistory(unsigned int index)
   m_histEnergies.removeAt(index);
   m_histCoords.removeAt(index);
   m_histCells.removeAt(index);
+  m_histOptSteps.removeAt(index);
 }
 
 void Structure::retrieveHistoryEntry(unsigned int index,

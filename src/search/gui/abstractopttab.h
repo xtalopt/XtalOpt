@@ -29,6 +29,7 @@ class QCheckBox;
 class QComboBox;
 class QDialog;
 class QDoubleSpinBox;
+class QLabel;
 class QLineEdit;
 class QPushButton;
 class QTextEdit;
@@ -235,6 +236,8 @@ protected:
   QComboBox* ui_combo_optimizers;
   /// Cached GUI pointer. This is set in DefaultOptTab
   QComboBox* ui_combo_templates;
+  /// Cached GUI pointer. This is set in DefaultOptTab
+  QLabel* ui_label_templates;
   /// Cached GUI pointer. This is set in DefaultOptTab
   QLineEdit* ui_edit_user1;
   /// Cached GUI pointer. This is set in DefaultOptTab

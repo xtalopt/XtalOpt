@@ -242,8 +242,13 @@ bool PwscfFormat::readOutput(Atoms::Geometry& s, const QString& filename)
   std::string line;
   std::vector<std::string> lineSplit;
   double outputAlat = 1.0;
+  int headerAtomCount = 0;
   bool headerCellFound = false;
   Common::Matrix3 headerCellMatrix = Common::Matrix3::Zero();
+  bool headerCoordsFound = false;
+  bool headerCoordsAreFractional = false;
+  QList<unsigned int> headerAtomicNums;
+  QList<Common::Vector3> headerCoords;
 
   while (getline(ifs, line)) {
     if (strstr(line.c_str(), "lattice parameter (alat)")) {
@@ -255,6 +260,70 @@ bool PwscfFormat::readOutput(Atoms::Geometry& s, const QString& filename)
         if (!fields.empty() && Common::parseDoubleString(fields[0], parsedAlat) && parsedAlat > 0.0) {
           outputAlat = parsedAlat;
         }
+      }
+    }
+
+    if (strstr(line.c_str(), "number of atoms/cell")) {
+      lineSplit = Common::split(line, '=');
+      if (lineSplit.size() >= 2) {
+        double parsedCount = 0.0;
+        if (Common::parseDoubleString(Common::trim(lineSplit[1]), parsedCount) &&
+            parsedCount > 0.0) {
+          headerAtomCount = static_cast<int>(parsedCount);
+        }
+      }
+    }
+
+    // The header also lists the atoms of the run. A single-point (scf) run has no
+    // final coordinates at all, and this listing is then the only one.
+    if (headerAtomCount > 0 &&
+        (strstr(line.c_str(), "positions (alat units)") ||
+         strstr(line.c_str(), "positions (cryst. coord.)"))) {
+      const bool fractional =
+        strstr(line.c_str(), "positions (cryst. coord.)") != nullptr;
+      QList<unsigned int> siteNums;
+      QList<Common::Vector3> siteCoords;
+      bool sitesOk = true;
+      for (int i = 0; i < headerAtomCount && sitesOk; ++i) {
+        if (!getline(ifs, line)) {
+          sitesOk = false;
+          break;
+        }
+        // A site line reads:
+        //   1   Si  tau(   1) = (  0.0000000  0.0000000  0.0000000  )
+        const size_t equals = line.find('=');
+        if (equals == std::string::npos) {
+          sitesOk = false;
+          break;
+        }
+        std::string values = line.substr(equals + 1);
+        Common::replaceAll(values, "(", " ");
+        Common::replaceAll(values, ")", " ");
+        const std::vector<std::string> nameFields =
+          Common::split(Common::reduce(line.substr(0, equals)), ' ');
+        const std::vector<std::string> valueFields =
+          Common::split(Common::reduce(values), ' ');
+        double x, y, z;
+        if (nameFields.size() < 2 || valueFields.size() < 3 ||
+            !Common::parseDoubleString(valueFields[0], x) ||
+            !Common::parseDoubleString(valueFields[1], y) ||
+            !Common::parseDoubleString(valueFields[2], z)) {
+          sitesOk = false;
+          break;
+        }
+        const unsigned int atomicNum = Atoms::ElementInfo::getAtomicNum(nameFields[1]);
+        if (atomicNum == 0) {
+          sitesOk = false;
+          break;
+        }
+        siteNums.append(atomicNum);
+        siteCoords.append(Common::Vector3(x, y, z));
+      }
+      if (sitesOk) {
+        headerAtomicNums = siteNums;
+        headerCoords = siteCoords;
+        headerCoordsAreFractional = fractional;
+        headerCoordsFound = true;
       }
     }
 
@@ -428,6 +497,22 @@ bool PwscfFormat::readOutput(Atoms::Geometry& s, const QString& filename)
       }
     }
 
+  }
+
+  // A single-point run (scf) prints no final coordinates. Its structure is the
+  //   one the header reports, which is what the run was given.
+  if (!cellFound && !coordsFound && headerCellFound && headerCoordsFound) {
+    cellMatrix = headerCellMatrix;
+    cellMatrix *= outputAlat / ANG2BOHR;
+    atomicNums = headerAtomicNums;
+    coords = headerCoords;
+    coordsAreFractional = headerCoordsAreFractional;
+    if (!coordsAreFractional) {
+      for (int i = 0; i < coords.size(); ++i)
+        coords[i] *= outputAlat / ANG2BOHR;
+    }
+    cellFound = true;
+    coordsFound = true;
   }
 
   if (!cellFound)

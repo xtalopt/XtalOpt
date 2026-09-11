@@ -34,6 +34,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFontDatabase>
+#include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPlainTextEdit>
@@ -103,7 +104,8 @@ bool isOptimizerInputAssetName(Optimizer* optimizer, QueueInterface* queueInterf
 
 AbstractOptTab::AbstractOptTab(AbstractDialog* parent, SearchBase* p)
   : AbstractTab(parent, p), ui_combo_queueInterfaces(0), ui_combo_optimizers(0),
-    ui_combo_templates(0), ui_edit_user1(0), ui_edit_user2(0), ui_edit_user3(0),
+    ui_combo_templates(0), ui_label_templates(0),
+    ui_edit_user1(0), ui_edit_user2(0), ui_edit_user3(0),
     ui_edit_user4(0), ui_list_optStep(0), ui_push_add(0),
     ui_push_help(0), ui_push_loadScheme(0), ui_push_optimizerConfig(0),
     ui_push_queueInterfaceConfig(0), ui_push_remove(0), ui_push_saveScheme(0),
@@ -457,13 +459,17 @@ QStringList AbstractOptTab::getTemplateNames(size_t /*optStep*/)
   if (!optimizer || !queue)
     return QStringList();
 
+  // The entries are listed as (if present): optimizer templates,
+  //   optimizer assets, queue job template.
   QStringList templateNames = optimizer->getOptimizerTemplateFileNames();
-  templateNames.append(queue->getQueueInterfaceTemplateFileNames());
   for (const auto& assetName : optimizer->getOptimizerInputAssetNames()) {
     if (!templateNames.contains(assetName))
       templateNames.append(assetName);
   }
-  std::sort(templateNames.begin(), templateNames.end());
+  for (const auto& queueName : queue->getQueueInterfaceTemplateFileNames()) {
+    if (!templateNames.contains(queueName))
+      templateNames.append(queueName);
+  }
   return templateNames;
 }
 
@@ -534,16 +540,19 @@ void AbstractOptTab::updateEditWidget()
                    QString::fromStdString(asset.second));
     }
     text = lines.join("\n");
+    ui_label_templates->setText(tr("Asset"));
     ui_edit_opt->setToolTip(tr("Input asset: one entry per line as '<element or system> <file>'. "
          "The file is a path or a %fileContents:/path% entry; assets are "
          "references only, with no keyword interpretation. File paths cannot "
          "contain ';' or '#'."));
   } else if (queueTemplate && !optimizerTemplate) {
     text = m_search->getQueueInterfaceTemplate(optStepIndex, templateName.toStdString()).c_str();
+    ui_label_templates->setText(tr("Template"));
     ui_edit_opt->setToolTip(tr("Template: paste the file content, or use %fileContents:/path% / "
          "%copyFile:/path% to insert a file. Keywords are interpreted at run time."));
   } else if (optimizerTemplate && !queueTemplate) {
     text = m_search->getOptimizerTemplate(optStepIndex, templateName.toStdString()).c_str();
+    ui_label_templates->setText(tr("Template"));
     ui_edit_opt->setToolTip(tr("Template: paste the file content, or use %fileContents:/path% / "
          "%copyFile:/path% to insert a file. Keywords are interpreted at run time."));
   } else {

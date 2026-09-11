@@ -68,7 +68,8 @@ void setProgressLabelText(QLabel* label, const QString& text)
 } // namespace
 
 AbstractDialog::AbstractDialog(QWidget* parent, Qt::WindowFlags f)
-  : QDialog(parent, f), m_search(0), m_ownsSearchBase(false)
+  : QDialog(parent, f), m_sessionTaskRunning(false), m_search(0),
+    m_ownsSearchBase(false)
 {
   // Initialize vars, connections, etc
   progTimer = new QTimer;
@@ -180,22 +181,38 @@ void AbstractDialog::applyProgressUpdate(int value, const QString& label, int mi
     updateProgressLabel(label);
 }
 
+QString AbstractDialog::resumeStartDirectory() const
+{
+  return QDir::homePath();
+}
+
 void AbstractDialog::resumeSession()
 {
+  // Block other starts and resumes, including while the file dialog is open.
+  if (m_sessionTaskRunning.exchange(true))
+    return;
+
   QString filename;
   filename = QFileDialog::getOpenFileName(
-    this, QString("Load search state settings file"), QDir::homePath(),
+    this, QString("Load search state settings file"), resumeStartDirectory(),
     "*.state;;*.*", 0, QFileDialog::DontUseNativeDialog);
 
   // Give the derived dialog a chance on the GUI thread to decide how the
   //   resume should run before the background thread starts.
-  if (!filename.isEmpty() && prepareResumeSession(filename)) {
-    QPointer<AbstractDialog> self(this);
-    (void)QtConcurrent::run([self, filename]() {
-      if (self)
-        self->resumeSession_(filename);
-    });
+  if (filename.isEmpty() || !prepareResumeSession(filename)) {
+    m_sessionTaskRunning.store(false);
+    return;
   }
+
+  QPointer<AbstractDialog> self(this);
+  (void)QtConcurrent::run([self, filename]() {
+    if (!self)
+      return;
+    self->resumeSession_(filename);
+    // The dialog may have been destroyed while the resume ran.
+    if (self)
+      self->m_sessionTaskRunning.store(false);
+  });
 }
 
 bool AbstractDialog::prepareResumeSession(const QString& filename)

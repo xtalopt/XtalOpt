@@ -19,6 +19,8 @@
 #include <QDialog>
 #include <QMessageBox>
 
+#include <atomic>
+
 class QProgressBar;
 class QTabWidget;
 class QTimer;
@@ -194,13 +196,19 @@ public slots:
 
 protected slots:
   /**
-   * Begin the search. Suggested form for derived class:
+   * Begin the search. Derived classes must claim m_sessionTaskRunning with
+   * exchange(true) before starting work and clear it when done.
 @verbatim
 void DerivedDialog::startSearch() {
+  if (m_sessionTaskRunning.exchange(true))
+    return;
   QPointer<DerivedDialog> self(this);
   (void)QtConcurrent::run([self]() {
+    if (!self)
+      return;
+    self->m_search->startSearch();
     if (self)
-      self->m_search->startSearch();
+      self->m_sessionTaskRunning.store(false);
   });
 }
 @endverbatim
@@ -428,6 +436,12 @@ signals:
 
 protected:
   /**
+   * The directory in which resume dialog opens. An application
+   * dialogs can use this at a remembered location.
+   */
+  virtual QString resumeStartDirectory() const;
+
+  /**
    * Called on the GUI thread after a resume file is selected, before the
    * resume starts in the background. Derived application dialogs can
    * decide here how the resume should run, or return false to cancel it.
@@ -439,6 +453,9 @@ protected:
    * handles the actual loading, since it knows the state file format.
    */
   virtual void resumeSession_(const QString& filename);
+
+  /** True while a start or resume runs in the background. */
+  std::atomic<bool> m_sessionTaskRunning;
 
   /**
    * Cached pointer to the associated SearchBase object.

@@ -527,7 +527,7 @@ QueueInterface::CommandResult BatchQueueInterface::runBatchCommand(const QString
     if (stopped) {
       proc.terminate();
       if (!proc.waitForFinished(1000)) {
-        proc.kill();
+        QtCompat::processKillCommand(proc);
         proc.waitForFinished(PROCESS_KILL_TIMEOUT);
       }
     }
@@ -776,7 +776,9 @@ bool BatchQueueInterface::grepFile(Structure* s, const QString& matchText,
       .arg(flags)
       .arg(shellSingleQuote(matchText))
       .arg(Common::quoteRemotePath(Common::remotePath(s->getRempath(), filename)));
-  if (!ssh->execute(command, stdout_str, stderr_str, ec)) {
+  // Wait until completion or shutdown.
+  if (!ssh->execute(command, stdout_str, stderr_str, ec, false, -1,
+                    m_search->shutdownFlag())) {
     return false;
   }
 
@@ -805,7 +807,9 @@ bool BatchQueueInterface::createExecutionDirectory(Structure* structure, SSHConn
   const QString command = "mkdir -p " + Common::quoteRemotePath(structure->getRempath());
   QString stdout_str, stderr_str;
   int ec;
-  if (!ssh2->execute(command, stdout_str, stderr_str, ec) || ec != 0) {
+  // Wait until completion or shutdown.
+  if (!ssh2->execute(command, stdout_str, stderr_str, ec, false, -1,
+                     m_search->shutdownFlag()) || ec != 0) {
     Common::error(tr("Could not execute %1: %2").arg(command).arg(stderr_str));
     return false;
   }

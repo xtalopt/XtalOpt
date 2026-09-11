@@ -37,6 +37,7 @@ DefaultOptTab::DefaultOptTab(AbstractDialog* dialog, SearchBase* opt)
   ui_combo_queueInterfaces = ui->combo_queueInterfaces;
   ui_combo_optimizers = ui->combo_optimizers;
   ui_combo_templates = ui->combo_templates;
+  ui_label_templates = ui->label_templates;
   ui_edit_user1 = ui->edit_user1;
   ui_edit_user2 = ui->edit_user2;
   ui_edit_user3 = ui->edit_user3;

@@ -663,7 +663,15 @@ bool readStructureStateWorkflow(Xtal& xtal, const QString& filename)
     xtal.setParents(settings->value("parents", "").toString());
     xtal.setRempath(settings->value("rempath", "").toString());
     xtal.setLocpath(settings->value("locpath", xtal.getLocpath()).toString());
-    loadedStatusValue = settings->value("status", -1).toInt();
+    // Reject invalid text and out-of-range enum values.
+    bool statusOk = false;
+    loadedStatusValue = settings->value("status", -1).toInt(&statusOk);
+    if (!statusOk || loadedStatusValue < Structure::Optimized ||
+        loadedStatusValue > Structure::ConsFailed) {
+      Common::error(QString("%1: the saved status in %2 is missing or unknown.")
+                      .arg(__func__).arg(filename));
+      return false;
+    }
 
     xtal.setOptTimerStart(QDateTime::fromString(settings->value("startTime", "").toString()));
     xtal.setOptTimerEnd(QDateTime::fromString(settings->value("endTime", "").toString()));
@@ -694,8 +702,15 @@ bool readStructureStateWorkflow(Xtal& xtal, const QString& filename)
       xtal.setStrucObjValues(ok ? value : std::numeric_limits<double>::quiet_NaN());
     }
     settings->endArray();
-    xtal.setStrucObjState(Structure::ObjectivesState(
-      settings->value("objectivesState", 0).toInt()));
+    bool objStateOk = false;
+    const int loadedObjState = settings->value("objectivesState", 0).toInt(&objStateOk);
+    if (!objStateOk || loadedObjState < Structure::Os_NotCalculated ||
+        loadedObjState > Structure::Os_Fail) {
+      Common::error(QString("%1: the saved objective state in %2 is unknown.")
+                      .arg(__func__).arg(filename));
+      return false;
+    }
+    xtal.setStrucObjState(Structure::ObjectivesState(loadedObjState));
 
     // Constraints: now stored separately from objectives.
     xtal.resetStrucConstraint();
@@ -705,8 +720,15 @@ bool readStructureStateWorkflow(Xtal& xtal, const QString& filename)
       xtal.setStrucConstraintValues(settings->value("value").toDouble());
     }
     settings->endArray();
-    xtal.setStrucConstraintState(Structure::ConstraintState(
-      settings->value("constraintsState", 0).toInt()));
+    bool consStateOk = false;
+    const int loadedConsState = settings->value("constraintsState", 0).toInt(&consStateOk);
+    if (!consStateOk || loadedConsState < Structure::Cs_NotCalculated ||
+        loadedConsState > Structure::Cs_Fail) {
+      Common::error(QString("%1: the saved constraint state in %2 is unknown.")
+                      .arg(__func__).arg(filename));
+      return false;
+    }
+    xtal.setStrucConstraintState(Structure::ConstraintState(loadedConsState));
     xtal.setStrucConstraintRedoCount(settings->value("constraintRedoCount", 0).toInt());
     xtal.setCurrentOptStep(currentOptStep);
     xtal.setStatus(static_cast<Structure::State>(loadedStatusValue));

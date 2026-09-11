@@ -41,6 +41,7 @@ extern "C" {
 #include <cmath>
 #include <limits>
 #include <map>
+#include <mutex>
 #include <vector>
 
 namespace Atoms {
@@ -49,6 +50,11 @@ namespace Atoms {
 //   while the other functions make random cells or molecular crystals.
 
 namespace {
+
+// RandSpg keeps its atomic radii in tables shared by the whole process, and
+//   randSpgCrystal() rewrites them every time it is called. Structure generation
+//   runs on several threads at once, so only one of these calls is allowed at a time. 
+std::mutex randSpgMutex;
 
 bool randomLatticeIsAcceptable(const Geometry& structure,
                                const Generators::CrystalGenerationOptions& options)
@@ -256,7 +262,11 @@ std::unique_ptr<Geometry> Generators::generateRandSpg(const Generators::CrystalG
                           ? options.generationAttempts : 1;
 
   for (size_t i = 0; i < attempts; ++i) {
-    Crystal crystal = RandSpg::randSpgCrystal(input);
+    Crystal crystal;
+    {
+      std::lock_guard<std::mutex> guard(randSpgMutex);
+      crystal = RandSpg::randSpgCrystal(input);
+    }
     if (crystal.getVolume() == 0)
       continue;
 

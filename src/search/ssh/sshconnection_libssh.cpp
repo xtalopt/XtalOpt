@@ -380,6 +380,22 @@ bool SSHConnectionLibSSH::connectSession(bool throwExceptions)
   }
 
   method = ssh_auth_list(m_session);
+
+  // We can only try a public key or a password below. If the server takes
+  //   neither, stop with a clear message: the failure at the end of the loop
+  //   means "wrong password", and the caller would just keep asking for one.
+  if (!(method & SSH_AUTH_METHOD_PUBLICKEY) &&
+      !(method & SSH_AUTH_METHOD_PASSWORD)) {
+    Common::warning(tr("The server at %1 accepts neither public key nor password "
+                       "login. Use the system SSH method for this host.")
+                       .arg(m_host));
+    if (throwExceptions) {
+      throw SSH_UNKNOWN_ERROR;
+    } else {
+      return false;
+    }
+  }
+
   // while loop here is only so break will work. If execution gets
   // to the end of the loop, an exception is thrown.
   while (rc != SSH_AUTH_SUCCESS) {

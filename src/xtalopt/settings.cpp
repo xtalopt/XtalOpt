@@ -20,9 +20,13 @@
 #include <common/constants.h>
 #include <common/compatibility/platform_compat.h>
 #include <common/output.h>
+#include <common/settings.h>
 #include <common/stringutils.h>
 
+#include <QDir>
+#include <QFileInfo>
 #include <QHash>
+#include <QSettings>
 #include <QSet>
 
 #include <algorithm>
@@ -395,7 +399,50 @@ bool handleInvalidSetting(XtalOpt& opt, InvalidSettingAction invalidAction,
   return true;
 }
 
+QString lookupSettingsFilePath()
+{
+  // Where the "saved lookup paths" is stored. The file is in a directory marked with
+  //   the version series (major.mainor), so an XtalOpt version with different major/minor
+  //   version won't read or overwrites it.
+  // This whole feature is used in GUI!
+  //
+  // QSettings is only used to locate Qt's per-user configuration root. Actual
+  //   settings access always uses the explicit filename created here.
+
+  QSettings locator(QSettings::IniFormat, QSettings::UserScope,
+                    QStringLiteral("XtalOpt"), QStringLiteral("XtalOpt"));
+  const QString root = QFileInfo(locator.fileName()).absolutePath();
+  return QDir(root).filePath(QStringLiteral(XTALOPT_VER_SERIES) +
+                             QStringLiteral("/preferences.ini"));
+}
 } // anonymous namespace
+
+QString recentLookupDirectory(const QString& name, const QString& fallback)
+{
+  // Read the recent lookup path for the named field. If not successful, caller will
+  //   just resort to its own default directory.
+  QSETTINGS_FILE(lookupSettingsFilePath());
+  const QString directory = settings->value("recentDirectories/" + name).toString();
+  return directory.isEmpty() ? fallback : directory;
+}
+
+void saveRecentLookupDirectory(const QString& name, const QString& selectedPath)
+{
+  // Try to save recent lookup paths. If we can't, the GUI will just open
+  //   save/load dialogs from their default path.
+  if (name.isEmpty() || selectedPath.isEmpty())
+    return;
+
+  const QString filename = lookupSettingsFilePath();
+  const QString directory = QFileInfo(filename).absolutePath();
+  if (!QDir().mkpath(directory))
+    return;
+
+  QSETTINGS_FILE(filename);
+  settings->setValue("recentDirectories/" + name,
+                     QFileInfo(selectedPath).absolutePath());
+  settings->sync();
+}
 
 QString optimizerTemplateFilenameToKeyword(const QString& filename)
 {

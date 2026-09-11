@@ -93,12 +93,14 @@ void TabOpt::writeSchemeFile(const QString& filename)
 void TabOpt::saveScheme()
 {
   QString filename = QFileDialog::getSaveFileName(
-    nullptr, tr("Save Optimization Scheme as..."), QDir::homePath(), "*.scheme;;*.*", nullptr,
+    nullptr, tr("Save Optimization Scheme as..."),
+    Settings::recentLookupDirectory("scheme", QDir::homePath()), "*.scheme;;*.*", nullptr,
     QFileDialog::DontUseNativeDialog);
 
   if (filename.isEmpty())
     return;
 
+  Settings::saveRecentLookupDirectory("scheme", filename);
   writeSchemeFile(filename);
 }
 
@@ -108,12 +110,15 @@ void TabOpt::loadScheme()
     return;
 
   QString filename = QFileDialog::getOpenFileName(
-    nullptr, tr("Select Optimization Scheme to load..."), QDir::homePath(), "*.scheme;;*.*", 0,
+    nullptr, tr("Select Optimization Scheme to load..."),
+    Settings::recentLookupDirectory("scheme", QDir::homePath()), "*.scheme;;*.*", 0,
     QFileDialog::DontUseNativeDialog);
 
   // User canceled
   if (filename.isEmpty())
     return;
+
+  Settings::saveRecentLookupDirectory("scheme", filename);
 
   XtalOpt* xtalopt = qobject_cast<XtalOpt*>(m_search);
 

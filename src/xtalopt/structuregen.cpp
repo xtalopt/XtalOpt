@@ -774,20 +774,17 @@ Xtal* XtalOpt::randSpgXtal(uint generation, uint id, CellComp incomp,
   options.betaMax = getBetaMax();
   options.gammaMax = getGammaMax();
   if (getUsingCustomIAD()) {
-    // RandSpg needs one radius per element; the full custom table is checked later.
+    // RandSpg keeps one radius per element and compares a pair against the sum
+    //   of the two radii. For the case of Custom IAD, we use the same-type
+    //   distances to obtain elemental radii to pass.
     options.minRadius = 0.0;
     options.iadScalingFactor = 0.0;
     const QList<uint> atomicNums = incomp.getCompositionAtomicNumbers();
     for (const auto& atomicNum : atomicNums) {
-      double minDistance = PINF;
-      for (const auto& otherAtomicNum : atomicNums) {
-        const double distance =
-          pairCustomDistances().getPairDistance(atomicNum, otherAtomicNum);
-        if (distance == PINF)
-          return nullptr;
-        minDistance = std::min(minDistance, distance);
-      }
-      options.atomicRadii[atomicNum] = 0.5 * minDistance;
+      const double distance = pairCustomDistances().getPairDistance(atomicNum, atomicNum);
+      if (distance == PINF)
+        return nullptr;
+      options.atomicRadii[atomicNum] = 0.5 * distance;
     }
   } else if (getUsingScaledIAD()) {
     options.minRadius = getMinRadius();
@@ -1440,6 +1437,10 @@ Xtal* XtalOpt::generateEvolvedXtal(Xtal* preselectedXtal)
   // If this worked, we return the supercell. Otherwise, we just return the
   //   original generated cell.
   // We have already converted user input to a chance in [0,1] range in "wSupr".
+  // NOTE: the produced supercell (if any) is directly added to queue; so after
+  //   xtal checks done on evolution outcome no extra check is performed. That's,
+  //   the "lattice limits" and "relative ratio of lattice vector lengths" is
+  //   especially not checked.
   double s = Common::getRandDouble();
   if (s < wSupr) {
     Xtal* supercellXtal = generateSuperCell(xtal, 0, true);
@@ -2382,9 +2383,10 @@ bool XtalOpt::checkStepOptimizedStructure(Structure* s, QString* err)
       Common::neq(getGammaMin(), getGammaMax(), LATT_ANG_COMP_TOL)) {
     xtal->fixAngles();
   }
-  xtal->findSpaceGroup(getTolSpg());
 
   uint fixCount = xtal->getFixCount();
+
+  bool passedChecks = true;
 
   // Check post-opt
   if (getUsingCheckStepOpt() && (getUsingCustomIAD() || getUsingScaledIAD())) {
@@ -2405,35 +2407,43 @@ bool XtalOpt::checkStepOptimizedStructure(Structure* s, QString* err)
           s->setFixCount(fixCount + 1);
           s->setRestartOptStep(0);
         }
-        return true;
-      }
-      if (moves >= maxMoves || fixCount >= 10)
         break;
+      }
+      if (moves >= maxMoves || fixCount >= 10) {
+        passedChecks = false;
+        break;
+      }
 
       Atoms::Atom& atom = xtal->atom(atom2);
       const bool moved = customMode
         ? xtal->moveAtomRandomlyCustomIAD(atom.atomicNumber(), pairCustomDistances(), 1000, &atom)
         : xtal->moveAtomRandomlyScaledIAD(atom.atomicNumber(), eleScaledRadii(), 1000, &atom);
-      if (!moved)
+      if (!moved) {
+        passedChecks = false;
         break;
+      }
     }
 
-    const double minIAD = customMode
-      ? pairCustomDistances().getPairDistance(xtal->atom(atom1).atomicNumber(),
-                                              xtal->atom(atom2).atomicNumber())
-      : eleScaledRadii().getMinRadius(xtal->atom(atom1).atomicNumber()) +
-        eleScaledRadii().getMinRadius(xtal->atom(atom2).atomicNumber());
+    if (!passedChecks) {
+      const double minIAD = customMode
+        ? pairCustomDistances().getPairDistance(xtal->atom(atom1).atomicNumber(),
+                                                xtal->atom(atom2).atomicNumber())
+        : eleScaledRadii().getMinRadius(xtal->atom(atom1).atomicNumber()) +
+          eleScaledRadii().getMinRadius(xtal->atom(atom2).atomicNumber());
 
-    Common::debug(QString("Discarding structure %1: bad IAD (%2 < %3) - couldn't fix")
-                    .arg(xtal->getTag()).arg(iad).arg(minIAD));
+      Common::debug(QString("Discarding structure %1: bad IAD (%2 < %3) - couldn't fix")
+                      .arg(xtal->getTag()).arg(iad).arg(minIAD));
 
-    if (err != nullptr)
-      *err = "Two atoms are too close together.";
-    return false;
+      if (err != nullptr)
+        *err = "Two atoms are too close together.";
+    }
   }
 
-  // If early, don't check structure
-  return true;
+  // A discarded structure needs no space group check!
+  if (passedChecks)
+    xtal->findSpaceGroup(getTolSpg());
+
+  return passedChecks;
 }
 
 std::vector<double> XtalOpt::getReferenceEnergiesVector()

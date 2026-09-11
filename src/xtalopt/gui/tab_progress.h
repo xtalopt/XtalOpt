@@ -137,6 +137,7 @@ private:
   Search::Tracker m_infoUpdateTracker;
 
   void updateInfo_();
+  bool confirmUnconfirmedJob(Xtal* xtal, const QString& action);
   void restartJobProgress_(int incar);
   void failXtalProgress_();
   void unfailXtalProgress_();

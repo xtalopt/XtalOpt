@@ -43,12 +43,6 @@ namespace Search {
 
 namespace {
 
-bool usesLocalExecutionHost(const SearchBase* search, const QueueInterface* queue)
-{
-  // Direct-run jobs are always executed locallly.
-  return !queue->isBatchQueue() || !search->isRemoteQueue();
-}
-
 struct ScriptCalculationContext
 {
   const SearchBase* search;
@@ -77,7 +71,7 @@ ScriptCalculationContext calculationContext(SearchBase* search, Structure* s)
   ScriptCalculationContext context;
   context.search = search;
   context.queue = search->queueInterface(s->getCurrentOptStep());
-  context.localRun = usesLocalExecutionHost(search, context.queue);
+  context.localRun = context.queue->executesLocally();
   context.localDir = s->getLocpath();
   context.workDir = context.localRun ? context.localDir : s->getRempath();
   return context;

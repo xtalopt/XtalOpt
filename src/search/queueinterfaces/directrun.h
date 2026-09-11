@@ -77,7 +77,8 @@ public slots:
       m_status = Error;
   };
 
-  Status status() { return m_status; };
+  // These are called by string name through QMetaObject::invokeMethod at the
+  //   top of directrun.cpp.
   int processStateValue() const { return static_cast<int>(state()); };
   int statusValue() const { return static_cast<int>(m_status); };
   int exitCodeValue() const { return exitCode(); };
@@ -94,10 +95,9 @@ public slots:
     return QString(const_cast<DirectRunProcess*>(this)->readAllStandardError());
   };
 
-  void killProcess() { kill(); };
   int killAndWait()
   {
-    kill();
+    QtCompat::processKillCommand(*this);
     waitForFinished(PROCESS_KILL_TIMEOUT);
     return state() == QProcess::NotRunning;
   };
@@ -106,7 +106,7 @@ public slots:
   {
     terminate();
     if (!waitForFinished(PROCESS_TERMINATE_TIMEOUT)) {
-      kill();
+      QtCompat::processKillCommand(*this);
       waitForFinished(PROCESS_KILL_TIMEOUT);
     }
   };

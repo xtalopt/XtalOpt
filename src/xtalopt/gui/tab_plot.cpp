@@ -17,6 +17,7 @@
 
 #include <xtalopt/structures/xtal.h>
 #include <xtalopt/gui/dialog.h>
+#include <xtalopt/settings.h>
 #include <xtalopt/xtalopt.h>
 
 #include <common/compatibility/platform_compat.h>
@@ -374,7 +375,8 @@ void TabPlot::savePlotImage()
 {
   QString selectedFilter;
   QString filename = QFileDialog::getSaveFileName(m_tab_widget, tr("Save Plot View"),
-     QDir(defaultSaveDir()).filePath("xtalopt-plot.png"),
+     QDir(Settings::recentLookupDirectory("plotImage", defaultSaveDir()))
+          .filePath("xtalopt-plot.png"),
     tr("PNG Image (*.png);;JPEG Image (*.jpg *.jpeg);;BMP Image (*.bmp)"), &selectedFilter,
     QFileDialog::DontUseNativeDialog);
   if (filename.isEmpty())
@@ -388,6 +390,8 @@ void TabPlot::savePlotImage()
     else
       filename += ".png";
   }
+
+  Settings::saveRecentLookupDirectory("plotImage", filename);
 
   QByteArray format = QFileInfo(filename).suffix().toLower().toLatin1();
   if (format == "jpg" || format == "jpeg")
@@ -424,13 +428,16 @@ void TabPlot::savePlotImage()
 void TabPlot::savePlotData()
 {
   QString filename = QFileDialog::getSaveFileName(m_tab_widget, tr("Save Plot Data"),
-     QDir(defaultSaveDir()).filePath("xtalopt-plot.dat"),
+     QDir(Settings::recentLookupDirectory("plotData", defaultSaveDir()))
+          .filePath("xtalopt-plot.dat"),
     tr("Data files (*.dat);;Text files (*.txt)"), nullptr,
     QFileDialog::DontUseNativeDialog);
   if (filename.isEmpty())
     return;
   if (QFileInfo(filename).suffix().isEmpty())
     filename += ".dat";
+
+  Settings::saveRecentLookupDirectory("plotData", filename);
 
   QFile file(filename);
   if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {

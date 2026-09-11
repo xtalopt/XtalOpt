@@ -95,6 +95,21 @@ inline void processStartCommand(QProcess& proc, const QString& command)
 #endif
 }
 
+// Stop a process started by processStartCommand(). On Windows that call runs
+//   the command through cmd.exe, so stopping the process we own would leave the
+//   real command running; so on Windows we ask to stop the whole tree.
+inline void processKillCommand(QProcess& proc)
+{
+#if defined(Q_OS_WIN)
+  const qint64 processId = proc.processId();
+  if (processId > 0) {
+    QProcess::execute("taskkill", QStringList()
+                        << "/T" << "/F" << "/PID" << QString::number(processId));
+  }
+#endif
+  proc.kill();
+}
+
 } // namespace QtCompat
 
 #endif // COMMON_QT_COMPAT_H
